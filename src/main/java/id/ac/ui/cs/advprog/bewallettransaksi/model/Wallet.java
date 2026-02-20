@@ -1,7 +1,5 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.model;
 
-import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
-import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
