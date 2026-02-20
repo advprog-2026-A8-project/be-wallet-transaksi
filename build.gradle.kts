@@ -3,6 +3,7 @@ plugins {
     checkstyle
     id("org.springframework.boot") version "3.5.10"
     id("io.spring.dependency-management") version "1.1.7"
+    id("org.sonarqube") version "4.4.1.3373"
 }
 
 group = "id.ac.ui.cs.advprog"
@@ -36,6 +37,14 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.springframework.boot:spring-boot-starter-validation")
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "advprog-2026-A8-project_be-wallet-transaksi")
+        property("sonar.organization", "advprog-2026-a8-project")
+        property("sonar.host.url", "https://sonarcloud.io")
+    }
 }
 
 tasks.withType<Test> {
