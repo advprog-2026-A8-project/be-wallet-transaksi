@@ -75,9 +75,23 @@ jobs:
     name: Build and Deploy
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
 
     steps:
+      - name: Set environment variables
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "ENV_NAME=prod" >> $GITHUB_ENV
+            echo "APP_PORT=8080" >> $GITHUB_ENV
+            echo "CONTAINER_NAME=wallet_server_prod" >> $GITHUB_ENV
+            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+          else
+            echo "ENV_NAME=staging" >> $GITHUB_ENV
+            echo "APP_PORT=8081" >> $GITHUB_ENV
+            echo "CONTAINER_NAME=wallet_server_staging" >> $GITHUB_ENV
+            echo "IMAGE_TAG=staging" >> $GITHUB_ENV
+          fi
+
       - name: Check out code
         uses: actions/checkout@v4
 
@@ -91,7 +105,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:latest
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
 
       - name: Releasing New Version
         uses: appleboy/ssh-action@v1.2.0
@@ -100,45 +114,39 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            docker stop postgres_db wallet_server || true
-            docker rm postgres_db wallet_server || true
+            docker stop ${{ env.CONTAINER_NAME }} || true
+            docker rm ${{ env.CONTAINER_NAME }} || true
             
-            docker rmi $(docker images -a -q) || true
             docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} -p ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:latest
-            
-            cat > .env << EOL
-            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            EOL
-            
-            chmod 600 .env
-            source .env
+            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
             
             docker network create app_network || true
             
-            docker run -d \
-              --name=postgres_db \
-              --network=app_network \
-              -p 5432:5432 \
-              -v postgres_data:/var/lib/postgresql/data \
-              -e POSTGRES_DB=walletdb \
-              -e POSTGRES_USER=${POSTGRES_USER} \
-              -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD} \
-              --restart always \
-              postgres:15-alpine
+            # Only create DB if not exists (shared between envs)
+            if [ ! "$(docker ps -q -f name=postgres_db)" ]; then
+              docker run -d \
+                --name=postgres_db \
+                --network=app_network \
+                -p 5432:5432 \
+                -v postgres_data:/var/lib/postgresql/data \
+                -e POSTGRES_DB=walletdb \
+                -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
+                -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+                --restart always \
+                postgres:15-alpine
+            fi
             
             docker run -d \
-              --name=wallet_server \
+              --name=${{ env.CONTAINER_NAME }} \
               --network=app_network \
-              -p 8080:8080 \
+              -p ${{ env.APP_PORT }}:8080 \
               -e POSTGRES_HOST=postgres_db \
               -e POSTGRES_PORT=5432 \
               -e POSTGRES_DB=walletdb \
-              -e POSTGRES_USER=${POSTGRES_USER} \
-              -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD} \
+              -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
+              -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
               -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
               --restart always \
-              ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:latest
+              ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
             
             docker ps
