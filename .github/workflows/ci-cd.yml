@@ -81,19 +81,25 @@ jobs:
       - name: Set environment variables
         run: |
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "ENV_NAME=prod" >> $GITHUB_ENV
             echo "APP_PORT=8080" >> $GITHUB_ENV
             echo "CONTAINER_NAME=wallet_server_prod" >> $GITHUB_ENV
             echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+            echo "DB_CONTAINER_NAME=postgres_db_prod" >> $GITHUB_ENV
+            echo "DB_NAME=walletdb_prod" >> $GITHUB_ENV
+            echo "DB_PORT=5432" >> $GITHUB_ENV
+            echo "DB_VOLUME=postgres_data_prod" >> $GITHUB_ENV
           else
-            echo "ENV_NAME=staging" >> $GITHUB_ENV
             echo "APP_PORT=8081" >> $GITHUB_ENV
             echo "CONTAINER_NAME=wallet_server_staging" >> $GITHUB_ENV
             echo "IMAGE_TAG=staging" >> $GITHUB_ENV
+            echo "DB_CONTAINER_NAME=postgres_db_staging" >> $GITHUB_ENV
+            echo "DB_NAME=walletdb_staging" >> $GITHUB_ENV
+            echo "DB_PORT=5433" >> $GITHUB_ENV
+            echo "DB_VOLUME=postgres_data_staging" >> $GITHUB_ENV
           fi
 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v1
@@ -127,14 +133,23 @@ jobs:
             
             docker network create app_network || true
             
-            # Only create DB if not exists (shared between envs)
-            if [ ! "$(docker ps -q -f name=postgres_db)" ]; then
+            # Cleanup old shared postgres_db container (one-time migration)
+            docker stop postgres_db || true
+            docker rm postgres_db || true
+            
+            # Create/start env-specific DB
+            if [ "$(docker ps -aq -f name=^${{ env.DB_CONTAINER_NAME }}$)" ]; then
+              # Container exists; ensure it is running
+              if [ ! "$(docker ps -q -f name=^${{ env.DB_CONTAINER_NAME }}$)" ]; then
+                docker start ${{ env.DB_CONTAINER_NAME }}
+              fi
+            else
               docker run -d \
-                --name=postgres_db \
+                --name=${{ env.DB_CONTAINER_NAME }} \
                 --network=app_network \
-                -p 5432:5432 \
-                -v postgres_data:/var/lib/postgresql/data \
-                -e POSTGRES_DB=walletdb \
+                -p ${{ env.DB_PORT }}:5432 \
+                -v ${{ env.DB_VOLUME }}:/var/lib/postgresql/data \
+                -e POSTGRES_DB=${{ env.DB_NAME }} \
                 -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
                 -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
                 --restart always \
@@ -145,9 +160,9 @@ jobs:
               --name=${{ env.CONTAINER_NAME }} \
               --network=app_network \
               -p ${{ env.APP_PORT }}:8080 \
-              -e POSTGRES_HOST=postgres_db \
+              -e POSTGRES_HOST=${{ env.DB_CONTAINER_NAME }} \
               -e POSTGRES_PORT=5432 \
-              -e POSTGRES_DB=walletdb \
+              -e POSTGRES_DB=${{ env.DB_NAME }} \
               -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
               -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
               -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
