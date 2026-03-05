@@ -1,14 +1,22 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.model;
 
-import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
-import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
+import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -33,6 +41,9 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TransactionStatus status;
+
+    @Column
+    private String description;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
