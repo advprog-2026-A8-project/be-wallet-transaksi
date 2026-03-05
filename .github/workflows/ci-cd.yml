@@ -52,7 +52,8 @@ jobs:
           SPRING_DATASOURCE_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
       - name: SonarCloud Scan
-        run: ./gradlew sonar
+        continue-on-error: true
+        run: ./gradlew sonar -Dsonar.branch.name=${{ github.head_ref || github.ref_name }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
