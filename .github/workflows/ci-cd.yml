@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   test:
@@ -30,6 +31,8 @@ jobs:
     steps:
       - name: Check out the Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
 
       - name: Set up Java toolchain
         uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
@@ -52,6 +55,7 @@ jobs:
         run: ./gradlew sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-deploy:
     name: Build and Deploy
