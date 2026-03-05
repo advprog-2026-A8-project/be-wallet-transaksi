@@ -45,7 +45,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Tests & Checkstyle
-        run: ./gradlew clean test checkstyleMain checkstyleTest
+        run: ./gradlew clean test jacocoTestReport checkstyleMain checkstyleTest
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/walletdb
           SPRING_DATASOURCE_USERNAME: ${{ secrets.POSTGRES_USER }}

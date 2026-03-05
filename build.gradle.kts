@@ -1,5 +1,6 @@
 plugins {
     java
+    jacoco
     checkstyle
     id("org.springframework.boot") version "3.5.10"
     id("io.spring.dependency-management") version "1.1.7"
@@ -45,11 +46,21 @@ sonar {
         property("sonar.projectKey", "advprog-2026-A8-project_be-wallet-transaksi")
         property("sonar.organization", "advprog-2026-a8-project")
         property("sonar.host.url", "https://sonarcloud.io")
+        property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
     }
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }
 
 checkstyle {
