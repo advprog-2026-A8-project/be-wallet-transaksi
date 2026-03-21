@@ -173,4 +173,40 @@ class WalletServiceImplTest {
         assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
         verify(walletRepository, never()).findByUserId(any());
     }
+
+    @Test
+    void pay_Success() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        WalletResponse response = walletService.pay(userId, BigDecimal.valueOf(60.00), "Order payment");
+
+        assertNotNull(response);
+        assertEquals(BigDecimal.valueOf(40.00), response.getBalance());
+
+        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository).save(wallet);
+
+        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(transactionCaptor.capture());
+        Transaction savedTransaction = transactionCaptor.getValue();
+        assertEquals(walletId, savedTransaction.getWalletId());
+        assertEquals(BigDecimal.valueOf(60.00), savedTransaction.getAmount());
+        assertEquals(TransactionType.PAYMENT, savedTransaction.getType());
+        assertEquals(TransactionStatus.SUCCESS, savedTransaction.getStatus());
+        assertEquals("Order payment", savedTransaction.getDescription());
+    }
+
+    @Test
+    void pay_InsufficientBalance() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+
+        assertThrows(IllegalStateException.class,
+                () -> walletService.pay(userId, BigDecimal.valueOf(150.00), "Order payment"));
+
+        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
 }
