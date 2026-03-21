@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,21 +21,20 @@ class TransactionRepositoryTest {
     private TransactionRepository transactionRepository;
 
     @Test
-    void findByWalletIdOrderByCreatedAtDesc_ReturnsLatestFirst() throws InterruptedException {
+    void findByWalletIdOrderByCreatedAtDesc_ReturnsLatestFirst() {
         UUID walletId = UUID.randomUUID();
+        LocalDateTime baseTime = LocalDateTime.of(2026, 1, 1, 10, 0, 0);
 
         Transaction oldest = createTransaction(walletId, BigDecimal.valueOf(10), TransactionType.TOPUP,
-                TransactionStatus.SUCCESS, "oldest");
+                TransactionStatus.SUCCESS, "oldest", baseTime);
         transactionRepository.save(oldest);
-        Thread.sleep(5);
 
         Transaction middle = createTransaction(walletId, BigDecimal.valueOf(20), TransactionType.PAYMENT,
-                TransactionStatus.SUCCESS, "middle");
+                TransactionStatus.SUCCESS, "middle", baseTime.plusMinutes(1));
         transactionRepository.save(middle);
-        Thread.sleep(5);
 
         Transaction latest = createTransaction(walletId, BigDecimal.valueOf(30), TransactionType.REFUND,
-                TransactionStatus.SUCCESS, "latest");
+                TransactionStatus.SUCCESS, "latest", baseTime.plusMinutes(2));
         transactionRepository.save(latest);
 
         List<Transaction> histories = transactionRepository.findByWalletIdOrderByCreatedAtDesc(walletId);
@@ -50,11 +50,11 @@ class TransactionRepositoryTest {
         UUID walletId = UUID.randomUUID();
 
         transactionRepository.save(createTransaction(walletId, BigDecimal.valueOf(40), TransactionType.PAYMENT,
-                TransactionStatus.SUCCESS, "success-payment"));
+                TransactionStatus.SUCCESS, "success-payment", LocalDateTime.of(2026, 1, 1, 10, 0, 0)));
         transactionRepository.save(createTransaction(walletId, BigDecimal.valueOf(50), TransactionType.WITHDRAW,
-                TransactionStatus.FAILED, "failed-withdraw"));
+                TransactionStatus.FAILED, "failed-withdraw", LocalDateTime.of(2026, 1, 1, 10, 1, 0)));
         transactionRepository.save(createTransaction(walletId, BigDecimal.valueOf(60), TransactionType.REFUND,
-                TransactionStatus.SUCCESS, "success-refund"));
+                TransactionStatus.SUCCESS, "success-refund", LocalDateTime.of(2026, 1, 1, 10, 2, 0)));
 
         List<Transaction> successHistories = transactionRepository
                 .findByWalletIdAndStatusOrderByCreatedAtDesc(walletId, TransactionStatus.SUCCESS);
@@ -65,13 +65,15 @@ class TransactionRepositoryTest {
     }
 
     private Transaction createTransaction(UUID walletId, BigDecimal amount, TransactionType type,
-                                          TransactionStatus status, String description) {
+                                          TransactionStatus status, String description, LocalDateTime createdAt) {
         Transaction transaction = new Transaction();
         transaction.setWalletId(walletId);
         transaction.setAmount(amount);
         transaction.setType(type);
         transaction.setStatus(status);
         transaction.setDescription(description);
+        transaction.setCreatedAt(createdAt);
+        transaction.setUpdatedAt(createdAt);
         return transaction;
     }
 }
