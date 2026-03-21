@@ -31,9 +31,7 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     public WalletResponse getWallet(UUID userId) {
-        Wallet wallet = walletRepository.findByUserId(userId)
-                .orElseThrow(() -> new WalletNotFoundException(userId));
-        return toResponse(wallet);
+        return toResponse(findWalletByUserIdOrThrow(userId));
     }
 
     @Override
@@ -50,9 +48,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse topUp(TopUpRequest request) {
         validateAmount(request.getAmount());
-
-        Wallet wallet = walletRepository.findByUserId(request.getUserId())
-                .orElseThrow(() -> new WalletNotFoundException(request.getUserId()));
+        Wallet wallet = findWalletByUserIdOrThrow(request.getUserId());
 
         Transaction transaction = createTransaction(
                 wallet.getWalletId(),
@@ -61,11 +57,8 @@ public class WalletServiceImpl implements WalletService {
                 "Top-up saldo"
         );
 
-        wallet.setBalance(wallet.getBalance().add(request.getAmount()));
-        transaction.setStatus(TransactionStatus.SUCCESS);
-
-        walletRepository.save(wallet);
-        transactionRepository.save(transaction);
+        updateWalletBalance(wallet, wallet.getBalance().add(request.getAmount()));
+        finalizeTransaction(transaction);
 
         return toResponse(wallet);
     }
@@ -74,13 +67,8 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse pay(UUID userId, BigDecimal amount, String description) {
         validateAmount(amount);
-
-        Wallet wallet = walletRepository.findByUserId(userId)
-                .orElseThrow(() -> new WalletNotFoundException(userId));
-
-        if (wallet.getBalance().compareTo(amount) < 0) {
-            throw new IllegalStateException("Insufficient balance");
-        }
+        Wallet wallet = findWalletByUserIdOrThrow(userId);
+        validateSufficientBalance(wallet, amount);
 
         Transaction transaction = createTransaction(
                 wallet.getWalletId(),
@@ -89,14 +77,37 @@ public class WalletServiceImpl implements WalletService {
                 description
         );
 
-        BigDecimal updatedBalance = wallet.getBalance().subtract(amount);
-        wallet.setBalance(normalizeBalance(updatedBalance));
-        transaction.setStatus(TransactionStatus.SUCCESS);
-
-        walletRepository.save(wallet);
-        transactionRepository.save(transaction);
+        updateWalletBalance(wallet, wallet.getBalance().subtract(amount));
+        finalizeTransaction(transaction);
 
         return toResponse(wallet);
+    }
+
+    private void validateAmount(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidAmountException("Amount must be greater than zero");
+        }
+    }
+
+    private Wallet findWalletByUserIdOrThrow(UUID userId) {
+        return walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new WalletNotFoundException(userId));
+    }
+
+    private void validateSufficientBalance(Wallet wallet, BigDecimal amount) {
+        if (wallet.getBalance().compareTo(amount) < 0) {
+            throw new IllegalStateException("Insufficient balance");
+        }
+    }
+
+    private void updateWalletBalance(Wallet wallet, BigDecimal updatedBalance) {
+        wallet.setBalance(normalizeBalance(updatedBalance));
+        walletRepository.save(wallet);
+    }
+
+    private void finalizeTransaction(Transaction transaction) {
+        transaction.setStatus(TransactionStatus.SUCCESS);
+        transactionRepository.save(transaction);
     }
 
     private BigDecimal normalizeBalance(BigDecimal balance) {
@@ -104,12 +115,6 @@ public class WalletServiceImpl implements WalletService {
             return BigDecimal.ZERO;
         }
         return balance;
-    }
-
-    private void validateAmount(BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new InvalidAmountException("Amount must be greater than zero");
-        }
     }
 
     private Transaction createTransaction(UUID walletId, BigDecimal amount,
