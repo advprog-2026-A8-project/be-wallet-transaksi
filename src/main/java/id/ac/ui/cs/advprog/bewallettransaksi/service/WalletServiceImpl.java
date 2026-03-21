@@ -83,6 +83,25 @@ public class WalletServiceImpl implements WalletService {
         return toResponse(wallet);
     }
 
+    @Override
+    @Transactional
+    public WalletResponse refund(UUID userId, BigDecimal amount, String description) {
+        validateAmount(amount);
+        Wallet wallet = findWalletByUserIdOrThrow(userId);
+
+        Transaction transaction = createTransaction(
+                wallet.getWalletId(),
+                amount,
+                TransactionType.REFUND,
+                description
+        );
+
+        updateWalletBalance(wallet, wallet.getBalance().add(amount));
+        finalizeTransaction(transaction);
+
+        return toResponse(wallet);
+    }
+
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidAmountException("Amount must be greater than zero");
