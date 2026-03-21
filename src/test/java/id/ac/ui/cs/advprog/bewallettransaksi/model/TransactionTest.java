@@ -115,4 +115,31 @@ class TransactionTest {
         transaction.setStatus(TransactionStatus.FAILED);
         assertEquals(TransactionStatus.FAILED, transaction.getStatus());
     }
+
+    @Test
+    void testCannotTransitionFromSuccessToFailed() {
+        Transaction transaction = new Transaction();
+        transaction.setStatus(TransactionStatus.PENDING);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+
+        assertThrows(IllegalStateException.class, () -> transaction.setStatus(TransactionStatus.FAILED));
+    }
+
+    @Test
+    void testCannotTransitionFromFailedToSuccess() {
+        Transaction transaction = new Transaction();
+        transaction.setStatus(TransactionStatus.PENDING);
+        transaction.setStatus(TransactionStatus.FAILED);
+
+        assertThrows(IllegalStateException.class, () -> transaction.setStatus(TransactionStatus.SUCCESS));
+    }
+
+    @Test
+    void testCannotTransitionFromSuccessToPending() {
+        Transaction transaction = new Transaction();
+        transaction.setStatus(TransactionStatus.PENDING);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+
+        assertThrows(IllegalStateException.class, () -> transaction.setStatus(TransactionStatus.PENDING));
+    }
 }
