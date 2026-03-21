@@ -70,6 +70,42 @@ public class WalletServiceImpl implements WalletService {
         return toResponse(wallet);
     }
 
+    @Override
+    @Transactional
+    public WalletResponse pay(UUID userId, BigDecimal amount, String description) {
+        validateAmount(amount);
+
+        Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new WalletNotFoundException(userId));
+
+        if (wallet.getBalance().compareTo(amount) < 0) {
+            throw new IllegalStateException("Insufficient balance");
+        }
+
+        Transaction transaction = createTransaction(
+                wallet.getWalletId(),
+                amount,
+                TransactionType.PAYMENT,
+                description
+        );
+
+        BigDecimal updatedBalance = wallet.getBalance().subtract(amount);
+        wallet.setBalance(normalizeBalance(updatedBalance));
+        transaction.setStatus(TransactionStatus.SUCCESS);
+
+        walletRepository.save(wallet);
+        transactionRepository.save(transaction);
+
+        return toResponse(wallet);
+    }
+
+    private BigDecimal normalizeBalance(BigDecimal balance) {
+        if (balance.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        return balance;
+    }
+
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidAmountException("Amount must be greater than zero");
