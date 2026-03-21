@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
+import id.ac.ui.cs.advprog.bewallettransaksi.model.state.TransactionState;
+import id.ac.ui.cs.advprog.bewallettransaksi.model.state.TransactionStateFactory;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -64,11 +66,13 @@ public class Transaction {
     }
 
     public void setStatus(TransactionStatus nextStatus) {
-        if (this.status == TransactionStatus.SUCCESS && nextStatus != TransactionStatus.SUCCESS) {
-            throw new IllegalStateException("Invalid transaction status transition: SUCCESS -> " + nextStatus);
-        }
-        if (this.status == TransactionStatus.FAILED && nextStatus != TransactionStatus.FAILED) {
-            throw new IllegalStateException("Invalid transaction status transition: FAILED -> " + nextStatus);
+        if (this.status != null && nextStatus != null) {
+            TransactionState currentState = TransactionStateFactory.from(this.status);
+            if (!currentState.canTransitionTo(nextStatus)) {
+                throw new IllegalStateException(
+                        "Invalid transaction status transition: " + this.status + " -> " + nextStatus
+                );
+            }
         }
         this.status = nextStatus;
     }
