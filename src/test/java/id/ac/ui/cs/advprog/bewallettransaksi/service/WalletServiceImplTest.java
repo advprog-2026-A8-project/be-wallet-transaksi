@@ -209,4 +209,60 @@ class WalletServiceImplTest {
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
+
+    @Test
+    void pay_NullAmount() {
+        assertThrows(InvalidAmountException.class,
+                () -> walletService.pay(userId, null, "Order payment"));
+
+        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void pay_ZeroAmount() {
+        assertThrows(InvalidAmountException.class,
+                () -> walletService.pay(userId, BigDecimal.ZERO, "Order payment"));
+
+        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void pay_NegativeAmount() {
+        assertThrows(InvalidAmountException.class,
+                () -> walletService.pay(userId, BigDecimal.valueOf(-1.00), "Order payment"));
+
+        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void pay_ExactBalance() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        WalletResponse response = walletService.pay(userId, BigDecimal.valueOf(100.00), "Order payment");
+
+        assertNotNull(response);
+        assertEquals(BigDecimal.ZERO, response.getBalance());
+        verify(walletRepository).save(wallet);
+        verify(transactionRepository).save(any(Transaction.class));
+    }
+
+    @Test
+    void pay_AmountJustAboveBalance() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+
+        assertThrows(IllegalStateException.class,
+                () -> walletService.pay(userId, BigDecimal.valueOf(100.01), "Order payment"));
+
+        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
 }
