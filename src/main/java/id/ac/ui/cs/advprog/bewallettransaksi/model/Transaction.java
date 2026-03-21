@@ -62,4 +62,14 @@ public class Transaction {
     public void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void setStatus(TransactionStatus nextStatus) {
+        if (this.status == TransactionStatus.SUCCESS && nextStatus != TransactionStatus.SUCCESS) {
+            throw new IllegalStateException("Invalid transaction status transition: SUCCESS -> " + nextStatus);
+        }
+        if (this.status == TransactionStatus.FAILED && nextStatus != TransactionStatus.FAILED) {
+            throw new IllegalStateException("Invalid transaction status transition: FAILED -> " + nextStatus);
+        }
+        this.status = nextStatus;
+    }
 }

@@ -104,16 +104,17 @@ class TransactionTest {
 
     @Test
     void testTransactionWithAllStatuses() {
-        Transaction transaction = new Transaction();
-        
-        transaction.setStatus(TransactionStatus.PENDING);
-        assertEquals(TransactionStatus.PENDING, transaction.getStatus());
-        
-        transaction.setStatus(TransactionStatus.SUCCESS);
-        assertEquals(TransactionStatus.SUCCESS, transaction.getStatus());
-        
-        transaction.setStatus(TransactionStatus.FAILED);
-        assertEquals(TransactionStatus.FAILED, transaction.getStatus());
+        Transaction pendingTransaction = new Transaction();
+        pendingTransaction.setStatus(TransactionStatus.PENDING);
+        assertEquals(TransactionStatus.PENDING, pendingTransaction.getStatus());
+
+        Transaction successTransaction = new Transaction();
+        successTransaction.setStatus(TransactionStatus.SUCCESS);
+        assertEquals(TransactionStatus.SUCCESS, successTransaction.getStatus());
+
+        Transaction failedTransaction = new Transaction();
+        failedTransaction.setStatus(TransactionStatus.FAILED);
+        assertEquals(TransactionStatus.FAILED, failedTransaction.getStatus());
     }
 
     @Test
