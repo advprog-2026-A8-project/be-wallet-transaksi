@@ -331,4 +331,82 @@ class WalletServiceImplTest {
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
+
+    @Test
+    void withdraw_Success() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        WalletResponse response = walletService.withdraw(userId, BigDecimal.valueOf(30.00), "BCA-123456");
+
+        assertNotNull(response);
+        assertEquals(BigDecimal.valueOf(70.00), response.getBalance());
+
+        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository).save(wallet);
+
+        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(transactionCaptor.capture());
+        Transaction savedTransaction = transactionCaptor.getValue();
+        assertEquals(walletId, savedTransaction.getWalletId());
+        assertEquals(BigDecimal.valueOf(30.00), savedTransaction.getAmount());
+        assertEquals(TransactionType.WITHDRAW, savedTransaction.getType());
+        assertEquals(TransactionStatus.SUCCESS, savedTransaction.getStatus());
+        assertEquals("BCA-123456", savedTransaction.getDescription());
+    }
+
+    @Test
+    void withdraw_WalletNotFound() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        assertThrows(WalletNotFoundException.class,
+                () -> walletService.withdraw(userId, BigDecimal.valueOf(30.00), "BCA-123456"));
+
+        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void withdraw_InsufficientBalance() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+
+        assertThrows(IllegalStateException.class,
+                () -> walletService.withdraw(userId, BigDecimal.valueOf(120.00), "BCA-123456"));
+
+        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void withdraw_NullAmount() {
+        assertThrows(InvalidAmountException.class,
+                () -> walletService.withdraw(userId, null, "BCA-123456"));
+
+        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void withdraw_ZeroAmount() {
+        assertThrows(InvalidAmountException.class,
+                () -> walletService.withdraw(userId, BigDecimal.ZERO, "BCA-123456"));
+
+        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void withdraw_NegativeAmount() {
+        assertThrows(InvalidAmountException.class,
+                () -> walletService.withdraw(userId, BigDecimal.valueOf(-1.00), "BCA-123456"));
+
+        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
 }
