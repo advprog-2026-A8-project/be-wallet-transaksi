@@ -102,6 +102,26 @@ public class WalletServiceImpl implements WalletService {
         return toResponse(wallet);
     }
 
+    @Override
+    @Transactional
+    public WalletResponse withdraw(UUID userId, BigDecimal amount, String description) {
+        validateAmount(amount);
+        Wallet wallet = findWalletByUserIdOrThrow(userId);
+        validateSufficientBalance(wallet, amount);
+
+        Transaction transaction = createTransaction(
+                wallet.getWalletId(),
+                amount,
+                TransactionType.WITHDRAW,
+                description
+        );
+
+        updateWalletBalance(wallet, wallet.getBalance().subtract(amount));
+        finalizeTransaction(transaction);
+
+        return toResponse(wallet);
+    }
+
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidAmountException("Amount must be greater than zero");

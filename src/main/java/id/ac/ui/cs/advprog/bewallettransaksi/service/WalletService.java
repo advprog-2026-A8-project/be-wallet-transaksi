@@ -12,4 +12,5 @@ public interface WalletService {
     WalletResponse topUp(TopUpRequest request);
     WalletResponse pay(UUID userId, BigDecimal amount, String description);
     WalletResponse refund(UUID userId, BigDecimal amount, String description);
+    WalletResponse withdraw(UUID userId, BigDecimal amount, String description);
 }
