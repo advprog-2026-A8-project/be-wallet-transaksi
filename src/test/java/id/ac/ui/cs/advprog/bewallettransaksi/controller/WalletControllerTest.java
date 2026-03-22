@@ -2,7 +2,10 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
+import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
+import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.WalletNotFoundException;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +17,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -142,5 +147,65 @@ class WalletControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getTransactionHistory_Success() throws Exception {
+        TransactionResponse latest = TransactionResponse.builder()
+                .transactionId(UUID.randomUUID())
+                .walletId(walletId)
+                .amount(BigDecimal.valueOf(50.00))
+                .type(TransactionType.PAYMENT)
+                .status(TransactionStatus.SUCCESS)
+                .description("Latest payment")
+                .createdAt(LocalDateTime.of(2026, 3, 22, 10, 0))
+                .build();
+
+        TransactionResponse older = TransactionResponse.builder()
+                .transactionId(UUID.randomUUID())
+                .walletId(walletId)
+                .amount(BigDecimal.valueOf(20.00))
+                .type(TransactionType.REFUND)
+                .status(TransactionStatus.SUCCESS)
+                .description("Older refund")
+                .createdAt(LocalDateTime.of(2026, 3, 22, 9, 0))
+                .build();
+
+        when(walletService.getTransactionHistory(userId)).thenReturn(List.of(latest, older));
+
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].description").value("Latest payment"))
+                .andExpect(jsonPath("$[1].description").value("Older refund"));
+    }
+
+    @Test
+    void getTransactionHistoryByStatus_Success() throws Exception {
+        TransactionResponse failedWithdraw = TransactionResponse.builder()
+                .transactionId(UUID.randomUUID())
+                .walletId(walletId)
+                .amount(BigDecimal.valueOf(40.00))
+                .type(TransactionType.WITHDRAW)
+                .status(TransactionStatus.FAILED)
+                .description("Withdraw failed")
+                .createdAt(LocalDateTime.of(2026, 3, 22, 11, 0))
+                .build();
+
+        when(walletService.getTransactionHistoryByStatus(userId, TransactionStatus.FAILED))
+                .thenReturn(List.of(failedWithdraw));
+
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .param("status", "FAILED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].status").value("FAILED"))
+                .andExpect(jsonPath("$[0].description").value("Withdraw failed"));
+    }
+
+    @Test
+    void getTransactionHistory_WalletNotFound() throws Exception {
+        when(walletService.getTransactionHistory(userId)).thenThrow(new WalletNotFoundException(userId));
+
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId))
+                .andExpect(status().isNotFound());
     }
 }
