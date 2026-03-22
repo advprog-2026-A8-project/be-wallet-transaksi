@@ -1,12 +1,15 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
@@ -122,6 +125,22 @@ public class WalletServiceImpl implements WalletService {
         return toResponse(wallet);
     }
 
+    @Override
+    public List<TransactionResponse> getTransactionHistory(UUID userId) {
+        Wallet wallet = findWalletByUserIdOrThrow(userId);
+        List<Transaction> transactions = transactionRepository.findByWalletIdOrderByCreatedAtDesc(wallet.getWalletId());
+        return toTransactionResponses(transactions);
+    }
+
+    @Override
+    public List<TransactionResponse> getTransactionHistoryByStatus(UUID userId, TransactionStatus status) {
+        Wallet wallet = findWalletByUserIdOrThrow(userId);
+        List<Transaction> transactions = transactionRepository.findByWalletIdAndStatusOrderByCreatedAtDesc(
+                wallet.getWalletId(), status
+        );
+        return toTransactionResponses(transactions);
+    }
+
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidAmountException("Amount must be greater than zero");
@@ -172,6 +191,22 @@ public class WalletServiceImpl implements WalletService {
                 .walletId(wallet.getWalletId())
                 .userId(wallet.getUserId())
                 .balance(wallet.getBalance())
+                .build();
+    }
+
+    private List<TransactionResponse> toTransactionResponses(List<Transaction> transactions) {
+        return transactions.stream().map(this::toTransactionResponse).collect(Collectors.toList());
+    }
+
+    private TransactionResponse toTransactionResponse(Transaction transaction) {
+        return TransactionResponse.builder()
+                .transactionId(transaction.getTransactionId())
+                .walletId(transaction.getWalletId())
+                .amount(transaction.getAmount())
+                .type(transaction.getType())
+                .status(transaction.getStatus())
+                .description(transaction.getDescription())
+                .createdAt(transaction.getCreatedAt())
                 .build();
     }
 }
