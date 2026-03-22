@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -207,5 +208,68 @@ class WalletControllerTest {
 
         mockMvc.perform(get("/wallet/{userId}/transactions", userId))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void pay_Success() throws Exception {
+        when(walletService.pay(userId, BigDecimal.valueOf(50.00), "Order payment")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(50.00))
+                        .build()
+        );
+
+        mockMvc.perform(post("/wallet/pay")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "userId", userId.toString(),
+                                "amount", 50.00,
+                                "description", "Order payment"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(50.00));
+    }
+
+    @Test
+    void refund_Success() throws Exception {
+        when(walletService.refund(userId, BigDecimal.valueOf(25.00), "Order refund")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(125.00))
+                        .build()
+        );
+
+        mockMvc.perform(post("/wallet/refund")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "userId", userId.toString(),
+                                "amount", 25.00,
+                                "description", "Order refund"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(125.00));
+    }
+
+    @Test
+    void withdraw_Success() throws Exception {
+        when(walletService.withdraw(userId, BigDecimal.valueOf(30.00), "BCA-123456")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(70.00))
+                        .build()
+        );
+
+        mockMvc.perform(post("/wallet/withdraw")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "userId", userId.toString(),
+                                "amount", 30.00,
+                                "description", "BCA-123456"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(70.00));
     }
 }
