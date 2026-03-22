@@ -25,17 +25,14 @@ class TransactionRepositoryTest {
         UUID walletId = UUID.randomUUID();
         LocalDateTime baseTime = LocalDateTime.of(2026, 1, 1, 10, 0, 0);
 
-        Transaction oldest = createTransaction(walletId, BigDecimal.valueOf(10), TransactionType.TOPUP,
-                TransactionStatus.SUCCESS, "oldest", baseTime);
-        transactionRepository.save(oldest);
+        persistWithCreatedAt(createTransaction(walletId, BigDecimal.valueOf(10), TransactionType.TOPUP,
+                TransactionStatus.SUCCESS, "oldest"), baseTime);
 
-        Transaction middle = createTransaction(walletId, BigDecimal.valueOf(20), TransactionType.PAYMENT,
-                TransactionStatus.SUCCESS, "middle", baseTime.plusMinutes(1));
-        transactionRepository.save(middle);
+        persistWithCreatedAt(createTransaction(walletId, BigDecimal.valueOf(20), TransactionType.PAYMENT,
+                TransactionStatus.SUCCESS, "middle"), baseTime.plusMinutes(1));
 
-        Transaction latest = createTransaction(walletId, BigDecimal.valueOf(30), TransactionType.REFUND,
-                TransactionStatus.SUCCESS, "latest", baseTime.plusMinutes(2));
-        transactionRepository.save(latest);
+        persistWithCreatedAt(createTransaction(walletId, BigDecimal.valueOf(30), TransactionType.REFUND,
+                TransactionStatus.SUCCESS, "latest"), baseTime.plusMinutes(2));
 
         List<Transaction> histories = transactionRepository.findByWalletIdOrderByCreatedAtDesc(walletId);
 
@@ -49,12 +46,12 @@ class TransactionRepositoryTest {
     void findByWalletIdAndStatusOrderByCreatedAtDesc_ReturnsFilteredStatus() {
         UUID walletId = UUID.randomUUID();
 
-        transactionRepository.save(createTransaction(walletId, BigDecimal.valueOf(40), TransactionType.PAYMENT,
-                TransactionStatus.SUCCESS, "success-payment", LocalDateTime.of(2026, 1, 1, 10, 0, 0)));
-        transactionRepository.save(createTransaction(walletId, BigDecimal.valueOf(50), TransactionType.WITHDRAW,
-                TransactionStatus.FAILED, "failed-withdraw", LocalDateTime.of(2026, 1, 1, 10, 1, 0)));
-        transactionRepository.save(createTransaction(walletId, BigDecimal.valueOf(60), TransactionType.REFUND,
-                TransactionStatus.SUCCESS, "success-refund", LocalDateTime.of(2026, 1, 1, 10, 2, 0)));
+        persistWithCreatedAt(createTransaction(walletId, BigDecimal.valueOf(40), TransactionType.PAYMENT,
+                TransactionStatus.SUCCESS, "success-payment"), LocalDateTime.of(2026, 1, 1, 10, 0, 0));
+        persistWithCreatedAt(createTransaction(walletId, BigDecimal.valueOf(50), TransactionType.WITHDRAW,
+                TransactionStatus.FAILED, "failed-withdraw"), LocalDateTime.of(2026, 1, 1, 10, 1, 0));
+        persistWithCreatedAt(createTransaction(walletId, BigDecimal.valueOf(60), TransactionType.REFUND,
+                TransactionStatus.SUCCESS, "success-refund"), LocalDateTime.of(2026, 1, 1, 10, 2, 0));
 
         List<Transaction> successHistories = transactionRepository
                 .findByWalletIdAndStatusOrderByCreatedAtDesc(walletId, TransactionStatus.SUCCESS);
@@ -65,15 +62,20 @@ class TransactionRepositoryTest {
     }
 
     private Transaction createTransaction(UUID walletId, BigDecimal amount, TransactionType type,
-                                          TransactionStatus status, String description, LocalDateTime createdAt) {
+                                          TransactionStatus status, String description) {
         Transaction transaction = new Transaction();
         transaction.setWalletId(walletId);
         transaction.setAmount(amount);
         transaction.setType(type);
         transaction.setStatus(status);
         transaction.setDescription(description);
-        transaction.setCreatedAt(createdAt);
-        transaction.setUpdatedAt(createdAt);
         return transaction;
+    }
+
+    private void persistWithCreatedAt(Transaction transaction, LocalDateTime createdAt) {
+        Transaction saved = transactionRepository.save(transaction);
+        saved.setCreatedAt(createdAt);
+        saved.setUpdatedAt(createdAt);
+        transactionRepository.save(saved);
     }
 }
