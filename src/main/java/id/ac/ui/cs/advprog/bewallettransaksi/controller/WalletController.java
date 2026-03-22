@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import java.util.UUID;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +14,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
+import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
 import jakarta.validation.Valid;
 
@@ -41,5 +44,16 @@ public class WalletController {
     @PostMapping("/topup")
     public ResponseEntity<WalletResponse> topUp(@Valid @RequestBody TopUpRequest request) {
         return ResponseEntity.ok(walletService.topUp(request));
+    }
+
+    @GetMapping("/{userId}/transactions")
+    public ResponseEntity<List<TransactionResponse>> getTransactionHistory(
+            @PathVariable UUID userId,
+            @RequestParam(required = false) TransactionStatus status
+    ) {
+        if (status != null) {
+            return ResponseEntity.ok(walletService.getTransactionHistoryByStatus(userId, status));
+        }
+        return ResponseEntity.ok(walletService.getTransactionHistory(userId));
     }
 }
