@@ -1,6 +1,8 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +22,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
@@ -408,5 +411,73 @@ class WalletServiceImplTest {
         verify(walletRepository, never()).findByUserId(any());
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void getTransactionHistory_Success() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+
+        Transaction latest = new Transaction();
+        latest.setTransactionId(UUID.randomUUID());
+        latest.setWalletId(walletId);
+        latest.setAmount(BigDecimal.valueOf(50.00));
+        latest.setType(TransactionType.PAYMENT);
+        latest.setStatus(TransactionStatus.SUCCESS);
+        latest.setDescription("Latest payment");
+        latest.setCreatedAt(LocalDateTime.of(2026, 3, 22, 10, 0, 0));
+
+        Transaction older = new Transaction();
+        older.setTransactionId(UUID.randomUUID());
+        older.setWalletId(walletId);
+        older.setAmount(BigDecimal.valueOf(20.00));
+        older.setType(TransactionType.REFUND);
+        older.setStatus(TransactionStatus.SUCCESS);
+        older.setDescription("Older refund");
+        older.setCreatedAt(LocalDateTime.of(2026, 3, 22, 9, 0, 0));
+
+        when(transactionRepository.findByWalletIdOrderByCreatedAtDesc(walletId)).thenReturn(List.of(latest, older));
+
+        List<TransactionResponse> responses = walletService.getTransactionHistory(userId);
+
+        assertEquals(2, responses.size());
+        assertEquals("Latest payment", responses.get(0).getDescription());
+        assertEquals("Older refund", responses.get(1).getDescription());
+        verify(walletRepository).findByUserId(userId);
+        verify(transactionRepository).findByWalletIdOrderByCreatedAtDesc(walletId);
+    }
+
+    @Test
+    void getTransactionHistoryByStatus_Success() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+
+        Transaction failedWithdraw = new Transaction();
+        failedWithdraw.setTransactionId(UUID.randomUUID());
+        failedWithdraw.setWalletId(walletId);
+        failedWithdraw.setAmount(BigDecimal.valueOf(40.00));
+        failedWithdraw.setType(TransactionType.WITHDRAW);
+        failedWithdraw.setStatus(TransactionStatus.FAILED);
+        failedWithdraw.setDescription("Withdraw failed");
+        failedWithdraw.setCreatedAt(LocalDateTime.of(2026, 3, 22, 11, 0, 0));
+
+        when(transactionRepository.findByWalletIdAndStatusOrderByCreatedAtDesc(walletId, TransactionStatus.FAILED))
+                .thenReturn(List.of(failedWithdraw));
+
+        List<TransactionResponse> responses = walletService.getTransactionHistoryByStatus(userId, TransactionStatus.FAILED);
+
+        assertEquals(1, responses.size());
+        assertEquals(TransactionStatus.FAILED, responses.get(0).getStatus());
+        assertEquals("Withdraw failed", responses.get(0).getDescription());
+        verify(walletRepository).findByUserId(userId);
+        verify(transactionRepository).findByWalletIdAndStatusOrderByCreatedAtDesc(walletId, TransactionStatus.FAILED);
+    }
+
+    @Test
+    void getTransactionHistory_WalletNotFound() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        assertThrows(WalletNotFoundException.class, () -> walletService.getTransactionHistory(userId));
+
+        verify(walletRepository).findByUserId(userId);
+        verify(transactionRepository, never()).findByWalletIdOrderByCreatedAtDesc(any());
     }
 }
