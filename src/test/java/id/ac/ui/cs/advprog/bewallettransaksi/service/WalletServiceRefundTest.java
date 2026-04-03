@@ -57,7 +57,7 @@ class WalletServiceRefundTest {
 
     @Test
     void refund_Success() {
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
         when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -66,7 +66,7 @@ class WalletServiceRefundTest {
         assertNotNull(response);
         assertEquals(BigDecimal.valueOf(125.00), response.getBalance());
 
-        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository).save(wallet);
 
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
@@ -81,12 +81,12 @@ class WalletServiceRefundTest {
 
     @Test
     void refund_WalletNotFound() {
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.empty());
 
         assertThrows(WalletNotFoundException.class,
                 () -> walletService.refund(userId, BigDecimal.valueOf(25.00), "Order refund"));
 
-        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
@@ -96,7 +96,7 @@ class WalletServiceRefundTest {
         assertThrows(InvalidAmountException.class,
                 () -> walletService.refund(userId, null, "Order refund"));
 
-        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
@@ -106,7 +106,7 @@ class WalletServiceRefundTest {
         assertThrows(InvalidAmountException.class,
                 () -> walletService.refund(userId, BigDecimal.ZERO, "Order refund"));
 
-        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
@@ -116,7 +116,7 @@ class WalletServiceRefundTest {
         assertThrows(InvalidAmountException.class,
                 () -> walletService.refund(userId, BigDecimal.valueOf(-1.00), "Order refund"));
 
-        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
