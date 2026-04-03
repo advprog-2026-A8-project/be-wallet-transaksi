@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletMutationRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
@@ -19,7 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -212,6 +212,8 @@ class WalletControllerTest {
 
     @Test
     void pay_Success() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
         when(walletService.pay(userId, BigDecimal.valueOf(50.00), "Order payment")).thenReturn(
                 WalletResponse.builder()
                         .walletId(walletId)
@@ -222,17 +224,15 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/pay")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "userId", userId.toString(),
-                                "amount", 50.00,
-                                "description", "Order payment"
-                        ))))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(50.00));
     }
 
     @Test
     void refund_Success() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order refund", BigDecimal.valueOf(25.00));
+
         when(walletService.refund(userId, BigDecimal.valueOf(25.00), "Order refund")).thenReturn(
                 WalletResponse.builder()
                         .walletId(walletId)
@@ -243,17 +243,15 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/refund")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "userId", userId.toString(),
-                                "amount", 25.00,
-                                "description", "Order refund"
-                        ))))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(125.00));
     }
 
     @Test
     void withdraw_Success() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
+
         when(walletService.withdraw(userId, BigDecimal.valueOf(30.00), "BCA-123456")).thenReturn(
                 WalletResponse.builder()
                         .walletId(walletId)
@@ -264,12 +262,16 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/withdraw")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "userId", userId.toString(),
-                                "amount", 30.00,
-                                "description", "BCA-123456"
-                        ))))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(70.00));
+    }
+
+    private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
+        WalletMutationRequest request = new WalletMutationRequest();
+        request.setUserId(userId);
+        request.setAmount(amount);
+        request.setDescription(description);
+        return request;
     }
 }
