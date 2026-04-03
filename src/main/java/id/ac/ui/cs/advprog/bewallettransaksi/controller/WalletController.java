@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletMutationRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
@@ -44,6 +45,33 @@ public class WalletController {
     @PostMapping("/topup")
     public ResponseEntity<WalletResponse> topUp(@Valid @RequestBody TopUpRequest request) {
         return ResponseEntity.ok(walletService.topUp(request));
+    }
+
+    @PostMapping("/pay")
+    public ResponseEntity<WalletResponse> pay(@Valid @RequestBody WalletMutationRequest request) {
+        return ResponseEntity.ok(walletService.pay(
+                request.getUserId(),
+                request.getAmount(),
+                request.getDescription()
+        ));
+    }
+
+    @PostMapping("/refund")
+    public ResponseEntity<WalletResponse> refund(@Valid @RequestBody WalletMutationRequest request) {
+        return ResponseEntity.ok(walletService.refund(
+                request.getUserId(),
+                request.getAmount(),
+                request.getDescription()
+        ));
+    }
+
+    @PostMapping("/withdraw")
+    public ResponseEntity<WalletResponse> withdraw(@Valid @RequestBody WalletMutationRequest request) {
+        return ResponseEntity.ok(walletService.withdraw(
+                request.getUserId(),
+                request.getAmount(),
+                request.getDescription()
+        ));
     }
 
     @GetMapping("/{userId}/transactions")
