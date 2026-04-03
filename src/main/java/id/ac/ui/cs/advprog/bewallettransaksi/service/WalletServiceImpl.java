@@ -70,7 +70,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse pay(UUID userId, BigDecimal amount, String description) {
         validateAmount(amount);
-        Wallet wallet = findWalletByUserIdOrThrow(userId);
+        Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         validateSufficientBalance(wallet, amount);
 
         Transaction transaction = createTransaction(
@@ -90,7 +90,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse refund(UUID userId, BigDecimal amount, String description) {
         validateAmount(amount);
-        Wallet wallet = findWalletByUserIdOrThrow(userId);
+        Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
 
         Transaction transaction = createTransaction(
                 wallet.getWalletId(),
@@ -109,7 +109,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse withdraw(UUID userId, BigDecimal amount, String description) {
         validateAmount(amount);
-        Wallet wallet = findWalletByUserIdOrThrow(userId);
+        Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         validateSufficientBalance(wallet, amount);
 
         Transaction transaction = createTransaction(
@@ -149,6 +149,11 @@ public class WalletServiceImpl implements WalletService {
 
     private Wallet findWalletByUserIdOrThrow(UUID userId) {
         return walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new WalletNotFoundException(userId));
+    }
+
+    private Wallet findWalletByUserIdForUpdateOrThrow(UUID userId) {
+        return walletRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new WalletNotFoundException(userId));
     }
 
