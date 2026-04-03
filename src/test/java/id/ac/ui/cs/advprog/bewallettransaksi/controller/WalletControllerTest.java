@@ -123,7 +123,8 @@ class WalletControllerTest {
         mockMvc.perform(post("/wallet/topup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Amount must be at least 1"));
     }
 
     @Test
@@ -135,7 +136,8 @@ class WalletControllerTest {
         mockMvc.perform(post("/wallet/topup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -147,7 +149,8 @@ class WalletControllerTest {
         mockMvc.perform(post("/wallet/topup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
