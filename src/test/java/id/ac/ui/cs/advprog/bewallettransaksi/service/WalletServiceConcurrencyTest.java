@@ -55,24 +55,27 @@ class WalletServiceConcurrencyTest {
         walletService.createWallet(userId);
 
         int workerCount = 20;
-        int topUpOperations = 200;
+        int operationsPerWorker = 10;
+        int topUpOperations = workerCount * operationsPerWorker;
         BigDecimal topUpAmount = BigDecimal.valueOf(10);
         BigDecimal expectedBalance = topUpAmount.multiply(BigDecimal.valueOf(topUpOperations));
 
         ExecutorService executor = Executors.newFixedThreadPool(workerCount);
-        CountDownLatch readyLatch = new CountDownLatch(topUpOperations);
+        CountDownLatch readyLatch = new CountDownLatch(workerCount);
         CountDownLatch startLatch = new CountDownLatch(1);
         List<Future<?>> futures = new ArrayList<>();
 
-        for (int i = 0; i < topUpOperations; i++) {
+        for (int i = 0; i < workerCount; i++) {
             futures.add(executor.submit(() -> {
                 readyLatch.countDown();
                 startLatch.await();
 
-                TopUpRequest request = new TopUpRequest();
-                request.setUserId(userId);
-                request.setAmount(topUpAmount);
-                walletService.topUp(request);
+                for (int j = 0; j < operationsPerWorker; j++) {
+                    TopUpRequest request = new TopUpRequest();
+                    request.setUserId(userId);
+                    request.setAmount(topUpAmount);
+                    walletService.topUp(request);
+                }
                 return null;
             }));
         }
@@ -91,4 +94,3 @@ class WalletServiceConcurrencyTest {
         assertEquals(0, expectedBalance.compareTo(wallet.getBalance()));
     }
 }
-

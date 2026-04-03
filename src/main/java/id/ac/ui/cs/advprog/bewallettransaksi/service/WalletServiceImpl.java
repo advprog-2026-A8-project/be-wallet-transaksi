@@ -51,7 +51,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse topUp(TopUpRequest request) {
         validateAmount(request.getAmount());
-        Wallet wallet = findWalletByUserIdOrThrow(request.getUserId());
+        Wallet wallet = findWalletByUserIdForUpdateOrThrow(request.getUserId());
         processMutation(
                 wallet,
                 request.getAmount(),

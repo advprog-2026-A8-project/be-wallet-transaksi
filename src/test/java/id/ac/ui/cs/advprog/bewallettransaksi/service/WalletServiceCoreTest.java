@@ -106,7 +106,7 @@ class WalletServiceCoreTest {
         request.setUserId(userId);
         request.setAmount(BigDecimal.valueOf(50.00));
 
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
         when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -115,7 +115,7 @@ class WalletServiceCoreTest {
         assertNotNull(response);
         assertEquals(BigDecimal.valueOf(150.00), response.getBalance());
 
-        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository).save(wallet);
 
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
@@ -134,10 +134,10 @@ class WalletServiceCoreTest {
         request.setUserId(userId);
         request.setAmount(BigDecimal.valueOf(50.00));
 
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.empty());
 
         assertThrows(WalletNotFoundException.class, () -> walletService.topUp(request));
-        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
@@ -149,7 +149,7 @@ class WalletServiceCoreTest {
         request.setAmount(null);
 
         assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
-        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
@@ -161,7 +161,7 @@ class WalletServiceCoreTest {
         request.setAmount(BigDecimal.ZERO);
 
         assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
-        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
     }
 
     @Test
@@ -171,6 +171,6 @@ class WalletServiceCoreTest {
         request.setAmount(BigDecimal.valueOf(-10.00));
 
         assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
-        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
     }
 }
