@@ -19,11 +19,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidAmountException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidAmount(InvalidAmountException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return handleBadRequest(ex);
     }
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
+        return handleBadRequest(ex);
+    }
+
+    private ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
