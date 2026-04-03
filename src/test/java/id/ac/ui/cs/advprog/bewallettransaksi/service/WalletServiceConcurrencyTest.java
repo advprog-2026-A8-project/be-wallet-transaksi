@@ -34,6 +34,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 class WalletServiceConcurrencyTest {
 
+    private static final int WORKER_COUNT = 20;
+    private static final int OPERATIONS_PER_WORKER = 10;
+    private static final BigDecimal TOP_UP_AMOUNT = BigDecimal.TEN;
+
     @Autowired
     private WalletService walletService;
 
@@ -54,27 +58,21 @@ class WalletServiceConcurrencyTest {
         UUID userId = UUID.randomUUID();
         walletService.createWallet(userId);
 
-        int workerCount = 20;
-        int operationsPerWorker = 10;
-        int topUpOperations = workerCount * operationsPerWorker;
-        BigDecimal topUpAmount = BigDecimal.valueOf(10);
-        BigDecimal expectedBalance = topUpAmount.multiply(BigDecimal.valueOf(topUpOperations));
+        int topUpOperations = WORKER_COUNT * OPERATIONS_PER_WORKER;
+        BigDecimal expectedBalance = TOP_UP_AMOUNT.multiply(BigDecimal.valueOf(topUpOperations));
 
-        ExecutorService executor = Executors.newFixedThreadPool(workerCount);
-        CountDownLatch readyLatch = new CountDownLatch(workerCount);
+        ExecutorService executor = Executors.newFixedThreadPool(WORKER_COUNT);
+        CountDownLatch readyLatch = new CountDownLatch(WORKER_COUNT);
         CountDownLatch startLatch = new CountDownLatch(1);
         List<Future<?>> futures = new ArrayList<>();
 
-        for (int i = 0; i < workerCount; i++) {
+        for (int i = 0; i < WORKER_COUNT; i++) {
             futures.add(executor.submit(() -> {
                 readyLatch.countDown();
                 startLatch.await();
 
-                for (int j = 0; j < operationsPerWorker; j++) {
-                    TopUpRequest request = new TopUpRequest();
-                    request.setUserId(userId);
-                    request.setAmount(topUpAmount);
-                    walletService.topUp(request);
+                for (int j = 0; j < OPERATIONS_PER_WORKER; j++) {
+                    walletService.topUp(buildTopUpRequest(userId));
                 }
                 return null;
             }));
@@ -92,5 +90,12 @@ class WalletServiceConcurrencyTest {
 
         Wallet wallet = walletRepository.findByUserId(userId).orElseThrow();
         assertEquals(0, expectedBalance.compareTo(wallet.getBalance()));
+    }
+
+    private TopUpRequest buildTopUpRequest(UUID userId) {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(TOP_UP_AMOUNT);
+        return request;
     }
 }
