@@ -267,6 +267,32 @@ class WalletControllerTest {
                 .andExpect(jsonPath("$.balance").value(70.00));
     }
 
+    @Test
+    void pay_InsufficientBalance_BadRequest() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(500.00));
+
+        when(walletService.pay(userId, BigDecimal.valueOf(500.00), "Order payment"))
+                .thenThrow(new IllegalStateException("Insufficient balance"));
+
+        mockMvc.perform(post("/wallet/pay")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void withdraw_InsufficientBalance_BadRequest() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(500.00));
+
+        when(walletService.withdraw(userId, BigDecimal.valueOf(500.00), "BCA-123456"))
+                .thenThrow(new IllegalStateException("Insufficient balance"));
+
+        mockMvc.perform(post("/wallet/withdraw")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
         WalletMutationRequest request = new WalletMutationRequest();
         request.setUserId(userId);
