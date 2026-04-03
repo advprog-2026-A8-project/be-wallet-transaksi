@@ -52,17 +52,13 @@ public class WalletServiceImpl implements WalletService {
     public WalletResponse topUp(TopUpRequest request) {
         validateAmount(request.getAmount());
         Wallet wallet = findWalletByUserIdOrThrow(request.getUserId());
-
-        Transaction transaction = createTransaction(
-                wallet.getWalletId(),
+        processMutation(
+                wallet,
                 request.getAmount(),
                 TransactionType.TOPUP,
-                "Top-up saldo"
+                "Top-up saldo",
+                wallet.getBalance().add(request.getAmount())
         );
-
-        updateWalletBalance(wallet, wallet.getBalance().add(request.getAmount()));
-        finalizeTransaction(transaction);
-
         return toResponse(wallet);
     }
 
@@ -72,17 +68,13 @@ public class WalletServiceImpl implements WalletService {
         validateAmount(amount);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         validateSufficientBalance(wallet, amount);
-
-        Transaction transaction = createTransaction(
-                wallet.getWalletId(),
+        processMutation(
+                wallet,
                 amount,
                 TransactionType.PAYMENT,
-                description
+                description,
+                wallet.getBalance().subtract(amount)
         );
-
-        updateWalletBalance(wallet, wallet.getBalance().subtract(amount));
-        finalizeTransaction(transaction);
-
         return toResponse(wallet);
     }
 
@@ -91,17 +83,13 @@ public class WalletServiceImpl implements WalletService {
     public WalletResponse refund(UUID userId, BigDecimal amount, String description) {
         validateAmount(amount);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
-
-        Transaction transaction = createTransaction(
-                wallet.getWalletId(),
+        processMutation(
+                wallet,
                 amount,
                 TransactionType.REFUND,
-                description
+                description,
+                wallet.getBalance().add(amount)
         );
-
-        updateWalletBalance(wallet, wallet.getBalance().add(amount));
-        finalizeTransaction(transaction);
-
         return toResponse(wallet);
     }
 
@@ -111,17 +99,13 @@ public class WalletServiceImpl implements WalletService {
         validateAmount(amount);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         validateSufficientBalance(wallet, amount);
-
-        Transaction transaction = createTransaction(
-                wallet.getWalletId(),
+        processMutation(
+                wallet,
                 amount,
                 TransactionType.WITHDRAW,
-                description
+                description,
+                wallet.getBalance().subtract(amount)
         );
-
-        updateWalletBalance(wallet, wallet.getBalance().subtract(amount));
-        finalizeTransaction(transaction);
-
         return toResponse(wallet);
     }
 
@@ -161,6 +145,13 @@ public class WalletServiceImpl implements WalletService {
         if (wallet.getBalance().compareTo(amount) < 0) {
             throw new IllegalStateException("Insufficient balance");
         }
+    }
+
+    private void processMutation(Wallet wallet, BigDecimal amount, TransactionType type,
+                                 String description, BigDecimal updatedBalance) {
+        Transaction transaction = createTransaction(wallet.getWalletId(), amount, type, description);
+        updateWalletBalance(wallet, updatedBalance);
+        finalizeTransaction(transaction);
     }
 
     private void updateWalletBalance(Wallet wallet, BigDecimal updatedBalance) {
