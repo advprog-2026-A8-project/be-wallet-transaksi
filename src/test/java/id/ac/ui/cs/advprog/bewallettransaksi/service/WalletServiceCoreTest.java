@@ -173,4 +173,16 @@ class WalletServiceCoreTest {
         assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
         verify(walletRepository, never()).findByUserIdForUpdate(any());
     }
+
+    @Test
+    void topUp_AmountJustBelowMinimum() {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(new BigDecimal("0.99"));
+
+        assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
 }
