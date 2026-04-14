@@ -177,9 +177,16 @@ public class WalletServiceImpl implements WalletService {
                                  String description) {
         WalletMutationStrategy strategy = getStrategyResolver().resolve(type);
         BigDecimal updatedBalance = strategy.apply(wallet.getBalance(), amount);
+        validateUpdatedBalance(updatedBalance);
         Transaction transaction = createTransaction(wallet.getWalletId(), amount, type, description);
         updateWalletBalance(wallet, updatedBalance);
         finalizeTransaction(transaction);
+    }
+
+    private void validateUpdatedBalance(BigDecimal updatedBalance) {
+        if (isAboveMaximumAmount(updatedBalance)) {
+            throw new InvalidAmountException(MAXIMUM_AMOUNT_MESSAGE);
+        }
     }
 
     private WalletMutationStrategyResolver getStrategyResolver() {
