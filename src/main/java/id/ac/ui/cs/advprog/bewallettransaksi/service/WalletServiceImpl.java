@@ -25,6 +25,9 @@ import id.ac.ui.cs.advprog.bewallettransaksi.service.strategy.WalletMutationStra
 @Service
 public class WalletServiceImpl implements WalletService {
 
+    private static final BigDecimal MINIMUM_AMOUNT = BigDecimal.ONE;
+    private static final String MINIMUM_AMOUNT_MESSAGE = "Amount must be at least 1";
+
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
     private WalletMutationStrategyResolver strategyResolver;
@@ -127,8 +130,8 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private void validateAmount(BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ONE) < 0) {
-            throw new InvalidAmountException("Amount must be at least 1");
+        if (amount == null || amount.compareTo(MINIMUM_AMOUNT) < 0) {
+            throw new InvalidAmountException(MINIMUM_AMOUNT_MESSAGE);
         }
     }
 
