@@ -17,7 +17,11 @@ public class TopUpRequest {
     private UUID userId;
 
     @NotNull
-    @DecimalMin(value = "1", message = "Amount must be at least 1")
-    @Digits(integer = 17, fraction = 2, message = "Amount must have at most 2 decimal places")
+    @DecimalMin(value = AmountValidationConstants.MIN_AMOUNT, message = AmountValidationConstants.MIN_AMOUNT_MESSAGE)
+    @Digits(
+            integer = AmountValidationConstants.MAX_INTEGER_DIGITS,
+            fraction = AmountValidationConstants.MAX_FRACTION_DIGITS,
+            message = AmountValidationConstants.MAX_FRACTION_MESSAGE
+    )
     private BigDecimal amount;
 }
