@@ -131,12 +131,20 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private void validateAmount(BigDecimal amount) {
-        if (amount == null || amount.compareTo(MINIMUM_AMOUNT) < 0) {
+        if (amount == null || isBelowMinimumAmount(amount)) {
             throw new InvalidAmountException(MINIMUM_AMOUNT_MESSAGE);
         }
-        if (amount.stripTrailingZeros().scale() > 2) {
+        if (hasMoreThanTwoDecimalPlaces(amount)) {
             throw new InvalidAmountException(MAX_SCALE_MESSAGE);
         }
+    }
+
+    private boolean isBelowMinimumAmount(BigDecimal amount) {
+        return amount.compareTo(MINIMUM_AMOUNT) < 0;
+    }
+
+    private boolean hasMoreThanTwoDecimalPlaces(BigDecimal amount) {
+        return amount.stripTrailingZeros().scale() > 2;
     }
 
     private Wallet findWalletByUserIdOrThrow(UUID userId) {
