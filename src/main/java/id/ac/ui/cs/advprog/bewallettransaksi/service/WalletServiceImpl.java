@@ -137,12 +137,8 @@ public class WalletServiceImpl implements WalletService {
         if (amount == null || isBelowMinimumAmount(amount)) {
             throw new InvalidAmountException(MINIMUM_AMOUNT_MESSAGE);
         }
-        if (hasMoreThanTwoDecimalPlaces(amount)) {
-            throw new InvalidAmountException(MAX_SCALE_MESSAGE);
-        }
-        if (isAboveMaximumAmount(amount)) {
-            throw new InvalidAmountException(MAXIMUM_AMOUNT_MESSAGE);
-        }
+        validateScale(amount);
+        validateNotAboveMaximum(amount);
     }
 
     private boolean isBelowMinimumAmount(BigDecimal amount) {
@@ -184,7 +180,17 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private void validateUpdatedBalance(BigDecimal updatedBalance) {
-        if (isAboveMaximumAmount(updatedBalance)) {
+        validateNotAboveMaximum(updatedBalance);
+    }
+
+    private void validateScale(BigDecimal amount) {
+        if (hasMoreThanTwoDecimalPlaces(amount)) {
+            throw new InvalidAmountException(MAX_SCALE_MESSAGE);
+        }
+    }
+
+    private void validateNotAboveMaximum(BigDecimal amount) {
+        if (isAboveMaximumAmount(amount)) {
             throw new InvalidAmountException(MAXIMUM_AMOUNT_MESSAGE);
         }
     }
