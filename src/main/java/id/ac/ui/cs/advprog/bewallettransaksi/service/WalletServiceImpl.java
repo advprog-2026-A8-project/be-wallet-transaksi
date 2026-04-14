@@ -127,8 +127,8 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private void validateAmount(BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new InvalidAmountException("Amount must be greater than zero");
+        if (amount == null || amount.compareTo(BigDecimal.ONE) < 0) {
+            throw new InvalidAmountException("Amount must be at least 1");
         }
     }
 
