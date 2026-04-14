@@ -27,6 +27,7 @@ public class WalletServiceImpl implements WalletService {
 
     private static final BigDecimal MINIMUM_AMOUNT = BigDecimal.ONE;
     private static final String MINIMUM_AMOUNT_MESSAGE = "Amount must be at least 1";
+    private static final String MAX_SCALE_MESSAGE = "Amount must have at most 2 decimal places";
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
@@ -132,6 +133,9 @@ public class WalletServiceImpl implements WalletService {
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(MINIMUM_AMOUNT) < 0) {
             throw new InvalidAmountException(MINIMUM_AMOUNT_MESSAGE);
+        }
+        if (amount.stripTrailingZeros().scale() > 2) {
+            throw new InvalidAmountException(MAX_SCALE_MESSAGE);
         }
     }
 
