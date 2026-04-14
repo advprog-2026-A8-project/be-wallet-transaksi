@@ -37,7 +37,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String message = String.format("Invalid value '%s' for parameter '%s'", ex.getValue(), ex.getName());
+        String message = buildTypeMismatchMessage(ex);
         return buildResponse(HttpStatus.BAD_REQUEST, message);
     }
 
@@ -52,6 +52,10 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "Validation failed")
                 .orElse("Validation failed");
+    }
+
+    private String buildTypeMismatchMessage(MethodArgumentTypeMismatchException ex) {
+        return String.format("Invalid value '%s' for parameter '%s'", ex.getValue(), ex.getName());
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
