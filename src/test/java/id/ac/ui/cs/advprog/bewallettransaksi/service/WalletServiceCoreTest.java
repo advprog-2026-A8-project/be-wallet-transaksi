@@ -185,4 +185,16 @@ class WalletServiceCoreTest {
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
+
+    @Test
+    void topUp_AmountWithMoreThanTwoDecimalPlaces() {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(new BigDecimal("1.001"));
+
+        assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
 }
