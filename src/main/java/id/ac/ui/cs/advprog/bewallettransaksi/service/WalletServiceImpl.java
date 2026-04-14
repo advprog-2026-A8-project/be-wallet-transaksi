@@ -27,6 +27,7 @@ public class WalletServiceImpl implements WalletService {
 
     private static final BigDecimal MINIMUM_AMOUNT = BigDecimal.ONE;
     private static final BigDecimal MAXIMUM_AMOUNT = new BigDecimal("99999999999999999.99");
+    private static final int MAX_AMOUNT_SCALE = 2;
     private static final String MINIMUM_AMOUNT_MESSAGE = "Amount must be at least 1";
     private static final String MAXIMUM_AMOUNT_MESSAGE = "Amount exceeds maximum allowed value";
     private static final String MAX_SCALE_MESSAGE = "Amount must have at most 2 decimal places";
@@ -149,7 +150,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private boolean hasMoreThanTwoDecimalPlaces(BigDecimal amount) {
-        return amount.stripTrailingZeros().scale() > 2;
+        return amount.stripTrailingZeros().scale() > MAX_AMOUNT_SCALE;
     }
 
     private boolean isAboveMaximumAmount(BigDecimal amount) {
