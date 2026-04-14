@@ -214,6 +214,14 @@ class WalletControllerTest {
     }
 
     @Test
+    void getTransactionHistory_InvalidStatus_BadRequest() throws Exception {
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .param("status", "INVALID_STATUS"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
     void pay_Success() throws Exception {
         WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
 
