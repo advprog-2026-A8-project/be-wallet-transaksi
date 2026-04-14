@@ -209,4 +209,23 @@ class WalletServiceCoreTest {
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
+
+    @Test
+    void topUp_AmountAtMaximumBoundary_ShouldSucceed() {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(new BigDecimal("99999999999999999.99"));
+
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        WalletResponse response = walletService.topUp(request);
+
+        assertNotNull(response);
+        assertEquals(new BigDecimal("100000000000000099.99"), response.getBalance());
+        verify(walletRepository).findByUserIdForUpdate(userId);
+        verify(walletRepository).save(wallet);
+        verify(transactionRepository).save(any(Transaction.class));
+    }
 }
