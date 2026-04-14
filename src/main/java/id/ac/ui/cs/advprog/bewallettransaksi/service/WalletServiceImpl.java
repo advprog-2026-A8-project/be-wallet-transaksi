@@ -26,7 +26,9 @@ import id.ac.ui.cs.advprog.bewallettransaksi.service.strategy.WalletMutationStra
 public class WalletServiceImpl implements WalletService {
 
     private static final BigDecimal MINIMUM_AMOUNT = BigDecimal.ONE;
+    private static final BigDecimal MAXIMUM_AMOUNT = new BigDecimal("99999999999999999.99");
     private static final String MINIMUM_AMOUNT_MESSAGE = "Amount must be at least 1";
+    private static final String MAXIMUM_AMOUNT_MESSAGE = "Amount exceeds maximum allowed value";
     private static final String MAX_SCALE_MESSAGE = "Amount must have at most 2 decimal places";
 
     private final WalletRepository walletRepository;
@@ -137,6 +139,9 @@ public class WalletServiceImpl implements WalletService {
         if (hasMoreThanTwoDecimalPlaces(amount)) {
             throw new InvalidAmountException(MAX_SCALE_MESSAGE);
         }
+        if (isAboveMaximumAmount(amount)) {
+            throw new InvalidAmountException(MAXIMUM_AMOUNT_MESSAGE);
+        }
     }
 
     private boolean isBelowMinimumAmount(BigDecimal amount) {
@@ -145,6 +150,10 @@ public class WalletServiceImpl implements WalletService {
 
     private boolean hasMoreThanTwoDecimalPlaces(BigDecimal amount) {
         return amount.stripTrailingZeros().scale() > 2;
+    }
+
+    private boolean isAboveMaximumAmount(BigDecimal amount) {
+        return amount.compareTo(MAXIMUM_AMOUNT) > 0;
     }
 
     private Wallet findWalletByUserIdOrThrow(UUID userId) {
