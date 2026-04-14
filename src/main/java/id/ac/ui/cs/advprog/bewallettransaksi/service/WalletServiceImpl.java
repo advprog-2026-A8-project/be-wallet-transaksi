@@ -19,17 +19,22 @@ import id.ac.ui.cs.advprog.bewallettransaksi.model.Transaction;
 import id.ac.ui.cs.advprog.bewallettransaksi.model.Wallet;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.TransactionRepository;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.WalletRepository;
+import id.ac.ui.cs.advprog.bewallettransaksi.service.strategy.WalletMutationStrategy;
+import id.ac.ui.cs.advprog.bewallettransaksi.service.strategy.WalletMutationStrategyResolver;
 
 @Service
 public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
+    private WalletMutationStrategyResolver strategyResolver;
 
     public WalletServiceImpl(WalletRepository walletRepository,
-                             TransactionRepository transactionRepository) {
+                             TransactionRepository transactionRepository,
+                             WalletMutationStrategyResolver strategyResolver) {
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
+        this.strategyResolver = strategyResolver;
     }
 
     @Override
@@ -56,8 +61,7 @@ public class WalletServiceImpl implements WalletService {
                 wallet,
                 request.getAmount(),
                 TransactionType.TOPUP,
-                "Top-up saldo",
-                wallet.getBalance().add(request.getAmount())
+                "Top-up saldo"
         );
         return toResponse(wallet);
     }
@@ -72,8 +76,7 @@ public class WalletServiceImpl implements WalletService {
                 wallet,
                 amount,
                 TransactionType.PAYMENT,
-                description,
-                wallet.getBalance().subtract(amount)
+                description
         );
         return toResponse(wallet);
     }
@@ -87,8 +90,7 @@ public class WalletServiceImpl implements WalletService {
                 wallet,
                 amount,
                 TransactionType.REFUND,
-                description,
-                wallet.getBalance().add(amount)
+                description
         );
         return toResponse(wallet);
     }
@@ -103,8 +105,7 @@ public class WalletServiceImpl implements WalletService {
                 wallet,
                 amount,
                 TransactionType.WITHDRAW,
-                description,
-                wallet.getBalance().subtract(amount)
+                description
         );
         return toResponse(wallet);
     }
@@ -148,10 +149,19 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private void processMutation(Wallet wallet, BigDecimal amount, TransactionType type,
-                                 String description, BigDecimal updatedBalance) {
+                                 String description) {
+        WalletMutationStrategy strategy = getStrategyResolver().resolve(type);
+        BigDecimal updatedBalance = strategy.apply(wallet.getBalance(), amount);
         Transaction transaction = createTransaction(wallet.getWalletId(), amount, type, description);
         updateWalletBalance(wallet, updatedBalance);
         finalizeTransaction(transaction);
+    }
+
+    private WalletMutationStrategyResolver getStrategyResolver() {
+        if (strategyResolver == null) {
+            strategyResolver = new WalletMutationStrategyResolver();
+        }
+        return strategyResolver;
     }
 
     private void updateWalletBalance(Wallet wallet, BigDecimal updatedBalance) {
