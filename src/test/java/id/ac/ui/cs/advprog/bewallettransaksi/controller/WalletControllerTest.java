@@ -304,6 +304,16 @@ class WalletControllerTest {
     }
 
     @Test
+    void pay_AmountWithMoreThanTwoDecimals_BadRequest() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", new BigDecimal("1.001"));
+
+        mockMvc.perform(post("/wallet/pay")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void withdraw_InsufficientBalance_BadRequest() throws Exception {
         WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(500.00));
 
