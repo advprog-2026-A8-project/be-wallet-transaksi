@@ -15,6 +15,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final String DATA_INTEGRITY_VIOLATION_MESSAGE = "Data integrity violation";
+
     @ExceptionHandler(WalletNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleWalletNotFound(WalletNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
@@ -44,7 +46,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, "Data integrity violation");
+        return buildResponse(HttpStatus.BAD_REQUEST, DATA_INTEGRITY_VIOLATION_MESSAGE);
     }
 
     private ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
