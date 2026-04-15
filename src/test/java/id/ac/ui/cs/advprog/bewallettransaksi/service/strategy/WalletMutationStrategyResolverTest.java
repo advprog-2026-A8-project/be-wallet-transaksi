@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class WalletMutationStrategyResolverTest {
 
@@ -42,5 +43,11 @@ class WalletMutationStrategyResolverTest {
 
         assertInstanceOf(DebitMutationStrategy.class, strategy);
     }
-}
 
+    @Test
+    void resolve_ShouldThrowIllegalArgumentException_ForNullType() {
+        WalletMutationStrategyResolver resolver = new WalletMutationStrategyResolver();
+
+        assertThrows(IllegalArgumentException.class, () -> resolver.resolve(null));
+    }
+}
