@@ -113,6 +113,13 @@ class WalletControllerTest {
     }
 
     @Test
+    void createWallet_MissingUserId_BadRequestWithFriendlyMessage() throws Exception {
+        mockMvc.perform(post("/wallet"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing required request parameter: userId"));
+    }
+
+    @Test
     void topUp_Success() throws Exception {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
