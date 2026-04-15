@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import java.util.UUID;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,12 +50,13 @@ public class WalletController {
     }
 
     @PostMapping("/pay")
-    public ResponseEntity<WalletResponse> pay(
+    public ResponseEntity<?> pay(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody WalletMutationRequest request
     ) {
         if (!hasAuthorizationHeader(authorization)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Unauthorized"));
         }
 
         return ResponseEntity.ok(walletService.pay(
@@ -74,12 +76,13 @@ public class WalletController {
     }
 
     @PostMapping("/withdraw")
-    public ResponseEntity<WalletResponse> withdraw(
+    public ResponseEntity<?> withdraw(
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody WalletMutationRequest request
     ) {
         if (!isJastiper(role)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Forbidden"));
         }
 
         return ResponseEntity.ok(walletService.withdraw(
