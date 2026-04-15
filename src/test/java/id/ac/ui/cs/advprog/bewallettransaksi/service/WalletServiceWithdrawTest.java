@@ -9,6 +9,7 @@ import id.ac.ui.cs.advprog.bewallettransaksi.model.Transaction;
 import id.ac.ui.cs.advprog.bewallettransaksi.model.Wallet;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.TransactionRepository;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.WalletRepository;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -101,6 +102,24 @@ class WalletServiceWithdrawTest {
         verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void withdraw_InsufficientBalance_ShouldRecordFailedTransaction() {
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+
+        assertThrows(IllegalStateException.class,
+                () -> walletService.withdraw(userId, BigDecimal.valueOf(120.00), "BCA-123456"));
+
+        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(transactionCaptor.capture());
+
+        Transaction failedTx = transactionCaptor.getValue();
+        Assertions.assertEquals(walletId, failedTx.getWalletId());
+        Assertions.assertEquals(BigDecimal.valueOf(120.00), failedTx.getAmount());
+        Assertions.assertEquals(TransactionType.WITHDRAW, failedTx.getType());
+        Assertions.assertEquals(TransactionStatus.FAILED, failedTx.getStatus());
+        Assertions.assertEquals("BCA-123456", failedTx.getDescription());
     }
 
     @Test
