@@ -138,7 +138,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     public List<TransactionResponse> getTransactionHistoryByStatus(UUID userId, TransactionStatus status) {
         validateUserId(userId);
-        validateStatus(status);
+        validateRequired(status, STATUS_REQUIRED_MESSAGE);
         Wallet wallet = findWalletByUserIdOrThrow(userId);
         List<Transaction> transactions = transactionRepository.findByWalletIdAndStatusOrderByCreatedAtDesc(
                 wallet.getWalletId(), status
@@ -164,10 +164,6 @@ public class WalletServiceImpl implements WalletService {
         if (value == null) {
             throw new IllegalArgumentException(message);
         }
-    }
-
-    private void validateStatus(TransactionStatus status) {
-        validateRequired(status, STATUS_REQUIRED_MESSAGE);
     }
 
     private void validateAmount(BigDecimal amount) {
