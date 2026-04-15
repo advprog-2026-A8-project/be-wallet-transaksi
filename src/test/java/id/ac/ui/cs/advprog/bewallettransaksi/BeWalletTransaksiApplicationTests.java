@@ -8,6 +8,7 @@ class BeWalletTransaksiApplicationTests {
 
     @Test
     void contextLoads() {
+        // Intentionally empty: the test passes when Spring application context starts successfully.
     }
 
 }

@@ -56,20 +56,17 @@ class TransactionTest {
     }
 
     @Test
-    void testOnUpdate() throws InterruptedException {
+    void testOnUpdate() {
         Transaction transaction = new Transaction();
         transaction.onCreate();
         LocalDateTime originalCreatedAt = transaction.getCreatedAt();
-        LocalDateTime originalUpdatedAt = transaction.getUpdatedAt();
-
-        // Small delay to ensure different timestamp
-        Thread.sleep(10);
+        LocalDateTime olderUpdatedAt = originalCreatedAt.minusNanos(1);
+        transaction.setUpdatedAt(olderUpdatedAt);
 
         transaction.onUpdate();
 
         assertEquals(originalCreatedAt, transaction.getCreatedAt());
-        assertTrue(transaction.getUpdatedAt().isAfter(originalUpdatedAt) 
-                || transaction.getUpdatedAt().equals(originalUpdatedAt));
+        assertTrue(transaction.getUpdatedAt().isAfter(olderUpdatedAt));
     }
 
     @Test
