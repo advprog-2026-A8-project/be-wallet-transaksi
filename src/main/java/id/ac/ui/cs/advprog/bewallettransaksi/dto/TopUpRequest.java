@@ -13,7 +13,7 @@ import lombok.Setter;
 @Setter
 public class TopUpRequest {
 
-    @NotNull
+    @NotNull(message = AmountValidationConstants.USER_ID_REQUIRED_MESSAGE)
     private UUID userId;
 
     @NotNull
