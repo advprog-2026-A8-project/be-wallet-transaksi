@@ -7,6 +7,10 @@ public final class TransactionStateFactory {
     }
 
     public static TransactionState from(TransactionStatus status) {
+        if (status == null) {
+            throw new IllegalArgumentException("Transaction status must not be null");
+        }
+
         return switch (status) {
             case PENDING -> new PendingState();
             case SUCCESS -> new SuccessState();
