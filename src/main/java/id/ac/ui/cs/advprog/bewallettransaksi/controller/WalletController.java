@@ -78,7 +78,7 @@ public class WalletController {
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody WalletMutationRequest request
     ) {
-        if (!"JASTIPER".equalsIgnoreCase(role)) {
+        if (!isJastiper(role)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -102,5 +102,9 @@ public class WalletController {
 
     private boolean hasAuthorizationHeader(String authorization) {
         return authorization != null && !authorization.isBlank();
+    }
+
+    private boolean isJastiper(String role) {
+        return "JASTIPER".equalsIgnoreCase(role);
     }
 }
