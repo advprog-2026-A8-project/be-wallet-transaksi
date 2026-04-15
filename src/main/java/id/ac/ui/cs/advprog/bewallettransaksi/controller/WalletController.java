@@ -26,6 +26,9 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/wallet")
 public class WalletController {
+    private static final String MESSAGE_KEY = "message";
+    private static final String UNAUTHORIZED_MESSAGE = "Unauthorized";
+    private static final String FORBIDDEN_MESSAGE = "Forbidden";
 
     private final WalletService walletService;
 
@@ -56,7 +59,7 @@ public class WalletController {
     ) {
         if (!hasAuthorizationHeader(authorization)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Unauthorized"));
+                    .body(errorBody(UNAUTHORIZED_MESSAGE));
         }
 
         return ResponseEntity.ok(walletService.pay(
@@ -82,7 +85,7 @@ public class WalletController {
     ) {
         if (!isJastiper(role)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Forbidden"));
+                    .body(errorBody(FORBIDDEN_MESSAGE));
         }
 
         return ResponseEntity.ok(walletService.withdraw(
@@ -109,5 +112,9 @@ public class WalletController {
 
     private boolean isJastiper(String role) {
         return "JASTIPER".equalsIgnoreCase(role);
+    }
+
+    private Map<String, String> errorBody(String message) {
+        return Map.of(MESSAGE_KEY, message);
     }
 }
