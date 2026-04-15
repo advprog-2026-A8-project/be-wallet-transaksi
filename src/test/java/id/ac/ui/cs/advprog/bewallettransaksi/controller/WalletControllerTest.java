@@ -218,6 +218,27 @@ class WalletControllerTest {
     }
 
     @Test
+    void getTransactionHistoryByStatus_LowercaseParam_Success() throws Exception {
+        TransactionResponse failedWithdraw = TransactionResponse.builder()
+                .transactionId(UUID.randomUUID())
+                .walletId(walletId)
+                .amount(BigDecimal.valueOf(40.00))
+                .type(TransactionType.WITHDRAW)
+                .status(TransactionStatus.FAILED)
+                .description("Withdraw failed")
+                .createdAt(LocalDateTime.of(2026, 3, 22, 11, 0))
+                .build();
+
+        when(walletService.getTransactionHistoryByStatus(userId, TransactionStatus.FAILED))
+                .thenReturn(List.of(failedWithdraw));
+
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .param("status", "failed"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].status").value("FAILED"));
+    }
+
+    @Test
     void getTransactionHistory_WalletNotFound() throws Exception {
         when(walletService.getTransactionHistory(userId)).thenThrow(new WalletNotFoundException(userId));
 
