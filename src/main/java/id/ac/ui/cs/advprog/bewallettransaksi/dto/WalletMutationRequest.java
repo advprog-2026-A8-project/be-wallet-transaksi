@@ -13,9 +13,10 @@ import java.util.UUID;
 @Getter
 @Setter
 public class WalletMutationRequest {
+    private static final String USER_ID_REQUIRED_MESSAGE = "User ID must not be null";
     private static final String DESCRIPTION_REQUIRED_MESSAGE = "Description must not be blank";
 
-    @NotNull
+    @NotNull(message = USER_ID_REQUIRED_MESSAGE)
     private UUID userId;
 
     @NotNull
