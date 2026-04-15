@@ -346,6 +346,17 @@ class WalletControllerTest {
     }
 
     @Test
+    void pay_Unauthenticated_ShouldReturnUnauthorizedWithMessage() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/pay")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Unauthorized"));
+    }
+
+    @Test
     void refund_Success() throws Exception {
         WalletMutationRequest request = buildMutationRequest("Order refund", BigDecimal.valueOf(25.00));
 
@@ -470,6 +481,18 @@ class WalletControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void withdraw_NonJastiperRole_ShouldReturnForbiddenWithMessage() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
+
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("X-Role", "TITIPERS")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Forbidden"));
     }
 
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
