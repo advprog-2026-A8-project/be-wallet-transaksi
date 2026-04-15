@@ -25,6 +25,8 @@ import lombok.Setter;
 @Entity
 @Table(name = "transactions")
 public class Transaction {
+    private static final String STATUS_REQUIRED_MESSAGE = "Transaction status must not be null";
+
 
     @Id
     @GeneratedValue
@@ -67,17 +69,22 @@ public class Transaction {
 
     public void setStatus(TransactionStatus nextStatus) {
         if (nextStatus == null) {
-            throw new IllegalArgumentException("Transaction status must not be null");
+            throw new IllegalArgumentException(STATUS_REQUIRED_MESSAGE);
         }
 
-        if (this.status != null) {
-            TransactionState currentState = TransactionStateFactory.from(this.status);
-            if (!currentState.canTransitionTo(nextStatus)) {
-                throw new IllegalStateException(
-                        "Invalid transaction status transition: " + this.status + " -> " + nextStatus
-                );
-            }
+        if (hasInvalidTransition(nextStatus)) {
+            throw new IllegalStateException(
+                    "Invalid transaction status transition: " + this.status + " -> " + nextStatus
+            );
         }
         this.status = nextStatus;
+    }
+
+    private boolean hasInvalidTransition(TransactionStatus nextStatus) {
+        if (this.status == null) {
+            return false;
+        }
+        TransactionState currentState = TransactionStateFactory.from(this.status);
+        return !currentState.canTransitionTo(nextStatus);
     }
 }
