@@ -187,6 +187,17 @@ class WalletControllerTest {
     }
 
     @Test
+    void topUp_NullAmount_BadRequestWithConsistentMessage() throws Exception {
+        TopUpRequest request = buildTopUpRequest(userId, null);
+
+        mockMvc.perform(post("/wallet/topup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Amount must be at least 1"));
+    }
+
+    @Test
     void getTransactionHistory_Success() throws Exception {
         TransactionResponse latest = TransactionResponse.builder()
                 .transactionId(UUID.randomUUID())
