@@ -391,6 +391,7 @@ class WalletControllerTest {
         );
 
         mockMvc.perform(post("/wallet/withdraw")
+                        .header("X-Role", "JASTIPER")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -402,6 +403,7 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("   ", BigDecimal.valueOf(30.00));
 
         mockMvc.perform(post("/wallet/withdraw")
+                        .header("X-Role", "JASTIPER")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -453,6 +455,7 @@ class WalletControllerTest {
                 .thenThrow(new IllegalStateException("Insufficient balance"));
 
         mockMvc.perform(post("/wallet/withdraw")
+                        .header("X-Role", "JASTIPER")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());

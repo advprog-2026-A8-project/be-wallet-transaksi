@@ -74,7 +74,14 @@ public class WalletController {
     }
 
     @PostMapping("/withdraw")
-    public ResponseEntity<WalletResponse> withdraw(@Valid @RequestBody WalletMutationRequest request) {
+    public ResponseEntity<WalletResponse> withdraw(
+            @RequestHeader(value = "X-Role", required = false) String role,
+            @Valid @RequestBody WalletMutationRequest request
+    ) {
+        if (!"JASTIPER".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         return ResponseEntity.ok(walletService.withdraw(
                 request.getUserId(),
                 request.getAmount(),
