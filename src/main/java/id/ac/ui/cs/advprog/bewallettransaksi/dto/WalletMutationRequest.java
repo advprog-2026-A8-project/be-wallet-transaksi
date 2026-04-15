@@ -13,6 +13,8 @@ import java.util.UUID;
 @Getter
 @Setter
 public class WalletMutationRequest {
+    private static final String DESCRIPTION_REQUIRED_MESSAGE = "Description must not be blank";
+
     @NotNull
     private UUID userId;
 
@@ -25,6 +27,6 @@ public class WalletMutationRequest {
     )
     private BigDecimal amount;
 
-    @NotBlank(message = "Description must not be blank")
+    @NotBlank(message = DESCRIPTION_REQUIRED_MESSAGE)
     private String description;
 }
