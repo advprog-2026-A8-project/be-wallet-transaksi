@@ -29,6 +29,7 @@ public class WalletController {
     private static final String MESSAGE_KEY = "message";
     private static final String UNAUTHORIZED_MESSAGE = "Unauthorized";
     private static final String FORBIDDEN_MESSAGE = "Forbidden";
+    private static final String MISSING_JASTIPER_ROLE_MESSAGE = "Missing required role: JASTIPER";
 
     private final WalletService walletService;
 
@@ -83,6 +84,11 @@ public class WalletController {
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody WalletMutationRequest request
     ) {
+        if (role == null || role.isBlank()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(errorBody(MISSING_JASTIPER_ROLE_MESSAGE));
+        }
+
         if (!isJastiper(role)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(errorBody(FORBIDDEN_MESSAGE));
