@@ -58,7 +58,7 @@ public class WalletController {
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody WalletMutationRequest request
     ) {
-        if (!hasAuthorizationHeader(authorization)) {
+        if (isMissingHeader(authorization)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(errorBody(UNAUTHORIZED_MESSAGE));
         }
@@ -84,7 +84,7 @@ public class WalletController {
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody WalletMutationRequest request
     ) {
-        if (role == null || role.isBlank()) {
+        if (isMissingHeader(role)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(errorBody(MISSING_JASTIPER_ROLE_MESSAGE));
         }
@@ -112,8 +112,8 @@ public class WalletController {
         return ResponseEntity.ok(walletService.getTransactionHistory(userId));
     }
 
-    private boolean hasAuthorizationHeader(String authorization) {
-        return authorization != null && !authorization.isBlank();
+    private boolean isMissingHeader(String headerValue) {
+        return headerValue == null || headerValue.isBlank();
     }
 
     private boolean isJastiper(String role) {
