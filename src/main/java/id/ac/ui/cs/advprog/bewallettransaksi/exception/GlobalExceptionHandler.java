@@ -59,11 +59,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleMissingServletRequestParameter(
             MissingServletRequestParameterException ex
     ) {
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return handleBadRequest(ex.getMessage());
     }
 
     private ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return handleBadRequest(ex.getMessage());
+    }
+
+    private ResponseEntity<Map<String, Object>> handleBadRequest(String message) {
+        return buildResponse(HttpStatus.BAD_REQUEST, message);
     }
 
     private String extractFirstValidationMessage(MethodArgumentNotValidException ex) {
