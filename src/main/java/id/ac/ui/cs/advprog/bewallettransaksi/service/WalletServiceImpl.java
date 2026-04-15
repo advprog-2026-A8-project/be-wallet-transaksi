@@ -31,6 +31,7 @@ public class WalletServiceImpl implements WalletService {
     private static final String MINIMUM_AMOUNT_MESSAGE = "Amount must be at least 1";
     private static final String MAXIMUM_AMOUNT_MESSAGE = "Amount exceeds maximum allowed value";
     private static final String MAX_SCALE_MESSAGE = "Amount must have at most 2 decimal places";
+    private static final String DESCRIPTION_REQUIRED_MESSAGE = "Description must not be blank";
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
@@ -79,6 +80,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse pay(UUID userId, BigDecimal amount, String description) {
         validateAmount(amount);
+        validateDescription(description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         validateSufficientBalance(wallet, amount);
         processMutation(
@@ -94,6 +96,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse refund(UUID userId, BigDecimal amount, String description) {
         validateAmount(amount);
+        validateDescription(description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         processMutation(
                 wallet,
@@ -108,6 +111,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse withdraw(UUID userId, BigDecimal amount, String description) {
         validateAmount(amount);
+        validateDescription(description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         validateSufficientBalance(wallet, amount);
         processMutation(
@@ -153,6 +157,12 @@ public class WalletServiceImpl implements WalletService {
 
     private boolean isAboveMaximumAmount(BigDecimal amount) {
         return amount.compareTo(MAXIMUM_AMOUNT) > 0;
+    }
+
+    private void validateDescription(String description) {
+        if (description == null || description.isBlank()) {
+            throw new IllegalArgumentException(DESCRIPTION_REQUIRED_MESSAGE);
+        }
     }
 
     private Wallet findWalletByUserIdOrThrow(UUID userId) {
