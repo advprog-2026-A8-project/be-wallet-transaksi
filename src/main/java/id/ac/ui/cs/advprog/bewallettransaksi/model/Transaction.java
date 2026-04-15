@@ -70,7 +70,7 @@ public class Transaction {
             throw new IllegalArgumentException("Transaction status must not be null");
         }
 
-        if (this.status != null && nextStatus != null) {
+        if (this.status != null) {
             TransactionState currentState = TransactionStateFactory.from(this.status);
             if (!currentState.canTransitionTo(nextStatus)) {
                 throw new IllegalStateException(
