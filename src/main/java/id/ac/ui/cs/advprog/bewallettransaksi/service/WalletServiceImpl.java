@@ -34,14 +34,16 @@ public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
-    private WalletMutationStrategyResolver strategyResolver;
+    private final WalletMutationStrategyResolver strategyResolver;
 
     public WalletServiceImpl(WalletRepository walletRepository,
                              TransactionRepository transactionRepository,
                              WalletMutationStrategyResolver strategyResolver) {
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
-        this.strategyResolver = strategyResolver;
+        this.strategyResolver = strategyResolver != null
+                ? strategyResolver
+                : new WalletMutationStrategyResolver();
     }
 
     @Override
@@ -171,7 +173,7 @@ public class WalletServiceImpl implements WalletService {
 
     private void processMutation(Wallet wallet, BigDecimal amount, TransactionType type,
                                  String description) {
-        WalletMutationStrategy strategy = getStrategyResolver().resolve(type);
+        WalletMutationStrategy strategy = strategyResolver.resolve(type);
         BigDecimal updatedBalance = strategy.apply(wallet.getBalance(), amount);
         validateUpdatedBalance(updatedBalance);
         Transaction transaction = createTransaction(wallet.getWalletId(), amount, type, description);
@@ -193,13 +195,6 @@ public class WalletServiceImpl implements WalletService {
         if (isAboveMaximumAmount(amount)) {
             throw new InvalidAmountException(MAXIMUM_AMOUNT_MESSAGE);
         }
-    }
-
-    private WalletMutationStrategyResolver getStrategyResolver() {
-        if (strategyResolver == null) {
-            strategyResolver = new WalletMutationStrategyResolver();
-        }
-        return strategyResolver;
     }
 
     private void updateWalletBalance(Wallet wallet, BigDecimal updatedBalance) {
