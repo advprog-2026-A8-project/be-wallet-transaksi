@@ -347,6 +347,20 @@ class WalletControllerTest {
     }
 
     @Test
+    void refund_NullUserId_BadRequestWithConsistentMessage() throws Exception {
+        WalletMutationRequest request = new WalletMutationRequest();
+        request.setUserId(null);
+        request.setAmount(BigDecimal.valueOf(25.00));
+        request.setDescription("Order refund");
+
+        mockMvc.perform(post("/wallet/refund")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("User ID must not be null"));
+    }
+
+    @Test
     void withdraw_Success() throws Exception {
         WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
 
