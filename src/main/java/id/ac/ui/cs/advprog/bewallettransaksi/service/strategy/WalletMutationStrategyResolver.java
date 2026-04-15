@@ -5,13 +5,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public final class WalletMutationStrategyResolver {
+    private static final String TYPE_REQUIRED_MESSAGE = "Transaction type must not be null";
 
     private final WalletMutationStrategy creditStrategy = new CreditMutationStrategy();
     private final WalletMutationStrategy debitStrategy = new DebitMutationStrategy();
 
     public WalletMutationStrategy resolve(TransactionType type) {
         if (type == null) {
-            throw new IllegalArgumentException("Transaction type must not be null");
+            throw new IllegalArgumentException(TYPE_REQUIRED_MESSAGE);
         }
 
         return switch (type) {
