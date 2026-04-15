@@ -17,6 +17,8 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final String DATA_INTEGRITY_VIOLATION_MESSAGE = "Data integrity violation";
+    private static final String TYPE_MISMATCH_MESSAGE_TEMPLATE = "Invalid value '%s' for parameter '%s'";
+    private static final String MISSING_PARAMETER_MESSAGE_TEMPLATE = "Missing required request parameter: %s";
 
     @ExceptionHandler(WalletNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleWalletNotFound(WalletNotFoundException ex) {
@@ -80,11 +82,11 @@ public class GlobalExceptionHandler {
     }
 
     private String buildTypeMismatchMessage(MethodArgumentTypeMismatchException ex) {
-        return String.format("Invalid value '%s' for parameter '%s'", ex.getValue(), ex.getName());
+        return String.format(TYPE_MISMATCH_MESSAGE_TEMPLATE, ex.getValue(), ex.getName());
     }
 
     private String buildMissingParameterMessage(MissingServletRequestParameterException ex) {
-        return String.format("Missing required request parameter: %s", ex.getParameterName());
+        return String.format(MISSING_PARAMETER_MESSAGE_TEMPLATE, ex.getParameterName());
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
