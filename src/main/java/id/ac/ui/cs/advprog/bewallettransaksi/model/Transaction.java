@@ -66,6 +66,10 @@ public class Transaction {
     }
 
     public void setStatus(TransactionStatus nextStatus) {
+        if (nextStatus == null) {
+            throw new IllegalArgumentException("Transaction status must not be null");
+        }
+
         if (this.status != null && nextStatus != null) {
             TransactionState currentState = TransactionStateFactory.from(this.status);
             if (!currentState.canTransitionTo(nextStatus)) {
