@@ -35,6 +35,7 @@ public class WalletServiceImpl implements WalletService {
     private static final String USER_ID_REQUIRED_MESSAGE = "User ID must not be null";
     private static final String TOP_UP_REQUEST_REQUIRED_MESSAGE = "Top-up request must not be null";
     private static final String STATUS_REQUIRED_MESSAGE = "Status must not be null";
+    private static final String WALLET_ALREADY_EXISTS_MESSAGE = "Wallet already exists for user";
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
@@ -205,7 +206,7 @@ public class WalletServiceImpl implements WalletService {
 
     private void validateWalletNotExists(UUID userId) {
         if (walletRepository.findByUserId(userId).isPresent()) {
-            throw new IllegalStateException("Wallet already exists for user");
+            throw new IllegalStateException(WALLET_ALREADY_EXISTS_MESSAGE);
         }
     }
 
