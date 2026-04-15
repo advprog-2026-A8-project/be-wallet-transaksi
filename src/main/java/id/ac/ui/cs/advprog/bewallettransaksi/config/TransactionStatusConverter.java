@@ -4,6 +4,8 @@ import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 
+import java.util.Locale;
+
 @Component
 public class TransactionStatusConverter implements Converter<String, TransactionStatus> {
 
@@ -12,6 +14,10 @@ public class TransactionStatusConverter implements Converter<String, Transaction
         if (source == null) {
             return null;
         }
-        return TransactionStatus.valueOf(source.trim().toUpperCase());
+        return TransactionStatus.valueOf(normalize(source));
+    }
+
+    private String normalize(String source) {
+        return source.trim().toUpperCase(Locale.ROOT);
     }
 }
