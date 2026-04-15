@@ -145,9 +145,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private void validateUserId(UUID userId) {
-        if (userId == null) {
-            throw new IllegalArgumentException(USER_ID_REQUIRED_MESSAGE);
-        }
+        validateRequired(userId, USER_ID_REQUIRED_MESSAGE);
     }
 
     private void validateMutationInput(UUID userId, BigDecimal amount, String description) {
@@ -157,8 +155,12 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private void validateTopUpRequest(TopUpRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException(TOP_UP_REQUEST_REQUIRED_MESSAGE);
+        validateRequired(request, TOP_UP_REQUEST_REQUIRED_MESSAGE);
+    }
+
+    private void validateRequired(Object value, String message) {
+        if (value == null) {
+            throw new IllegalArgumentException(message);
         }
     }
 
