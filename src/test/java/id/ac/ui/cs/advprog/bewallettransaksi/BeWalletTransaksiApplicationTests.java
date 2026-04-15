@@ -19,4 +19,9 @@ class BeWalletTransaksiApplicationTests {
     void contextLoads() {
     }
 
+    @Test
+    void main_ShouldRunWithoutException() {
+        BeWalletTransaksiApplication.main(new String[]{});
+    }
+
 }
