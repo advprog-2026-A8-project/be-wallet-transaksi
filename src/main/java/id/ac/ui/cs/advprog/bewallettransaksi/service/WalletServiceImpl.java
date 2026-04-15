@@ -60,6 +60,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse createWallet(UUID userId) {
         validateUserId(userId);
+        validateWalletNotExists(userId);
         Wallet wallet = new Wallet();
         wallet.setUserId(userId);
         wallet.setBalance(BigDecimal.ZERO);
@@ -200,6 +201,12 @@ public class WalletServiceImpl implements WalletService {
     private Wallet findWalletByUserIdForUpdateOrThrow(UUID userId) {
         return walletRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new WalletNotFoundException(userId));
+    }
+
+    private void validateWalletNotExists(UUID userId) {
+        if (walletRepository.findByUserId(userId).isPresent()) {
+            throw new IllegalStateException("Wallet already exists for user");
+        }
     }
 
     private void validateSufficientBalance(Wallet wallet, BigDecimal amount) {
