@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -52,6 +53,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, DATA_INTEGRITY_VIOLATION_MESSAGE);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingServletRequestParameter(
+            MissingServletRequestParameterException ex
+    ) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     private ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
