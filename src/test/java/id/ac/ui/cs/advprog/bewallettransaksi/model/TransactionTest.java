@@ -143,4 +143,12 @@ class TransactionTest {
 
         assertThrows(IllegalStateException.class, () -> transaction.setStatus(TransactionStatus.PENDING));
     }
+
+    @Test
+    void testSetStatusToNullShouldThrowIllegalArgumentException() {
+        Transaction transaction = new Transaction();
+        transaction.setStatus(TransactionStatus.PENDING);
+
+        assertThrows(IllegalArgumentException.class, () -> transaction.setStatus(null));
+    }
 }
