@@ -167,6 +167,19 @@ class WalletControllerTest {
     }
 
     @Test
+    void topUp_NullUserId_BadRequestWithConsistentMessage() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(null);
+        request.setAmount(BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/topup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("User ID must not be null"));
+    }
+
+    @Test
     void topUp_NullAmount() throws Exception {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
@@ -377,6 +390,17 @@ class WalletControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(70.00));
+    }
+
+    @Test
+    void withdraw_BlankDescription_BadRequestWithConsistentMessage() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("   ", BigDecimal.valueOf(30.00));
+
+        mockMvc.perform(post("/wallet/withdraw")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Description must not be blank"));
     }
 
     @Test
