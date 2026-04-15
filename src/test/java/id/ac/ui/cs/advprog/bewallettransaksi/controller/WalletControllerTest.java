@@ -106,6 +106,13 @@ class WalletControllerTest {
     }
 
     @Test
+    void createWallet_MissingUserId_BadRequestWithStandardErrorBody() throws Exception {
+        mockMvc.perform(post("/wallet"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
     void topUp_Success() throws Exception {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
@@ -252,6 +259,46 @@ class WalletControllerTest {
                         .param("status", "INVALID_STATUS"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void getTransactionHistory_EmptyStatusParam_ShouldFallbackToAllHistory() throws Exception {
+        TransactionResponse latest = TransactionResponse.builder()
+                .transactionId(UUID.randomUUID())
+                .walletId(walletId)
+                .amount(BigDecimal.valueOf(50.00))
+                .type(TransactionType.PAYMENT)
+                .status(TransactionStatus.SUCCESS)
+                .description("Latest payment")
+                .createdAt(LocalDateTime.of(2026, 3, 22, 10, 0))
+                .build();
+
+        when(walletService.getTransactionHistory(userId)).thenReturn(List.of(latest));
+
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .param("status", ""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].description").value("Latest payment"));
+    }
+
+    @Test
+    void getTransactionHistory_WhitespaceStatusParam_ShouldFallbackToAllHistory() throws Exception {
+        TransactionResponse latest = TransactionResponse.builder()
+                .transactionId(UUID.randomUUID())
+                .walletId(walletId)
+                .amount(BigDecimal.valueOf(50.00))
+                .type(TransactionType.PAYMENT)
+                .status(TransactionStatus.SUCCESS)
+                .description("Latest payment")
+                .createdAt(LocalDateTime.of(2026, 3, 22, 10, 0))
+                .build();
+
+        when(walletService.getTransactionHistory(userId)).thenReturn(List.of(latest));
+
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .param("status", "   "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].description").value("Latest payment"));
     }
 
     @Test
