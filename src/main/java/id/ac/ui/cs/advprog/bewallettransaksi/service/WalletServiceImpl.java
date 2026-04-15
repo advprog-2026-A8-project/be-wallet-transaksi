@@ -34,6 +34,7 @@ public class WalletServiceImpl implements WalletService {
     private static final String DESCRIPTION_REQUIRED_MESSAGE = "Description must not be blank";
     private static final String USER_ID_REQUIRED_MESSAGE = "User ID must not be null";
     private static final String TOP_UP_REQUEST_REQUIRED_MESSAGE = "Top-up request must not be null";
+    private static final String STATUS_REQUIRED_MESSAGE = "Status must not be null";
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
@@ -137,6 +138,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     public List<TransactionResponse> getTransactionHistoryByStatus(UUID userId, TransactionStatus status) {
         validateUserId(userId);
+        validateStatus(status);
         Wallet wallet = findWalletByUserIdOrThrow(userId);
         List<Transaction> transactions = transactionRepository.findByWalletIdAndStatusOrderByCreatedAtDesc(
                 wallet.getWalletId(), status
@@ -162,6 +164,10 @@ public class WalletServiceImpl implements WalletService {
         if (value == null) {
             throw new IllegalArgumentException(message);
         }
+    }
+
+    private void validateStatus(TransactionStatus status) {
+        validateRequired(status, STATUS_REQUIRED_MESSAGE);
     }
 
     private void validateAmount(BigDecimal amount) {
