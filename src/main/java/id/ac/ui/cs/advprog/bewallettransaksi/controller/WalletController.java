@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
@@ -48,7 +49,14 @@ public class WalletController {
     }
 
     @PostMapping("/pay")
-    public ResponseEntity<WalletResponse> pay(@Valid @RequestBody WalletMutationRequest request) {
+    public ResponseEntity<WalletResponse> pay(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @Valid @RequestBody WalletMutationRequest request
+    ) {
+        if (authorization == null || authorization.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         return ResponseEntity.ok(walletService.pay(
                 request.getUserId(),
                 request.getAmount(),
