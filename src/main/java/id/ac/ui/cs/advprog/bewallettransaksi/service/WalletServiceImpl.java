@@ -146,7 +146,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private boolean hasMoreThanTwoDecimalPlaces(BigDecimal amount) {
-        return amount.stripTrailingZeros().scale() > MAX_AMOUNT_SCALE;
+        return amount.scale() > MAX_AMOUNT_SCALE;
     }
 
     private boolean isAboveMaximumAmount(BigDecimal amount) {
