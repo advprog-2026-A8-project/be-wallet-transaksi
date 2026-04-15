@@ -101,6 +101,15 @@ class WalletServiceCoreTest {
     }
 
     @Test
+    void createWallet_DuplicateUser_ShouldThrowIllegalStateException() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+
+        assertThrows(IllegalStateException.class, () -> walletService.createWallet(userId));
+        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository, never()).save(any(Wallet.class));
+    }
+
+    @Test
     void topUp_Success() {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
