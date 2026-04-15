@@ -176,17 +176,6 @@ class WalletControllerTest {
     }
 
     @Test
-    void topUp_NullAmount() throws Exception {
-        TopUpRequest request = buildTopUpRequest(userId, null);
-
-        mockMvc.perform(post("/wallet/topup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").exists());
-    }
-
-    @Test
     void topUp_NullAmount_BadRequestWithConsistentMessage() throws Exception {
         TopUpRequest request = buildTopUpRequest(userId, null);
 
