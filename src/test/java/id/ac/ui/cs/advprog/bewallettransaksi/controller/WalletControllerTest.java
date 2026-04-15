@@ -330,8 +330,19 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/pay")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void pay_BlankDescription_BadRequestWithConsistentMessage() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("   ", BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/pay")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Description must not be blank"));
     }
 
     @Test
