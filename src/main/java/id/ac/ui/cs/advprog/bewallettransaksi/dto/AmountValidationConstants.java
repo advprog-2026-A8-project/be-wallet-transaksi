@@ -5,6 +5,8 @@ public final class AmountValidationConstants {
         // utility class
     }
 
+    public static final String USER_ID_REQUIRED_MESSAGE = "User ID must not be null";
+    public static final String DESCRIPTION_REQUIRED_MESSAGE = "Description must not be blank";
     public static final String MIN_AMOUNT = "1";
     public static final String MIN_AMOUNT_MESSAGE = "Amount must be at least 1";
     public static final int MAX_INTEGER_DIGITS = 17;
