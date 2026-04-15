@@ -155,9 +155,7 @@ class WalletControllerTest {
 
     @Test
     void topUp_NullUserId() throws Exception {
-        TopUpRequest request = new TopUpRequest();
-        request.setUserId(null);
-        request.setAmount(BigDecimal.valueOf(50.00));
+        TopUpRequest request = buildTopUpRequest(null, BigDecimal.valueOf(50.00));
 
         mockMvc.perform(post("/wallet/topup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -168,9 +166,7 @@ class WalletControllerTest {
 
     @Test
     void topUp_NullUserId_BadRequestWithConsistentMessage() throws Exception {
-        TopUpRequest request = new TopUpRequest();
-        request.setUserId(null);
-        request.setAmount(BigDecimal.valueOf(50.00));
+        TopUpRequest request = buildTopUpRequest(null, BigDecimal.valueOf(50.00));
 
         mockMvc.perform(post("/wallet/topup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -181,9 +177,7 @@ class WalletControllerTest {
 
     @Test
     void topUp_NullAmount() throws Exception {
-        TopUpRequest request = new TopUpRequest();
-        request.setUserId(userId);
-        request.setAmount(null);
+        TopUpRequest request = buildTopUpRequest(userId, null);
 
         mockMvc.perform(post("/wallet/topup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -455,6 +449,13 @@ class WalletControllerTest {
         request.setUserId(userId);
         request.setAmount(amount);
         request.setDescription(description);
+        return request;
+    }
+
+    private TopUpRequest buildTopUpRequest(UUID requestUserId, BigDecimal amount) {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(requestUserId);
+        request.setAmount(amount);
         return request;
     }
 }
