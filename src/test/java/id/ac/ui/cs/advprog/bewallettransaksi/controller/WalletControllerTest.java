@@ -458,6 +458,17 @@ class WalletControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void withdraw_NonJastiperRole_ShouldReturnForbidden() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
+
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("X-Role", "TITIPERS")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
         WalletMutationRequest request = new WalletMutationRequest();
         request.setUserId(userId);
