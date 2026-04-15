@@ -90,7 +90,7 @@ public class WalletServiceImpl implements WalletService {
     public WalletResponse pay(UUID userId, BigDecimal amount, String description) {
         validateMutationInput(userId, amount, description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
-        validateSufficientBalance(wallet, amount);
+        validateSufficientBalanceOrRecordFailure(wallet, amount, TransactionType.PAYMENT, description);
         processMutation(
                 wallet,
                 amount,
@@ -119,7 +119,7 @@ public class WalletServiceImpl implements WalletService {
     public WalletResponse withdraw(UUID userId, BigDecimal amount, String description) {
         validateMutationInput(userId, amount, description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
-        validateSufficientBalance(wallet, amount);
+        validateSufficientBalanceOrRecordFailure(wallet, amount, TransactionType.WITHDRAW, description);
         processMutation(
                 wallet,
                 amount,
@@ -210,8 +210,16 @@ public class WalletServiceImpl implements WalletService {
         }
     }
 
-    private void validateSufficientBalance(Wallet wallet, BigDecimal amount) {
+    private void validateSufficientBalanceOrRecordFailure(
+            Wallet wallet,
+            BigDecimal amount,
+            TransactionType type,
+            String description
+    ) {
         if (wallet.getBalance().compareTo(amount) < 0) {
+            Transaction failedTransaction = createTransaction(wallet.getWalletId(), amount, type, description);
+            failedTransaction.setStatus(TransactionStatus.FAILED);
+            transactionRepository.save(failedTransaction);
             throw new IllegalStateException("Insufficient balance");
         }
     }

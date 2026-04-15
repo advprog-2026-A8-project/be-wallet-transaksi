@@ -87,7 +87,7 @@ class WalletServicePaymentTest {
 
         verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository, never()).save(any());
-        verify(transactionRepository, never()).save(any());
+        verify(transactionRepository).save(any(Transaction.class));
     }
 
     @Test
