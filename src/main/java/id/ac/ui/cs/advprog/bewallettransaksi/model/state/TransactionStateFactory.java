@@ -2,10 +2,14 @@ package id.ac.ui.cs.advprog.bewallettransaksi.model.state;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 
+import java.util.Map;
+
 public final class TransactionStateFactory {
-    private static final TransactionState PENDING_STATE = new PendingState();
-    private static final TransactionState SUCCESS_STATE = new SuccessState();
-    private static final TransactionState FAILED_STATE = new FailedState();
+    private static final Map<TransactionStatus, TransactionState> STATE_MAP = Map.of(
+            TransactionStatus.PENDING, new PendingState(),
+            TransactionStatus.SUCCESS, new SuccessState(),
+            TransactionStatus.FAILED, new FailedState()
+    );
 
     private TransactionStateFactory() {
     }
@@ -15,10 +19,6 @@ public final class TransactionStateFactory {
             throw new IllegalArgumentException("Transaction status must not be null");
         }
 
-        return switch (status) {
-            case PENDING -> PENDING_STATE;
-            case SUCCESS -> SUCCESS_STATE;
-            case FAILED -> FAILED_STATE;
-        };
+        return STATE_MAP.get(status);
     }
 }
