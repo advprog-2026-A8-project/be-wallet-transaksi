@@ -53,7 +53,7 @@ public class WalletController {
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody WalletMutationRequest request
     ) {
-        if (authorization == null || authorization.isBlank()) {
+        if (!hasAuthorizationHeader(authorization)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
@@ -91,5 +91,9 @@ public class WalletController {
             return ResponseEntity.ok(walletService.getTransactionHistoryByStatus(userId, status));
         }
         return ResponseEntity.ok(walletService.getTransactionHistory(userId));
+    }
+
+    private boolean hasAuthorizationHeader(String authorization) {
+        return authorization != null && !authorization.isBlank();
     }
 }
