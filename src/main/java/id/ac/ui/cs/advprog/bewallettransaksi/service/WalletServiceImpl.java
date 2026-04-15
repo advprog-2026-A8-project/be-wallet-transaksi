@@ -83,9 +83,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse pay(UUID userId, BigDecimal amount, String description) {
-        validateUserId(userId);
-        validateAmount(amount);
-        validateDescription(description);
+        validateMutationInput(userId, amount, description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         validateSufficientBalance(wallet, amount);
         processMutation(
@@ -100,9 +98,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse refund(UUID userId, BigDecimal amount, String description) {
-        validateUserId(userId);
-        validateAmount(amount);
-        validateDescription(description);
+        validateMutationInput(userId, amount, description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         processMutation(
                 wallet,
@@ -116,9 +112,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse withdraw(UUID userId, BigDecimal amount, String description) {
-        validateUserId(userId);
-        validateAmount(amount);
-        validateDescription(description);
+        validateMutationInput(userId, amount, description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         validateSufficientBalance(wallet, amount);
         processMutation(
@@ -152,6 +146,12 @@ public class WalletServiceImpl implements WalletService {
         if (userId == null) {
             throw new IllegalArgumentException(USER_ID_REQUIRED_MESSAGE);
         }
+    }
+
+    private void validateMutationInput(UUID userId, BigDecimal amount, String description) {
+        validateUserId(userId);
+        validateAmount(amount);
+        validateDescription(description);
     }
 
     private void validateAmount(BigDecimal amount) {
