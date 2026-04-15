@@ -32,6 +32,7 @@ public class WalletServiceImpl implements WalletService {
     private static final String MAXIMUM_AMOUNT_MESSAGE = "Amount exceeds maximum allowed value";
     private static final String MAX_SCALE_MESSAGE = "Amount must have at most 2 decimal places";
     private static final String DESCRIPTION_REQUIRED_MESSAGE = "Description must not be blank";
+    private static final String USER_ID_REQUIRED_MESSAGE = "User ID must not be null";
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
@@ -49,12 +50,14 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     public WalletResponse getWallet(UUID userId) {
+        validateUserId(userId);
         return toResponse(findWalletByUserIdOrThrow(userId));
     }
 
     @Override
     @Transactional
     public WalletResponse createWallet(UUID userId) {
+        validateUserId(userId);
         Wallet wallet = new Wallet();
         wallet.setUserId(userId);
         wallet.setBalance(BigDecimal.ZERO);
@@ -65,6 +68,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse topUp(TopUpRequest request) {
+        validateUserId(request.getUserId());
         validateAmount(request.getAmount());
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(request.getUserId());
         processMutation(
@@ -79,6 +83,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse pay(UUID userId, BigDecimal amount, String description) {
+        validateUserId(userId);
         validateAmount(amount);
         validateDescription(description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
@@ -95,6 +100,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse refund(UUID userId, BigDecimal amount, String description) {
+        validateUserId(userId);
         validateAmount(amount);
         validateDescription(description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
@@ -110,6 +116,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse withdraw(UUID userId, BigDecimal amount, String description) {
+        validateUserId(userId);
         validateAmount(amount);
         validateDescription(description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
@@ -125,6 +132,7 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     public List<TransactionResponse> getTransactionHistory(UUID userId) {
+        validateUserId(userId);
         Wallet wallet = findWalletByUserIdOrThrow(userId);
         List<Transaction> transactions = transactionRepository.findByWalletIdOrderByCreatedAtDesc(wallet.getWalletId());
         return toTransactionResponses(transactions);
@@ -132,11 +140,18 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     public List<TransactionResponse> getTransactionHistoryByStatus(UUID userId, TransactionStatus status) {
+        validateUserId(userId);
         Wallet wallet = findWalletByUserIdOrThrow(userId);
         List<Transaction> transactions = transactionRepository.findByWalletIdAndStatusOrderByCreatedAtDesc(
                 wallet.getWalletId(), status
         );
         return toTransactionResponses(transactions);
+    }
+
+    private void validateUserId(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException(USER_ID_REQUIRED_MESSAGE);
+        }
     }
 
     private void validateAmount(BigDecimal amount) {
