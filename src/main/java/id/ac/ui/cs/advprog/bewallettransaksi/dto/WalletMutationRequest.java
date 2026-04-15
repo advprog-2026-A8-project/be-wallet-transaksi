@@ -25,6 +25,6 @@ public class WalletMutationRequest {
     )
     private BigDecimal amount;
 
-    @NotBlank
+    @NotBlank(message = "Description must not be blank")
     private String description;
 }
