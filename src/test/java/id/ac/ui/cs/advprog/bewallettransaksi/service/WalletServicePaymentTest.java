@@ -137,13 +137,14 @@ class WalletServicePaymentTest {
     @Test
     void pay_AmountJustAboveBalance() {
         when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         assertThrows(IllegalStateException.class,
                 () -> walletService.pay(userId, BigDecimal.valueOf(100.01), "Order payment"));
 
         verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository, never()).save(any());
-        verify(transactionRepository, never()).save(any());
+        verify(transactionRepository).save(any(Transaction.class));
     }
 
     @Test
