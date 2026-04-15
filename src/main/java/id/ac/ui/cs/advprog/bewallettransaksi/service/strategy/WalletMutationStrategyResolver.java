@@ -10,6 +10,10 @@ public final class WalletMutationStrategyResolver {
     private final WalletMutationStrategy debitStrategy = new DebitMutationStrategy();
 
     public WalletMutationStrategy resolve(TransactionType type) {
+        if (type == null) {
+            throw new IllegalArgumentException("Transaction type must not be null");
+        }
+
         return switch (type) {
             case TOPUP, REFUND -> creditStrategy;
             case PAYMENT, WITHDRAW -> debitStrategy;
