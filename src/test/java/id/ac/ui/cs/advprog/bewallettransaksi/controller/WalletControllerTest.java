@@ -335,6 +335,16 @@ class WalletControllerTest {
     }
 
     @Test
+    void pay_Unauthenticated_ShouldReturnUnauthorized() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/pay")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void refund_Success() throws Exception {
         WalletMutationRequest request = buildMutationRequest("Order refund", BigDecimal.valueOf(25.00));
 
