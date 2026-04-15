@@ -187,6 +187,14 @@ class WalletServiceCoreTest {
     }
 
     @Test
+    void topUp_NullRequest_ShouldThrowIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> walletService.topUp(null));
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
     void topUp_AmountWithMoreThanTwoDecimalPlaces() {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
