@@ -16,7 +16,7 @@ public class TopUpRequest {
     @NotNull(message = AmountValidationConstants.USER_ID_REQUIRED_MESSAGE)
     private UUID userId;
 
-    @NotNull
+    @NotNull(message = AmountValidationConstants.MIN_AMOUNT_MESSAGE)
     @DecimalMin(value = AmountValidationConstants.MIN_AMOUNT, message = AmountValidationConstants.MIN_AMOUNT_MESSAGE)
     @Digits(
             integer = AmountValidationConstants.MAX_INTEGER_DIGITS,
