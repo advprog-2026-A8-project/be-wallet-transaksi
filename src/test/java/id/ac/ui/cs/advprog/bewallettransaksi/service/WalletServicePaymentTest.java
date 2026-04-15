@@ -155,4 +155,14 @@ class WalletServicePaymentTest {
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
+
+    @Test
+    void pay_NullUserId_ShouldThrowIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> walletService.pay(null, BigDecimal.valueOf(10.00), "Order payment"));
+
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
 }
