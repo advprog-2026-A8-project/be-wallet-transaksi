@@ -495,6 +495,17 @@ class WalletControllerTest {
                 .andExpect(jsonPath("$.message").value("Forbidden"));
     }
 
+    @Test
+    void withdraw_MissingRoleHeader_ShouldReturnForbiddenWithExplicitMessage() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
+
+        mockMvc.perform(post("/wallet/withdraw")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Missing required role: JASTIPER"));
+    }
+
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
         WalletMutationRequest request = new WalletMutationRequest();
         request.setUserId(userId);
