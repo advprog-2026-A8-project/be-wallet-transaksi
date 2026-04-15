@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class TransactionStateFactoryTest {
@@ -29,5 +30,13 @@ class TransactionStateFactoryTest {
     @Test
     void fromNullStatus_ShouldThrowIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> TransactionStateFactory.from(null));
+    }
+
+    @Test
+    void fromSameStatus_ShouldReturnSameSingletonInstance() {
+        TransactionState first = TransactionStateFactory.from(TransactionStatus.PENDING);
+        TransactionState second = TransactionStateFactory.from(TransactionStatus.PENDING);
+
+        assertSame(first, second);
     }
 }
