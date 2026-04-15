@@ -121,4 +121,11 @@ class WalletServiceHistoryTest {
         verify(walletRepository).findByUserId(userId);
         verify(transactionRepository, never()).findByWalletIdOrderByCreatedAtDesc(any());
     }
+
+    @Test
+    void getTransactionHistoryByStatus_NullStatus_ShouldThrowIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> walletService.getTransactionHistoryByStatus(userId, null));
+        verify(walletRepository, never()).findByUserId(any());
+        verify(transactionRepository, never()).findByWalletIdAndStatusOrderByCreatedAtDesc(any(), any());
+    }
 }
