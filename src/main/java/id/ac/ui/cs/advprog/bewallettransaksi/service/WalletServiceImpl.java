@@ -217,11 +217,15 @@ public class WalletServiceImpl implements WalletService {
             String description
     ) {
         if (wallet.getBalance().compareTo(amount) < 0) {
-            Transaction failedTransaction = createTransaction(wallet.getWalletId(), amount, type, description);
-            failedTransaction.setStatus(TransactionStatus.FAILED);
-            transactionRepository.save(failedTransaction);
+            recordFailedTransaction(wallet.getWalletId(), amount, type, description);
             throw new IllegalStateException("Insufficient balance");
         }
+    }
+
+    private void recordFailedTransaction(UUID walletId, BigDecimal amount, TransactionType type, String description) {
+        Transaction failedTransaction = createTransaction(walletId, amount, type, description);
+        failedTransaction.setStatus(TransactionStatus.FAILED);
+        transactionRepository.save(failedTransaction);
     }
 
     private void processMutation(Wallet wallet, BigDecimal amount, TransactionType type,
