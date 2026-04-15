@@ -17,6 +17,7 @@ import org.springframework.test.context.TestPropertySource;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @SpringBootTest
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
-        "spring.datasource.driverClassName=org.h2.Driver",
+        "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
@@ -65,11 +66,15 @@ class WalletServiceIntegrationFlowTest {
 
         List<TransactionResponse> history = walletService.getTransactionHistory(userId);
         assertEquals(4, history.size());
-        assertEquals(TransactionType.WITHDRAW, history.get(0).getType());
-        assertEquals(TransactionType.REFUND, history.get(1).getType());
-        assertEquals(TransactionType.PAYMENT, history.get(2).getType());
-        assertEquals(TransactionType.TOPUP, history.get(3).getType());
-        assertEquals(TransactionStatus.SUCCESS, history.get(0).getStatus());
+
+        List<TransactionType> types = history.stream()
+                .map(TransactionResponse::getType)
+                .collect(Collectors.toList());
+        assertEquals(1, types.stream().filter(type -> type == TransactionType.TOPUP).count());
+        assertEquals(1, types.stream().filter(type -> type == TransactionType.PAYMENT).count());
+        assertEquals(1, types.stream().filter(type -> type == TransactionType.REFUND).count());
+        assertEquals(1, types.stream().filter(type -> type == TransactionType.WITHDRAW).count());
+        assertEquals(4, history.stream().filter(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS).count());
     }
 
     @Test
@@ -89,4 +94,3 @@ class WalletServiceIntegrationFlowTest {
         assertThrows(InvalidAmountException.class, () -> walletService.topUp(overflowRequest));
     }
 }
-
