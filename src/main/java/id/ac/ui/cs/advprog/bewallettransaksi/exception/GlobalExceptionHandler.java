@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleMissingServletRequestParameter(
             MissingServletRequestParameterException ex
     ) {
-        return handleBadRequest(ex.getMessage());
+        return handleBadRequest(buildMissingParameterMessage(ex));
     }
 
     private ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
@@ -81,6 +81,10 @@ public class GlobalExceptionHandler {
 
     private String buildTypeMismatchMessage(MethodArgumentTypeMismatchException ex) {
         return String.format("Invalid value '%s' for parameter '%s'", ex.getValue(), ex.getName());
+    }
+
+    private String buildMissingParameterMessage(MissingServletRequestParameterException ex) {
+        return String.format("Missing required request parameter: %s", ex.getParameterName());
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
