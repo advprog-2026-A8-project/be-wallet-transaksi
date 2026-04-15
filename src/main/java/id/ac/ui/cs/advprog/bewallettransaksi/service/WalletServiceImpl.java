@@ -33,6 +33,7 @@ public class WalletServiceImpl implements WalletService {
     private static final String MAX_SCALE_MESSAGE = "Amount must have at most 2 decimal places";
     private static final String DESCRIPTION_REQUIRED_MESSAGE = "Description must not be blank";
     private static final String USER_ID_REQUIRED_MESSAGE = "User ID must not be null";
+    private static final String TOP_UP_REQUEST_REQUIRED_MESSAGE = "Top-up request must not be null";
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
@@ -68,6 +69,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse topUp(TopUpRequest request) {
+        validateTopUpRequest(request);
         validateUserId(request.getUserId());
         validateAmount(request.getAmount());
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(request.getUserId());
@@ -152,6 +154,12 @@ public class WalletServiceImpl implements WalletService {
         validateUserId(userId);
         validateAmount(amount);
         validateDescription(description);
+    }
+
+    private void validateTopUpRequest(TopUpRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException(TOP_UP_REQUEST_REQUIRED_MESSAGE);
+        }
     }
 
     private void validateAmount(BigDecimal amount) {
