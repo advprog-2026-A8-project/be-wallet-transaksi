@@ -47,9 +47,7 @@ jobs:
       - name: Run Tests & Checkstyle
         run: ./gradlew clean test jacocoTestReport checkstyleMain checkstyleTest
         env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/walletdb
-          SPRING_DATASOURCE_USERNAME: ${{ secrets.POSTGRES_USER }}
-          SPRING_DATASOURCE_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          SPRING_PROFILES_ACTIVE: test
 
       - name: SonarCloud Scan (Push)
         if: github.event_name == 'push'
