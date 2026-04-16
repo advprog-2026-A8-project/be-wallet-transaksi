@@ -10,12 +10,14 @@ import id.ac.ui.cs.advprog.bewallettransaksi.model.Transaction;
 import id.ac.ui.cs.advprog.bewallettransaksi.model.Wallet;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.TransactionRepository;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.WalletRepository;
+import id.ac.ui.cs.advprog.bewallettransaksi.service.strategy.WalletMutationStrategyResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -38,6 +40,9 @@ class WalletServiceCoreTest {
 
     @Mock
     private TransactionRepository transactionRepository;
+
+    @Spy
+    private WalletMutationStrategyResolver strategyResolver = new WalletMutationStrategyResolver();
 
     @InjectMocks
     private WalletServiceImpl walletService;

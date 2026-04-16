@@ -2,7 +2,6 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import java.util.UUID;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,13 +19,14 @@ import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletMutationRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
+import id.ac.ui.cs.advprog.bewallettransaksi.exception.ForbiddenException;
+import id.ac.ui.cs.advprog.bewallettransaksi.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/wallet")
 public class WalletController {
-    private static final String MESSAGE_KEY = "message";
     private static final String UNAUTHORIZED_MESSAGE = "Unauthorized";
     private static final String FORBIDDEN_MESSAGE = "Forbidden";
     private static final String MISSING_JASTIPER_ROLE_MESSAGE = "Missing required role: JASTIPER";
@@ -54,13 +54,12 @@ public class WalletController {
     }
 
     @PostMapping("/pay")
-    public ResponseEntity<?> pay(
+    public ResponseEntity<WalletResponse> pay(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody WalletMutationRequest request
     ) {
         if (isMissingHeader(authorization)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(errorBody(UNAUTHORIZED_MESSAGE));
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
 
         return ResponseEntity.ok(walletService.pay(
@@ -80,18 +79,16 @@ public class WalletController {
     }
 
     @PostMapping("/withdraw")
-    public ResponseEntity<?> withdraw(
+    public ResponseEntity<WalletResponse> withdraw(
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody WalletMutationRequest request
     ) {
         if (isMissingHeader(role)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(errorBody(MISSING_JASTIPER_ROLE_MESSAGE));
+            throw new ForbiddenException(MISSING_JASTIPER_ROLE_MESSAGE);
         }
 
         if (!isJastiper(role)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(errorBody(FORBIDDEN_MESSAGE));
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
 
         return ResponseEntity.ok(walletService.withdraw(
@@ -118,9 +115,5 @@ public class WalletController {
 
     private boolean isJastiper(String role) {
         return "JASTIPER".equalsIgnoreCase(role);
-    }
-
-    private Map<String, String> errorBody(String message) {
-        return Map.of(MESSAGE_KEY, message);
     }
 }

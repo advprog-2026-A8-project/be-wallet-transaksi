@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -46,9 +47,9 @@ public class WalletServiceImpl implements WalletService {
                              WalletMutationStrategyResolver strategyResolver) {
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
-        this.strategyResolver = strategyResolver != null
-                ? strategyResolver
-                : new WalletMutationStrategyResolver();
+        this.strategyResolver = Objects.requireNonNull(
+                strategyResolver, "WalletMutationStrategyResolver must not be null"
+        );
     }
 
     @Override
@@ -86,7 +87,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = IllegalStateException.class)
     public WalletResponse pay(UUID userId, BigDecimal amount, String description) {
         validateMutationInput(userId, amount, description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
@@ -115,7 +116,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = IllegalStateException.class)
     public WalletResponse withdraw(UUID userId, BigDecimal amount, String description) {
         validateMutationInput(userId, amount, description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);

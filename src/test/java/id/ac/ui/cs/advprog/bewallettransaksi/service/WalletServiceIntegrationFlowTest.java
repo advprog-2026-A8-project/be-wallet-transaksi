@@ -93,4 +93,26 @@ class WalletServiceIntegrationFlowTest {
 
         assertThrows(InvalidAmountException.class, () -> walletService.topUp(overflowRequest));
     }
+
+    @Test
+    void withdraw_InsufficientBalance_ShouldPersistFailedTransaction() {
+        UUID userId = UUID.randomUUID();
+        walletService.createWallet(userId);
+
+        TopUpRequest topUpRequest = new TopUpRequest();
+        topUpRequest.setUserId(userId);
+        topUpRequest.setAmount(new BigDecimal("100.00"));
+        walletService.topUp(topUpRequest);
+
+        assertThrows(IllegalStateException.class,
+                () -> walletService.withdraw(userId, new BigDecimal("150.00"), "BCA-123456"));
+
+        WalletResponse wallet = walletService.getWallet(userId);
+        assertEquals(new BigDecimal("100.00"), wallet.getBalance());
+
+        List<TransactionResponse> failedHistory = walletService.getTransactionHistoryByStatus(userId, TransactionStatus.FAILED);
+        assertEquals(1, failedHistory.size());
+        assertEquals(TransactionType.WITHDRAW, failedHistory.get(0).getType());
+        assertEquals(new BigDecimal("150.00"), failedHistory.get(0).getAmount());
+    }
 }

@@ -19,6 +19,10 @@ public final class TransactionStateFactory {
             throw new IllegalArgumentException("Transaction status must not be null");
         }
 
-        return STATE_MAP.get(status);
+        TransactionState state = STATE_MAP.get(status);
+        if (state == null) {
+            throw new IllegalArgumentException("Unsupported transaction status: " + status);
+        }
+        return state;
     }
 }
