@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -292,7 +291,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private List<TransactionResponse> toTransactionResponses(List<Transaction> transactions) {
-        return transactions.stream().map(this::toTransactionResponse).collect(Collectors.toList());
+        return transactions.stream().map(this::toTransactionResponse).toList();
     }
 
     private TransactionResponse toTransactionResponse(Transaction transaction) {

@@ -17,7 +17,6 @@ import org.springframework.test.context.TestPropertySource;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -69,7 +68,7 @@ class WalletServiceIntegrationFlowTest {
 
         List<TransactionType> types = history.stream()
                 .map(TransactionResponse::getType)
-                .collect(Collectors.toList());
+                .toList();
         assertEquals(1, types.stream().filter(type -> type == TransactionType.TOPUP).count());
         assertEquals(1, types.stream().filter(type -> type == TransactionType.PAYMENT).count());
         assertEquals(1, types.stream().filter(type -> type == TransactionType.REFUND).count());
@@ -104,8 +103,9 @@ class WalletServiceIntegrationFlowTest {
         topUpRequest.setAmount(new BigDecimal("100.00"));
         walletService.topUp(topUpRequest);
 
+        BigDecimal withdrawAmount = new BigDecimal("150.00");
         assertThrows(IllegalStateException.class,
-                () -> walletService.withdraw(userId, new BigDecimal("150.00"), "BCA-123456"));
+                () -> walletService.withdraw(userId, withdrawAmount, "BCA-123456"));
 
         WalletResponse wallet = walletService.getWallet(userId);
         assertEquals(new BigDecimal("100.00"), wallet.getBalance());

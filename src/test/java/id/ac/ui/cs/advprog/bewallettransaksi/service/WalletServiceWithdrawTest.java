@@ -88,9 +88,10 @@ class WalletServiceWithdrawTest {
     @Test
     void withdraw_WalletNotFound() {
         when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.empty());
+        BigDecimal amount = BigDecimal.valueOf(30.00);
 
         assertThrows(WalletNotFoundException.class,
-                () -> walletService.withdraw(userId, BigDecimal.valueOf(30.00), "BCA-123456"));
+                () -> walletService.withdraw(userId, amount, "BCA-123456"));
 
         verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository, never()).save(any());
@@ -100,9 +101,10 @@ class WalletServiceWithdrawTest {
     @Test
     void withdraw_InsufficientBalance() {
         when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+        BigDecimal amount = BigDecimal.valueOf(120.00);
 
         assertThrows(IllegalStateException.class,
-                () -> walletService.withdraw(userId, BigDecimal.valueOf(120.00), "BCA-123456"));
+                () -> walletService.withdraw(userId, amount, "BCA-123456"));
 
         verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository, never()).save(any());
@@ -112,9 +114,10 @@ class WalletServiceWithdrawTest {
     @Test
     void withdraw_InsufficientBalance_ShouldRecordFailedTransaction() {
         when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+        BigDecimal amount = BigDecimal.valueOf(120.00);
 
         assertThrows(IllegalStateException.class,
-                () -> walletService.withdraw(userId, BigDecimal.valueOf(120.00), "BCA-123456"));
+                () -> walletService.withdraw(userId, amount, "BCA-123456"));
 
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(transactionCaptor.capture());
@@ -139,8 +142,9 @@ class WalletServiceWithdrawTest {
 
     @Test
     void withdraw_ZeroAmount() {
+        BigDecimal amount = BigDecimal.ZERO;
         assertThrows(InvalidAmountException.class,
-                () -> walletService.withdraw(userId, BigDecimal.ZERO, "BCA-123456"));
+                () -> walletService.withdraw(userId, amount, "BCA-123456"));
 
         verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
@@ -149,8 +153,9 @@ class WalletServiceWithdrawTest {
 
     @Test
     void withdraw_NegativeAmount() {
+        BigDecimal amount = BigDecimal.valueOf(-1.00);
         assertThrows(InvalidAmountException.class,
-                () -> walletService.withdraw(userId, BigDecimal.valueOf(-1.00), "BCA-123456"));
+                () -> walletService.withdraw(userId, amount, "BCA-123456"));
 
         verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());

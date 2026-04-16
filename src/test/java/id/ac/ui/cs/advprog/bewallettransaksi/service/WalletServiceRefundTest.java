@@ -87,9 +87,10 @@ class WalletServiceRefundTest {
     @Test
     void refund_WalletNotFound() {
         when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.empty());
+        BigDecimal amount = BigDecimal.valueOf(25.00);
 
         assertThrows(WalletNotFoundException.class,
-                () -> walletService.refund(userId, BigDecimal.valueOf(25.00), "Order refund"));
+                () -> walletService.refund(userId, amount, "Order refund"));
 
         verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository, never()).save(any());
@@ -108,8 +109,9 @@ class WalletServiceRefundTest {
 
     @Test
     void refund_ZeroAmount() {
+        BigDecimal amount = BigDecimal.ZERO;
         assertThrows(InvalidAmountException.class,
-                () -> walletService.refund(userId, BigDecimal.ZERO, "Order refund"));
+                () -> walletService.refund(userId, amount, "Order refund"));
 
         verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
@@ -118,8 +120,9 @@ class WalletServiceRefundTest {
 
     @Test
     void refund_NegativeAmount() {
+        BigDecimal amount = BigDecimal.valueOf(-1.00);
         assertThrows(InvalidAmountException.class,
-                () -> walletService.refund(userId, BigDecimal.valueOf(-1.00), "Order refund"));
+                () -> walletService.refund(userId, amount, "Order refund"));
 
         verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());

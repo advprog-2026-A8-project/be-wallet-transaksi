@@ -30,9 +30,10 @@ class WalletMutationStrategyTest {
     @Test
     void debitMutationStrategy_ShouldThrow_WhenBalanceInsufficient() {
         WalletMutationStrategy strategy = new DebitMutationStrategy();
+        BigDecimal balance = BigDecimal.valueOf(50);
+        BigDecimal amount = BigDecimal.valueOf(60);
 
         assertThrows(IllegalStateException.class,
-                () -> strategy.apply(BigDecimal.valueOf(50), BigDecimal.valueOf(60)));
+                () -> strategy.apply(balance, amount));
     }
 }
-

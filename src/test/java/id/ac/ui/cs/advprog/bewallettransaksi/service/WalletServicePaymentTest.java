@@ -86,9 +86,10 @@ class WalletServicePaymentTest {
     @Test
     void pay_InsufficientBalance() {
         when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+        BigDecimal amount = BigDecimal.valueOf(150.00);
 
         assertThrows(IllegalStateException.class,
-                () -> walletService.pay(userId, BigDecimal.valueOf(150.00), "Order payment"));
+                () -> walletService.pay(userId, amount, "Order payment"));
 
         verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository, never()).save(any());
@@ -107,8 +108,9 @@ class WalletServicePaymentTest {
 
     @Test
     void pay_ZeroAmount() {
+        BigDecimal amount = BigDecimal.ZERO;
         assertThrows(InvalidAmountException.class,
-                () -> walletService.pay(userId, BigDecimal.ZERO, "Order payment"));
+                () -> walletService.pay(userId, amount, "Order payment"));
 
         verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
@@ -117,8 +119,9 @@ class WalletServicePaymentTest {
 
     @Test
     void pay_NegativeAmount() {
+        BigDecimal amount = BigDecimal.valueOf(-1.00);
         assertThrows(InvalidAmountException.class,
-                () -> walletService.pay(userId, BigDecimal.valueOf(-1.00), "Order payment"));
+                () -> walletService.pay(userId, amount, "Order payment"));
 
         verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
@@ -143,9 +146,10 @@ class WalletServicePaymentTest {
     void pay_AmountJustAboveBalance() {
         when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        BigDecimal amount = BigDecimal.valueOf(100.01);
 
         assertThrows(IllegalStateException.class,
-                () -> walletService.pay(userId, BigDecimal.valueOf(100.01), "Order payment"));
+                () -> walletService.pay(userId, amount, "Order payment"));
 
         verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository, never()).save(any());
@@ -154,8 +158,9 @@ class WalletServicePaymentTest {
 
     @Test
     void pay_BlankDescription_ShouldThrowIllegalArgumentException() {
+        BigDecimal amount = BigDecimal.valueOf(10.00);
         assertThrows(IllegalArgumentException.class,
-                () -> walletService.pay(userId, BigDecimal.valueOf(10.00), "   "));
+                () -> walletService.pay(userId, amount, "   "));
 
         verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
@@ -164,8 +169,9 @@ class WalletServicePaymentTest {
 
     @Test
     void pay_NullDescription_ShouldThrowIllegalArgumentException() {
+        BigDecimal amount = BigDecimal.valueOf(10.00);
         assertThrows(IllegalArgumentException.class,
-                () -> walletService.pay(userId, BigDecimal.valueOf(10.00), null));
+                () -> walletService.pay(userId, amount, null));
 
         verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
@@ -174,8 +180,9 @@ class WalletServicePaymentTest {
 
     @Test
     void pay_NullUserId_ShouldThrowIllegalArgumentException() {
+        BigDecimal amount = BigDecimal.valueOf(10.00);
         assertThrows(IllegalArgumentException.class,
-                () -> walletService.pay(null, BigDecimal.valueOf(10.00), "Order payment"));
+                () -> walletService.pay(null, amount, "Order payment"));
 
         verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());

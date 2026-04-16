@@ -14,6 +14,9 @@ import id.ac.ui.cs.advprog.bewallettransaksi.service.strategy.WalletMutationStra
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -23,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -189,18 +193,6 @@ class WalletServiceCoreTest {
     }
 
     @Test
-    void topUp_AmountJustBelowMinimum() {
-        TopUpRequest request = new TopUpRequest();
-        request.setUserId(userId);
-        request.setAmount(new BigDecimal("0.99"));
-
-        assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
-        verify(walletRepository, never()).findByUserIdForUpdate(any());
-        verify(walletRepository, never()).save(any());
-        verify(transactionRepository, never()).save(any());
-    }
-
-    @Test
     void topUp_NullRequest_ShouldThrowIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> walletService.topUp(null));
         verify(walletRepository, never()).findByUserIdForUpdate(any());
@@ -208,35 +200,12 @@ class WalletServiceCoreTest {
         verify(transactionRepository, never()).save(any());
     }
 
-    @Test
-    void topUp_AmountWithMoreThanTwoDecimalPlaces() {
+    @ParameterizedTest
+    @MethodSource("invalidTopUpAmounts")
+    void topUp_InvalidAmountVariants_ShouldThrowInvalidAmountException(BigDecimal amount) {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
-        request.setAmount(new BigDecimal("1.001"));
-
-        assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
-        verify(walletRepository, never()).findByUserIdForUpdate(any());
-        verify(walletRepository, never()).save(any());
-        verify(transactionRepository, never()).save(any());
-    }
-
-    @Test
-    void topUp_AmountWithTrailingZeroBeyondTwoDecimalPlaces() {
-        TopUpRequest request = new TopUpRequest();
-        request.setUserId(userId);
-        request.setAmount(new BigDecimal("1.000"));
-
-        assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
-        verify(walletRepository, never()).findByUserIdForUpdate(any());
-        verify(walletRepository, never()).save(any());
-        verify(transactionRepository, never()).save(any());
-    }
-
-    @Test
-    void topUp_AmountAboveMaximumPrecision() {
-        TopUpRequest request = new TopUpRequest();
-        request.setUserId(userId);
-        request.setAmount(new BigDecimal("100000000000000000.00"));
+        request.setAmount(amount);
 
         assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
         verify(walletRepository, never()).findByUserIdForUpdate(any());
@@ -262,5 +231,14 @@ class WalletServiceCoreTest {
         verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository).save(wallet);
         verify(transactionRepository).save(any(Transaction.class));
+    }
+
+    private static Stream<Arguments> invalidTopUpAmounts() {
+        return Stream.of(
+                Arguments.of(new BigDecimal("0.99")),
+                Arguments.of(new BigDecimal("1.001")),
+                Arguments.of(new BigDecimal("1.000")),
+                Arguments.of(new BigDecimal("100000000000000000.00"))
+        );
     }
 }
