@@ -1,24 +1,5 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
-import java.math.BigDecimal;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import static org.mockito.ArgumentMatchers.any;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
@@ -29,15 +10,43 @@ import id.ac.ui.cs.advprog.bewallettransaksi.model.Transaction;
 import id.ac.ui.cs.advprog.bewallettransaksi.model.Wallet;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.TransactionRepository;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.WalletRepository;
+import id.ac.ui.cs.advprog.bewallettransaksi.service.strategy.WalletMutationStrategyResolver;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class WalletServiceImplTest {
+class WalletServiceCoreTest {
 
     @Mock
     private WalletRepository walletRepository;
 
     @Mock
     private TransactionRepository transactionRepository;
+
+    @Spy
+    private WalletMutationStrategyResolver strategyResolver = new WalletMutationStrategyResolver();
 
     @InjectMocks
     private WalletServiceImpl walletService;
@@ -101,12 +110,21 @@ class WalletServiceImplTest {
     }
 
     @Test
+    void createWallet_DuplicateUser_ShouldThrowIllegalStateException() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+
+        assertThrows(IllegalStateException.class, () -> walletService.createWallet(userId));
+        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository, never()).save(any(Wallet.class));
+    }
+
+    @Test
     void topUp_Success() {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
         request.setAmount(BigDecimal.valueOf(50.00));
 
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
         when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -115,7 +133,7 @@ class WalletServiceImplTest {
         assertNotNull(response);
         assertEquals(BigDecimal.valueOf(150.00), response.getBalance());
 
-        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository).save(wallet);
 
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
@@ -134,10 +152,10 @@ class WalletServiceImplTest {
         request.setUserId(userId);
         request.setAmount(BigDecimal.valueOf(50.00));
 
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.empty());
 
         assertThrows(WalletNotFoundException.class, () -> walletService.topUp(request));
-        verify(walletRepository).findByUserId(userId);
+        verify(walletRepository).findByUserIdForUpdate(userId);
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
@@ -149,7 +167,7 @@ class WalletServiceImplTest {
         request.setAmount(null);
 
         assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
-        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
@@ -161,7 +179,7 @@ class WalletServiceImplTest {
         request.setAmount(BigDecimal.ZERO);
 
         assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
-        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
     }
 
     @Test
@@ -171,6 +189,56 @@ class WalletServiceImplTest {
         request.setAmount(BigDecimal.valueOf(-10.00));
 
         assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
-        verify(walletRepository, never()).findByUserId(any());
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
+    }
+
+    @Test
+    void topUp_NullRequest_ShouldThrowIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> walletService.topUp(null));
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidTopUpAmounts")
+    void topUp_InvalidAmountVariants_ShouldThrowInvalidAmountException(BigDecimal amount) {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(amount);
+
+        assertThrows(InvalidAmountException.class, () -> walletService.topUp(request));
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void topUp_AmountAtMaximumBoundary_ShouldSucceed() {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(new BigDecimal("99999999999999999.99"));
+        wallet.setBalance(BigDecimal.ZERO);
+
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        WalletResponse response = walletService.topUp(request);
+
+        assertNotNull(response);
+        assertEquals(new BigDecimal("99999999999999999.99"), response.getBalance());
+        verify(walletRepository).findByUserIdForUpdate(userId);
+        verify(walletRepository).save(wallet);
+        verify(transactionRepository).save(any(Transaction.class));
+    }
+
+    private static Stream<Arguments> invalidTopUpAmounts() {
+        return Stream.of(
+                Arguments.of(new BigDecimal("0.99")),
+                Arguments.of(new BigDecimal("1.001")),
+                Arguments.of(new BigDecimal("1.000")),
+                Arguments.of(new BigDecimal("100000000000000000.00"))
+        );
     }
 }

@@ -56,20 +56,17 @@ class TransactionTest {
     }
 
     @Test
-    void testOnUpdate() throws InterruptedException {
+    void testOnUpdate() {
         Transaction transaction = new Transaction();
         transaction.onCreate();
         LocalDateTime originalCreatedAt = transaction.getCreatedAt();
-        LocalDateTime originalUpdatedAt = transaction.getUpdatedAt();
-
-        // Small delay to ensure different timestamp
-        Thread.sleep(10);
+        LocalDateTime olderUpdatedAt = originalCreatedAt.minusNanos(1);
+        transaction.setUpdatedAt(olderUpdatedAt);
 
         transaction.onUpdate();
 
         assertEquals(originalCreatedAt, transaction.getCreatedAt());
-        assertTrue(transaction.getUpdatedAt().isAfter(originalUpdatedAt) 
-                || transaction.getUpdatedAt().equals(originalUpdatedAt));
+        assertTrue(transaction.getUpdatedAt().isAfter(olderUpdatedAt));
     }
 
     @Test
@@ -104,15 +101,51 @@ class TransactionTest {
 
     @Test
     void testTransactionWithAllStatuses() {
+        Transaction pendingTransaction = new Transaction();
+        pendingTransaction.setStatus(TransactionStatus.PENDING);
+        assertEquals(TransactionStatus.PENDING, pendingTransaction.getStatus());
+
+        Transaction successTransaction = new Transaction();
+        successTransaction.setStatus(TransactionStatus.SUCCESS);
+        assertEquals(TransactionStatus.SUCCESS, successTransaction.getStatus());
+
+        Transaction failedTransaction = new Transaction();
+        failedTransaction.setStatus(TransactionStatus.FAILED);
+        assertEquals(TransactionStatus.FAILED, failedTransaction.getStatus());
+    }
+
+    @Test
+    void testCannotTransitionFromSuccessToFailed() {
         Transaction transaction = new Transaction();
-        
         transaction.setStatus(TransactionStatus.PENDING);
-        assertEquals(TransactionStatus.PENDING, transaction.getStatus());
-        
         transaction.setStatus(TransactionStatus.SUCCESS);
-        assertEquals(TransactionStatus.SUCCESS, transaction.getStatus());
-        
+
+        assertThrows(IllegalStateException.class, () -> transaction.setStatus(TransactionStatus.FAILED));
+    }
+
+    @Test
+    void testCannotTransitionFromFailedToSuccess() {
+        Transaction transaction = new Transaction();
+        transaction.setStatus(TransactionStatus.PENDING);
         transaction.setStatus(TransactionStatus.FAILED);
-        assertEquals(TransactionStatus.FAILED, transaction.getStatus());
+
+        assertThrows(IllegalStateException.class, () -> transaction.setStatus(TransactionStatus.SUCCESS));
+    }
+
+    @Test
+    void testCannotTransitionFromSuccessToPending() {
+        Transaction transaction = new Transaction();
+        transaction.setStatus(TransactionStatus.PENDING);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+
+        assertThrows(IllegalStateException.class, () -> transaction.setStatus(TransactionStatus.PENDING));
+    }
+
+    @Test
+    void testSetStatusToNullShouldThrowIllegalArgumentException() {
+        Transaction transaction = new Transaction();
+        transaction.setStatus(TransactionStatus.PENDING);
+
+        assertThrows(IllegalArgumentException.class, () -> transaction.setStatus(null));
     }
 }

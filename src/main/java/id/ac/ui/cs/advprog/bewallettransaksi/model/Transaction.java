@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
+import id.ac.ui.cs.advprog.bewallettransaksi.model.state.TransactionState;
+import id.ac.ui.cs.advprog.bewallettransaksi.model.state.TransactionStateFactory;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -23,6 +25,8 @@ import lombok.Setter;
 @Entity
 @Table(name = "transactions")
 public class Transaction {
+    private static final String STATUS_REQUIRED_MESSAGE = "Transaction status must not be null";
+
 
     @Id
     @GeneratedValue
@@ -61,5 +65,26 @@ public class Transaction {
     @PreUpdate
     public void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setStatus(TransactionStatus nextStatus) {
+        if (nextStatus == null) {
+            throw new IllegalArgumentException(STATUS_REQUIRED_MESSAGE);
+        }
+
+        if (hasInvalidTransition(nextStatus)) {
+            throw new IllegalStateException(
+                    "Invalid transaction status transition: " + this.status + " -> " + nextStatus
+            );
+        }
+        this.status = nextStatus;
+    }
+
+    private boolean hasInvalidTransition(TransactionStatus nextStatus) {
+        if (this.status == null) {
+            return false;
+        }
+        TransactionState currentState = TransactionStateFactory.from(this.status);
+        return !currentState.canTransitionTo(nextStatus);
     }
 }
