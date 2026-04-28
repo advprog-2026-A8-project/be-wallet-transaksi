@@ -67,7 +67,11 @@ public class WalletController {
     }
 
     @PostMapping
-    public ResponseEntity<WalletResponse> createWallet(@RequestParam UUID userId) {
+    public ResponseEntity<WalletResponse> createWallet(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestParam UUID userId
+    ) {
+        requireAuthorization(authorization);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(walletService.createWallet(userId));
     }
@@ -151,9 +155,11 @@ public class WalletController {
 
     @GetMapping("/{userId}/transactions")
     public ResponseEntity<List<TransactionResponse>> getTransactionHistory(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable UUID userId,
             @RequestParam(required = false) TransactionStatus status
     ) {
+        requireAuthorization(authorization);
         if (status != null) {
             return ResponseEntity.ok(walletService.getTransactionHistoryByStatus(userId, status));
         }
