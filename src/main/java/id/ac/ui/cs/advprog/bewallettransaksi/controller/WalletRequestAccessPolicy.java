@@ -29,15 +29,27 @@ public class WalletRequestAccessPolicy {
     }
 
     public boolean isOwnerMismatchToken(String authorization) {
+        if (isJwtToken(authorization)) {
+            return false;
+        }
         return classify(authorization) == AuthorizationKind.OWNER_MISMATCH_NON_ADMIN;
     }
 
     public boolean isForbiddenTopUpRole(String authorization, String role) {
+        if (isJwtToken(authorization)) {
+            return JASTIPER_ROLE.equalsIgnoreCase(role);
+        }
         return classify(authorization) == AuthorizationKind.JASTIPER_TOPUP_TOKEN
                 && JASTIPER_ROLE.equalsIgnoreCase(role);
     }
 
     public boolean isInvalidJwtToken(String authorization) {
+        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+            return false;
+        }
+        if (isJwtToken(authorization)) {
+            return !isJwtParsable(authorization);
+        }
         return classify(authorization) == AuthorizationKind.INVALID_JWT;
     }
 
@@ -49,6 +61,9 @@ public class WalletRequestAccessPolicy {
     }
 
     public boolean isValidReadJwt(String authorization) {
+        if (isJwtToken(authorization)) {
+            return isJwtParsable(authorization);
+        }
         return classify(authorization) == AuthorizationKind.VALID_READ_JWT;
     }
 
@@ -86,17 +101,36 @@ public class WalletRequestAccessPolicy {
         if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
             return false;
         }
+        Claims claims = parseClaims(authorization);
+        if (claims == null) {
+            return false;
+        }
+        String role = claims.get(ROLE_CLAIM, String.class);
+        return expectedRole.equalsIgnoreCase(role);
+    }
+
+    private boolean isJwtParsable(String authorization) {
+        return parseClaims(authorization) != null;
+    }
+
+    private boolean isJwtToken(String authorization) {
+        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+            return false;
+        }
+        String token = authorization.substring(BEARER_PREFIX.length());
+        return token.chars().filter(ch -> ch == '.').count() == 2;
+    }
+
+    private Claims parseClaims(String authorization) {
         String token = authorization.substring(BEARER_PREFIX.length());
         try {
-            Claims claims = Jwts.parser()
+            return Jwts.parser()
                     .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            String role = claims.get(ROLE_CLAIM, String.class);
-            return expectedRole.equalsIgnoreCase(role);
         } catch (RuntimeException ex) {
-            return false;
+            return null;
         }
     }
 
