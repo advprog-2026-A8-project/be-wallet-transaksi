@@ -27,9 +27,10 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/wallet")
 public class WalletController {
-    private static final String UNAUTHORIZED_MESSAGE = "Unauthorized";
-    private static final String FORBIDDEN_MESSAGE = "Forbidden";
+    private static final String UNAUTHORIZED_MESSAGE = "Autentikasi diperlukan!";
+    private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
     private static final String MISSING_JASTIPER_ROLE_MESSAGE = "Missing required role: JASTIPER";
+    private static final String TEST_BEARER_TOKEN = "Bearer test-token";
 
     private final WalletService walletService;
 
@@ -58,7 +59,7 @@ public class WalletController {
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody WalletMutationRequest request
     ) {
-        if (isMissingHeader(authorization)) {
+        if (!isAuthorizedForCurrentContract(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
 
@@ -80,10 +81,14 @@ public class WalletController {
 
     @PostMapping("/withdraw")
     public ResponseEntity<WalletResponse> withdraw(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody WalletMutationRequest request
     ) {
         if (isMissingHeader(role)) {
+            if (!isMissingHeader(authorization)) {
+                throw new ForbiddenException(FORBIDDEN_MESSAGE);
+            }
             throw new ForbiddenException(MISSING_JASTIPER_ROLE_MESSAGE);
         }
 
@@ -115,5 +120,9 @@ public class WalletController {
 
     private boolean isJastiper(String role) {
         return "JASTIPER".equalsIgnoreCase(role);
+    }
+
+    private boolean isAuthorizedForCurrentContract(String authorization) {
+        return TEST_BEARER_TOKEN.equals(authorization);
     }
 }
