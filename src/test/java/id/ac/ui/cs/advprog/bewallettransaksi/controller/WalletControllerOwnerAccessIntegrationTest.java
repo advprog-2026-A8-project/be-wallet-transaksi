@@ -151,6 +151,22 @@ class WalletControllerOwnerAccessIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Akses ditolak!"));
     }
 
+    @Test
+    void withdraw_SignedJwtOfDifferentUser_ShouldReturnForbidden() throws Exception {
+        when(walletService.withdraw(ownerUserId, BigDecimal.valueOf(10.00), "bank-account"))
+                .thenReturn(walletResponse);
+
+        String differentUserJwt = generateJwtToken(UUID.randomUUID().toString(), "JASTIPER");
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("Authorization", "Bearer " + differentUserJwt)
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"bank-account"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
     private String generateJwtToken(String subject, String role) {
         return Jwts.builder()
                 .setSubject(subject)
