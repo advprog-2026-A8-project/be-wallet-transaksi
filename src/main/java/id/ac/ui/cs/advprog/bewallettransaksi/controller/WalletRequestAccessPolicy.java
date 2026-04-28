@@ -37,6 +37,9 @@ public class WalletRequestAccessPolicy {
 
     public boolean isForbiddenTopUpRole(String authorization, String role) {
         if (isJwtToken(authorization)) {
+            if (isValidSignedJwtWithRole(authorization, JASTIPER_ROLE)) {
+                return true;
+            }
             return JASTIPER_ROLE.equalsIgnoreCase(role);
         }
         return classify(authorization) == AuthorizationKind.JASTIPER_TOPUP_TOKEN

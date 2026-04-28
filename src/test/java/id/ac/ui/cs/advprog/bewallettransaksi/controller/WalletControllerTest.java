@@ -257,6 +257,7 @@ class WalletControllerTest {
         request.setAmount(BigDecimal.valueOf(50.00));
 
         String jwt = generateJwtToken("jastiper-subject", "JASTIPER");
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer " + jwt, null)).thenReturn(true);
         mockMvc.perform(post("/wallet/topup")
                         .header(AUTH_HEADER, "Bearer " + jwt)
                         .contentType(MediaType.APPLICATION_JSON)
