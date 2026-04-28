@@ -251,6 +251,22 @@ class WalletControllerTest {
     }
 
     @Test
+    void topUp_ValidSignedJastiperJwtWithoutLegacyRoleHeader_ShouldReturnForbidden() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50.00));
+
+        String jwt = generateJwtToken("jastiper-subject", "JASTIPER");
+        mockMvc.perform(post("/wallet/topup")
+                        .header(AUTH_HEADER, "Bearer " + jwt)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
     void topUp_InvalidAmount() throws Exception {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
