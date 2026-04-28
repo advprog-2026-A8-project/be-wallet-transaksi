@@ -193,20 +193,21 @@ public class WalletController {
     }
 
     private void validateWithdrawAccess(String authorization, String role, UUID userId) {
-        if (walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
-            if (!hasPrivilegedWithdrawJwt(authorization)) {
-                throw new ForbiddenException(FORBIDDEN_MESSAGE);
-            }
+        if (isPrivilegedWithdrawJwt(authorization)) {
             validateOwnerAccess(authorization, userId);
             return;
         }
-        if (hasPrivilegedWithdrawJwt(authorization)) {
-            validateOwnerAccess(authorization, userId);
-            return;
+        if (walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
         if (isMissingOrNotJastiper(role)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
+    }
+
+    private boolean isPrivilegedWithdrawJwt(String authorization) {
+        return walletRequestAccessPolicy.isJwtBearerToken(authorization)
+                && hasPrivilegedWithdrawJwt(authorization);
     }
 
     private boolean isMissingOrNotJastiper(String role) {
