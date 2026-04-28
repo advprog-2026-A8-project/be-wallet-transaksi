@@ -186,6 +186,9 @@ public class WalletController {
 
     private void validateMutationOwnerAccess(String authorization, UUID userId) {
         requireAuthorization(authorization);
+        if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
         validateOwnerAccess(authorization, userId);
     }
 
