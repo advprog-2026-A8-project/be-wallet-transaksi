@@ -747,6 +747,18 @@ class WalletControllerTest {
                 .andExpect(jsonPath("$.message").value("Missing required role: JASTIPER"));
     }
 
+    @Test
+    void withdraw_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
+
+        mockMvc.perform(post("/wallet/withdraw")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
         WalletMutationRequest request = new WalletMutationRequest();
         request.setUserId(userId);
