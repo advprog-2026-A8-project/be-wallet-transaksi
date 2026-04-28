@@ -223,5 +223,8 @@ public class WalletController {
         if (!walletRequestAccessPolicy.isValidReadJwt(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
+        if (!walletRequestAccessPolicy.isAllowedWalletMutationRole(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
     }
 }
