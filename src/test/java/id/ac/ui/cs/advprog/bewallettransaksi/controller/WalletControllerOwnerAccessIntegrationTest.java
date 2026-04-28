@@ -125,6 +125,15 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void createWallet_LegacyReadToken_ShouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(post("/wallet")
+                        .header("Authorization", "Bearer valid-read-jwt")
+                        .param("userId", ownerUserId.toString()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"));
+    }
+
+    @Test
     void createWallet_UnsupportedRoleJwt_ShouldReturnForbidden() throws Exception {
         when(walletService.createWallet(ownerUserId)).thenReturn(walletResponse);
 
