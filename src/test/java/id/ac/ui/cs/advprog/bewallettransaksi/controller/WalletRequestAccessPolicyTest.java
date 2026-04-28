@@ -15,4 +15,11 @@ class WalletRequestAccessPolicyTest {
 
         assertFalse(policy.isValidReadJwt("Bearer valid-read-jwt"));
     }
+
+    @Test
+    void isValidJastiperJwt_ShouldRejectLegacySentinelToken() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+
+        assertFalse(policy.isValidJastiperJwt("Bearer valid-jastiper-jwt"));
+    }
 }
