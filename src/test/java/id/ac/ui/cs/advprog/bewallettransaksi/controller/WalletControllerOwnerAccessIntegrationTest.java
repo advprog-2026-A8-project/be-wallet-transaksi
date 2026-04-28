@@ -93,6 +93,17 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void getWallet_UnsupportedRoleJwt_ShouldReturnForbidden() throws Exception {
+        when(walletService.getWallet(ownerUserId)).thenReturn(walletResponse);
+
+        String unsupportedRoleJwt = generateJwtToken(ownerUserId.toString(), "CUSTOMER");
+        mockMvc.perform(get("/wallet/{userId}", ownerUserId)
+                        .header("Authorization", "Bearer " + unsupportedRoleJwt))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
+    @Test
     void createWallet_SignedJwtOfDifferentUser_ShouldReturnForbidden() throws Exception {
         when(walletService.createWallet(ownerUserId)).thenReturn(walletResponse);
 
@@ -282,6 +293,44 @@ class WalletControllerOwnerAccessIntegrationTest {
                                 """.formatted(ownerUserId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(ownerUserId.toString()));
+    }
+
+    @Test
+    void withdraw_UnsupportedRoleJwt_ShouldReturnForbidden() throws Exception {
+        when(walletService.withdraw(eq(ownerUserId), any(BigDecimal.class), eq("bank-account")))
+                .thenReturn(walletResponse);
+
+        String unsupportedRoleJwt = generateJwtToken(ownerUserId.toString(), "CUSTOMER");
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("Authorization", "Bearer " + unsupportedRoleJwt)
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"bank-account"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
+    @Test
+    void withdraw_AdminJwtOfDifferentUser_ShouldReturnSuccess() throws Exception {
+        UUID otherUserId = UUID.randomUUID();
+        WalletResponse otherWalletResponse = WalletResponse.builder()
+                .walletId(UUID.randomUUID())
+                .userId(otherUserId)
+                .balance(BigDecimal.valueOf(100.00))
+                .build();
+        when(walletService.withdraw(eq(otherUserId), any(BigDecimal.class), eq("bank-account")))
+                .thenReturn(otherWalletResponse);
+
+        String adminJwt = generateJwtToken(ownerUserId.toString(), "ADMIN");
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("Authorization", "Bearer " + adminJwt)
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"bank-account"}
+                                """.formatted(otherUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(otherUserId.toString()));
     }
 
     private String generateJwtToken(String subject, String role) {
