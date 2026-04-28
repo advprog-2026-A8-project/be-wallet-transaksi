@@ -193,6 +193,13 @@ public class WalletController {
     }
 
     private void validateWithdrawAccess(String authorization, String role, UUID userId) {
+        if (walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
+            if (!hasPrivilegedWithdrawJwt(authorization)) {
+                throw new ForbiddenException(FORBIDDEN_MESSAGE);
+            }
+            validateOwnerAccess(authorization, userId);
+            return;
+        }
         if (hasPrivilegedWithdrawJwt(authorization)) {
             validateOwnerAccess(authorization, userId);
             return;
