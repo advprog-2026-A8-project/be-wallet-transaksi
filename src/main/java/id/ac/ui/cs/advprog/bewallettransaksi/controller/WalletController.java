@@ -157,6 +157,10 @@ public class WalletController {
         return walletRequestAccessPolicy.isValidJastiperJwt(authorization);
     }
 
+    private boolean hasInvalidJwt(String authorization) {
+        return walletRequestAccessPolicy.isInvalidJwtToken(authorization);
+    }
+
     private void requireAuthorization(String authorization) {
         if (isMissingHeader(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
@@ -186,7 +190,7 @@ public class WalletController {
 
     private void validateMutationOwnerAccess(String authorization, UUID userId) {
         requireAuthorization(authorization);
-        if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
+        if (hasInvalidJwt(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
         validateOwnerAccess(authorization, userId);
@@ -194,7 +198,7 @@ public class WalletController {
 
     private void validateReadAccess(String authorization, UUID userId) {
         requireAuthorization(authorization);
-        if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
+        if (hasInvalidJwt(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
         validateOwnerAccess(authorization, userId);
