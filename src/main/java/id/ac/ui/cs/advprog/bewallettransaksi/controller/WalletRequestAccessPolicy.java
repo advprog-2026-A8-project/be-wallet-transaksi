@@ -113,11 +113,7 @@ public class WalletRequestAccessPolicy {
                 return false;
             }
             String role = claims.get(ROLE_CLAIM, String.class);
-            return role != null && (
-                    ADMIN_ROLE.equalsIgnoreCase(role)
-                            || TITIPER_ROLE.equalsIgnoreCase(role)
-                            || JASTIPER_ROLE.equalsIgnoreCase(role)
-            );
+            return isSupportedMutationRole(role);
         }
         return classify(authorization) == AuthorizationKind.VALID_READ_JWT;
     }
@@ -185,6 +181,13 @@ public class WalletRequestAccessPolicy {
     private boolean isAdmin(Claims claims) {
         String role = claims.get(ROLE_CLAIM, String.class);
         return role != null && ADMIN_ROLE.equalsIgnoreCase(role);
+    }
+
+    private boolean isSupportedMutationRole(String role) {
+        return role != null
+                && (ADMIN_ROLE.equalsIgnoreCase(role)
+                || TITIPER_ROLE.equalsIgnoreCase(role)
+                || JASTIPER_ROLE.equalsIgnoreCase(role));
     }
 
     private enum AuthorizationKind {
