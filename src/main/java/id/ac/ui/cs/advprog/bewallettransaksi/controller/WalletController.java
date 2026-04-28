@@ -61,7 +61,6 @@ public class WalletController {
             @RequestParam UUID userId
     ) {
         validateMutationOwnerAccess(authorization, userId);
-        validateMutationRoleAllowed(authorization);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(walletService.createWallet(userId));
     }
@@ -73,7 +72,6 @@ public class WalletController {
             @Valid @RequestBody TopUpRequest request
     ) {
         validateMutationOwnerAccess(authorization, request.getUserId());
-        validateMutationRoleAllowed(authorization);
         if (walletRequestAccessPolicy.isForbiddenTopUpRole(authorization, role)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
@@ -196,6 +194,7 @@ public class WalletController {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
         validateOwnerAccess(authorization, userId);
+        validateMutationRoleAllowed(authorization);
     }
 
     private void validateMutationRoleAllowed(String authorization) {
