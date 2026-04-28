@@ -52,9 +52,7 @@ public class WalletController {
             @PathVariable UUID userId,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        if (isMissingHeader(authorization)) {
-            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
-        }
+        requireAuthorization(authorization);
         if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
@@ -80,9 +78,7 @@ public class WalletController {
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody TopUpRequest request
     ) {
-        if (isMissingHeader(authorization)) {
-            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
-        }
+        requireAuthorization(authorization);
         if (walletRequestAccessPolicy.isForbiddenTopUpRole(authorization, role)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
@@ -114,9 +110,7 @@ public class WalletController {
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody WalletMutationRequest request
     ) {
-        if (isMissingHeader(authorization)) {
-            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
-        }
+        requireAuthorization(authorization);
         return ResponseEntity.ok(walletService.refund(
                 request.getUserId(),
                 request.getAmount(),
@@ -176,5 +170,11 @@ public class WalletController {
 
     private boolean isAuthorizedForCurrentContract(String authorization) {
         return acceptedBearerToken.equals(authorization);
+    }
+
+    private void requireAuthorization(String authorization) {
+        if (isMissingHeader(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
     }
 }
