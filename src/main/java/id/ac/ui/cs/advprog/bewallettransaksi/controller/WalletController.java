@@ -52,6 +52,9 @@ public class WalletController {
             @PathVariable UUID userId,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
+        if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
         if (walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
@@ -81,6 +84,9 @@ public class WalletController {
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody WalletMutationRequest request
     ) {
+        if (walletRequestAccessPolicy.isDisallowedRoleForPay(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
         if (!isAuthorizedForCurrentContract(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }

@@ -62,12 +62,18 @@ class WalletControllerTest {
 
         when(walletRequestAccessPolicy.isOwnerMismatchToken(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isInvalidJwtToken(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isDisallowedRoleForPay(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isOwnerMismatchToken(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole(org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull())).thenReturn(false);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), org.mockito.ArgumentMatchers.isNull())).thenReturn(false);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole(org.mockito.ArgumentMatchers.isNull(), anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isInvalidJwtToken(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isDisallowedRoleForPay(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isOwnerMismatchToken("Bearer valid-non-admin-other-user")).thenReturn(true);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer valid-jastiper", "JASTIPER")).thenReturn(true);
+        when(walletRequestAccessPolicy.isInvalidJwtToken("Bearer invalid.jwt.token")).thenReturn(true);
+        when(walletRequestAccessPolicy.isDisallowedRoleForPay("Bearer valid-jastiper-jwt")).thenReturn(true);
     }
 
     @Test
