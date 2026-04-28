@@ -45,8 +45,7 @@ public class WalletRequestAccessPolicy {
         if (claims == null) {
             return false;
         }
-        String role = claims.get(ROLE_CLAIM, String.class);
-        if (role != null && ADMIN_ROLE.equalsIgnoreCase(role)) {
+        if (isAdmin(claims)) {
             return false;
         }
         String subject = claims.getSubject();
@@ -165,6 +164,11 @@ public class WalletRequestAccessPolicy {
 
     private boolean hasBearerPrefix(String authorization) {
         return authorization != null && authorization.startsWith(BEARER_PREFIX);
+    }
+
+    private boolean isAdmin(Claims claims) {
+        String role = claims.get(ROLE_CLAIM, String.class);
+        return role != null && ADMIN_ROLE.equalsIgnoreCase(role);
     }
 
     private enum AuthorizationKind {
