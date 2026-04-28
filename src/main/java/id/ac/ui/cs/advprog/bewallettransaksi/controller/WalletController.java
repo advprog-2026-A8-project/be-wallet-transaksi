@@ -147,6 +147,12 @@ public class WalletController {
             @RequestParam(required = false) TransactionStatus status
     ) {
         requireAuthorization(authorization);
+        if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, userId)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
         if (status != null) {
             return ResponseEntity.ok(walletService.getTransactionHistoryByStatus(userId, status));
         }
