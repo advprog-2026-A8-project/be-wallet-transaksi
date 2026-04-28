@@ -168,6 +168,9 @@ public class WalletController {
     }
 
     private void validateWithdrawAccess(String authorization, String role, UUID userId) {
+        if (walletRequestAccessPolicy.isValidAdminJwt(authorization)) {
+            return;
+        }
         if (hasValidJastiperJwt(authorization)) {
             validateOwnerAccess(authorization, userId);
             return;

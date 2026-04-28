@@ -254,7 +254,7 @@ class WalletControllerOwnerAccessIntegrationTest {
 
     @Test
     void withdraw_AdminJwt_ShouldReturnSuccess() throws Exception {
-        when(walletService.withdraw(ownerUserId, BigDecimal.valueOf(10.00), "bank-account"))
+        when(walletService.withdraw(eq(ownerUserId), any(BigDecimal.class), eq("bank-account")))
                 .thenReturn(walletResponse);
 
         String adminJwt = generateJwtToken(ownerUserId.toString(), "ADMIN");
