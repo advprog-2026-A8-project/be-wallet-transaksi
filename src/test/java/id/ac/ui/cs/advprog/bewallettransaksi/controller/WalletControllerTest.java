@@ -353,7 +353,21 @@ class WalletControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Unauthorized"));
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void pay_InvalidBearerToken_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header("Authorization", "Bearer invalid.token.value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test
@@ -488,11 +502,12 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
 
         mockMvc.perform(post("/wallet/withdraw")
-                        .header("X-Role", "TITIPERS")
+                        .header("Authorization", "Bearer valid-but-not-allowed")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("Forbidden"));
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test
