@@ -185,6 +185,22 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void refund_UnsupportedRoleJwt_ShouldReturnForbidden() throws Exception {
+        when(walletService.refund(ownerUserId, BigDecimal.valueOf(10.00), "payment"))
+                .thenReturn(walletResponse);
+
+        String unsupportedRoleJwt = generateJwtToken(ownerUserId.toString(), "CUSTOMER");
+        mockMvc.perform(post("/wallet/refund")
+                        .header("Authorization", "Bearer " + unsupportedRoleJwt)
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"payment"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
+    @Test
     void topUp_UnsupportedRoleJwt_ShouldReturnForbidden() throws Exception {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(ownerUserId);
