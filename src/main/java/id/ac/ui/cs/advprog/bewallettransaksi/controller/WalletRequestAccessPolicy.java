@@ -92,10 +92,7 @@ public class WalletRequestAccessPolicy {
     }
 
     public boolean isValidJastiperJwt(String authorization) {
-        if (isValidSignedJwtWithRole(authorization, JASTIPER_ROLE)) {
-            return true;
-        }
-        return classify(authorization) == AuthorizationKind.DISALLOWED_PAY_ROLE;
+        return isValidSignedJwtWithRole(authorization, JASTIPER_ROLE);
     }
 
     public boolean isValidTitiperJwt(String authorization) {
