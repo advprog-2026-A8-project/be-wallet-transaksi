@@ -214,6 +214,12 @@ public class WalletController {
         }
     }
 
+    private void validateReadRoleAllowed(String authorization) {
+        if (!walletRequestAccessPolicy.isAllowedWalletMutationRole(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+    }
+
     private void validateReadAccess(String authorization, UUID userId) {
         requireAuthorization(authorization);
         if (hasInvalidJwt(authorization)) {
@@ -223,8 +229,6 @@ public class WalletController {
         if (!walletRequestAccessPolicy.isValidReadJwt(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
-        if (!walletRequestAccessPolicy.isAllowedWalletMutationRole(authorization)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
+        validateReadRoleAllowed(authorization);
     }
 }
