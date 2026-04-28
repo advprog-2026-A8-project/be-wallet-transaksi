@@ -51,20 +51,7 @@ public class WalletController {
             @PathVariable UUID userId,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        requireAuthorization(authorization);
-        if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
-            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
-        }
-        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, userId)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
-        if (!walletRequestAccessPolicy.isValidReadJwt(authorization)
-                && !walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
-            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
-        }
-        if (walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
+        validateReadAccess(authorization, userId);
         return ResponseEntity.ok(walletService.getWallet(userId));
     }
 
@@ -146,13 +133,7 @@ public class WalletController {
             @PathVariable UUID userId,
             @RequestParam(required = false) TransactionStatus status
     ) {
-        requireAuthorization(authorization);
-        if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
-            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
-        }
-        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, userId)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
+        validateReadAccess(authorization, userId);
         if (status != null) {
             return ResponseEntity.ok(walletService.getTransactionHistoryByStatus(userId, status));
         }
@@ -188,5 +169,19 @@ public class WalletController {
 
     private boolean isMissingOrNotJastiper(String role) {
         return isMissingHeader(role) || !isJastiper(role);
+    }
+
+    private void validateReadAccess(String authorization, UUID userId) {
+        requireAuthorization(authorization);
+        if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, userId)
+                || walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+        if (!walletRequestAccessPolicy.isValidReadJwt(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
     }
 }
