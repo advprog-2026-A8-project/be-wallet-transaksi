@@ -103,6 +103,15 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void createWallet_InvalidJwt_ShouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(post("/wallet")
+                        .header("Authorization", "Bearer invalid.jwt.token")
+                        .param("userId", ownerUserId.toString()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"));
+    }
+
+    @Test
     void getTransactionHistory_SignedJwtOfDifferentUser_ShouldReturnForbidden() throws Exception {
         when(walletService.getTransactionHistory(ownerUserId)).thenReturn(List.of(transactionResponse));
 
