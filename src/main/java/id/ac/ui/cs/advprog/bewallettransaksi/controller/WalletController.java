@@ -75,6 +75,9 @@ public class WalletController {
             @Valid @RequestBody TopUpRequest request
     ) {
         validateMutationOwnerAccess(authorization, request.getUserId());
+        if (!walletRequestAccessPolicy.isAllowedWalletMutationRole(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
         if (walletRequestAccessPolicy.isForbiddenTopUpRole(authorization, role)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
