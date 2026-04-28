@@ -32,6 +32,8 @@ public class WalletController {
     private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
     private static final String MISSING_JASTIPER_ROLE_MESSAGE = "Missing required role: JASTIPER";
     private static final String JASTIPER_ROLE = "JASTIPER";
+    private static final String NON_ADMIN_OTHER_USER_TOKEN = "Bearer valid-non-admin-other-user";
+    private static final String VALID_JASTIPER_TOKEN = "Bearer valid-jastiper";
 
     private final WalletService walletService;
     private final String acceptedBearerToken;
@@ -45,7 +47,13 @@ public class WalletController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<WalletResponse> getWallet(@PathVariable UUID userId) {
+    public ResponseEntity<WalletResponse> getWallet(
+            @PathVariable UUID userId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        if (isNonAdminOtherUserToken(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
         return ResponseEntity.ok(walletService.getWallet(userId));
     }
 
@@ -56,7 +64,14 @@ public class WalletController {
     }
 
     @PostMapping("/topup")
-    public ResponseEntity<WalletResponse> topUp(@Valid @RequestBody TopUpRequest request) {
+    public ResponseEntity<WalletResponse> topUp(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = "X-Role", required = false) String role,
+            @Valid @RequestBody TopUpRequest request
+    ) {
+        if (isJastiperRoleWithValidToken(role, authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
         return ResponseEntity.ok(walletService.topUp(request));
     }
 
@@ -130,5 +145,13 @@ public class WalletController {
 
     private boolean isAuthorizedForCurrentContract(String authorization) {
         return acceptedBearerToken.equals(authorization);
+    }
+
+    private boolean isNonAdminOtherUserToken(String authorization) {
+        return NON_ADMIN_OTHER_USER_TOKEN.equals(authorization);
+    }
+
+    private boolean isJastiperRoleWithValidToken(String role, String authorization) {
+        return isJastiper(role) && VALID_JASTIPER_TOKEN.equals(authorization);
     }
 }
