@@ -5,7 +5,6 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,16 +33,13 @@ public class WalletController {
 
     private final WalletService walletService;
     private final WalletRequestAccessPolicy walletRequestAccessPolicy;
-    private final String acceptedBearerToken;
 
     public WalletController(
             WalletService walletService,
-            WalletRequestAccessPolicy walletRequestAccessPolicy,
-            @Value("${wallet.auth.accepted-bearer-token:Bearer test-token}") String acceptedBearerToken
+            WalletRequestAccessPolicy walletRequestAccessPolicy
     ) {
         this.walletService = walletService;
         this.walletRequestAccessPolicy = walletRequestAccessPolicy;
-        this.acceptedBearerToken = acceptedBearerToken;
     }
 
     @GetMapping("/{userId}")
@@ -142,10 +138,6 @@ public class WalletController {
         return JASTIPER_ROLE.equalsIgnoreCase(role);
     }
 
-    private boolean isAuthorizedForCurrentContract(String authorization) {
-        return acceptedBearerToken.equals(authorization);
-    }
-
     private boolean hasValidJastiperJwt(String authorization) {
         return walletRequestAccessPolicy.isValidJastiperJwt(authorization);
     }
@@ -166,8 +158,7 @@ public class WalletController {
     }
 
     private boolean isAuthorizedPayPrincipal(String authorization) {
-        return walletRequestAccessPolicy.isAllowedPayRole(authorization)
-                || isAuthorizedForCurrentContract(authorization);
+        return walletRequestAccessPolicy.isAllowedPayRole(authorization);
     }
 
     private void validatePayAuthorization(String authorization) {
