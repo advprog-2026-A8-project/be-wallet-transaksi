@@ -43,6 +43,8 @@ class WalletControllerOwnerAccessIntegrationTest {
 
     @MockitoBean
     private WalletService walletService;
+    @MockitoBean
+    private UsernameToUserIdResolver usernameToUserIdResolver;
 
     private UUID ownerUserId;
     private WalletResponse walletResponse;
@@ -69,6 +71,8 @@ class WalletControllerOwnerAccessIntegrationTest {
         mutationRequest.setUserId(ownerUserId);
         mutationRequest.setAmount(BigDecimal.valueOf(10.00));
         mutationRequest.setDescription("payment");
+        when(usernameToUserIdResolver.resolve(any())).thenReturn(java.util.Optional.empty());
+        when(usernameToUserIdResolver.resolve("owner_username")).thenReturn(java.util.Optional.of(ownerUserId));
     }
 
     @Test

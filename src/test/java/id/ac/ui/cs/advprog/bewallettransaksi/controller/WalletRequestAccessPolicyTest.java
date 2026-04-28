@@ -19,56 +19,56 @@ class WalletRequestAccessPolicyTest {
 
     @Test
     void isValidReadJwt_ShouldRejectLegacySentinelToken() {
-        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> java.util.Optional.empty());
 
         assertFalse(policy.isValidReadJwt("Bearer valid-read-jwt"));
     }
 
     @Test
     void isValidJastiperJwt_ShouldRejectLegacySentinelToken() {
-        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> java.util.Optional.empty());
 
         assertFalse(policy.isValidJastiperJwt("Bearer valid-jastiper-jwt"));
     }
 
     @Test
     void isOwnerMismatchToken_ShouldRejectLegacySentinelToken() {
-        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> java.util.Optional.empty());
 
         assertFalse(policy.isOwnerMismatchToken("Bearer valid-non-admin-other-user"));
     }
 
     @Test
     void isInvalidJwtToken_ShouldBeTrueForInvalidJwtStructure() {
-        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> java.util.Optional.empty());
 
         assertTrue(policy.isInvalidJwtToken("Bearer invalid.jwt.token"));
     }
 
     @Test
     void isInvalidJwtToken_ShouldReturnTrueForMalformedJwtStructure() {
-        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> java.util.Optional.empty());
 
         assertTrue(policy.isInvalidJwtToken("Bearer aaa.bbb.ccc"));
     }
 
     @Test
     void isInvalidJwtToken_ShouldReturnFalseForNonJwtBearerToken() {
-        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> java.util.Optional.empty());
 
         assertFalse(policy.isInvalidJwtToken("Bearer invalid-jwt-token"));
     }
 
     @Test
     void isForbiddenTopUpRole_ShouldRejectLegacyJastiperSentinel() {
-        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> java.util.Optional.empty());
 
         assertFalse(policy.isForbiddenTopUpRole("Bearer valid-jastiper"));
     }
 
     @Test
     void isOwnerMismatchJwt_ShouldReturnTrueForNonAdminWithInvalidUuidSubject() {
-        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> java.util.Optional.empty());
         String jwt = generateJwtToken("not-a-uuid", "TITIPER");
 
         assertTrue(policy.isOwnerMismatchJwt("Bearer " + jwt, UUID.randomUUID()));
@@ -76,7 +76,7 @@ class WalletRequestAccessPolicyTest {
 
     @Test
     void isOwnerMismatchJwt_ShouldReturnFalseForAdminWithInvalidUuidSubject() {
-        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> java.util.Optional.empty());
         String jwt = generateJwtToken("not-a-uuid", "ADMIN");
 
         assertFalse(policy.isOwnerMismatchJwt("Bearer " + jwt, UUID.randomUUID()));
@@ -92,3 +92,4 @@ class WalletRequestAccessPolicyTest {
                 .compact();
     }
 }
+

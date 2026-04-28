@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -18,11 +19,14 @@ public class WalletRequestAccessPolicy {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final String jwtSecret;
+    private final UsernameToUserIdResolver usernameToUserIdResolver;
 
     public WalletRequestAccessPolicy(
-            @Value("${jwt.secret:DefaultSecretKeyUntukDevelopmentLokalYangSangatPanjangSekali123!@#}") String jwtSecret
+            @Value("${jwt.secret:DefaultSecretKeyUntukDevelopmentLokalYangSangatPanjangSekali123!@#}") String jwtSecret,
+            UsernameToUserIdResolver usernameToUserIdResolver
     ) {
         this.jwtSecret = jwtSecret;
+        this.usernameToUserIdResolver = usernameToUserIdResolver;
     }
 
     public boolean isOwnerMismatchToken(String authorization) {
@@ -44,12 +48,8 @@ public class WalletRequestAccessPolicy {
         if (subject == null || subject.isBlank()) {
             return true;
         }
-        try {
-            UUID subjectUserId = UUID.fromString(subject);
-            return !subjectUserId.equals(targetUserId);
-        } catch (IllegalArgumentException ex) {
-            return true;
-        }
+        UUID subjectUserId = resolveSubjectUserId(subject).orElse(null);
+        return subjectUserId == null || !subjectUserId.equals(targetUserId);
     }
 
     public boolean isForbiddenTopUpRole(String authorization) {
@@ -157,6 +157,14 @@ public class WalletRequestAccessPolicy {
                 && (ADMIN_ROLE.equalsIgnoreCase(role)
                 || TITIPER_ROLE.equalsIgnoreCase(role)
                 || JASTIPER_ROLE.equalsIgnoreCase(role));
+    }
+
+    private Optional<UUID> resolveSubjectUserId(String subject) {
+        try {
+            return Optional.of(UUID.fromString(subject));
+        } catch (IllegalArgumentException ex) {
+            return usernameToUserIdResolver.resolve(subject);
+        }
     }
 
 }
