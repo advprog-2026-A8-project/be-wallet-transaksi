@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,12 +31,17 @@ public class WalletController {
     private static final String UNAUTHORIZED_MESSAGE = "Autentikasi diperlukan!";
     private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
     private static final String MISSING_JASTIPER_ROLE_MESSAGE = "Missing required role: JASTIPER";
-    private static final String TEST_BEARER_TOKEN = "Bearer test-token";
+    private static final String JASTIPER_ROLE = "JASTIPER";
 
     private final WalletService walletService;
+    private final String acceptedBearerToken;
 
-    public WalletController(WalletService walletService) {
+    public WalletController(
+            WalletService walletService,
+            @Value("${wallet.auth.accepted-bearer-token:Bearer test-token}") String acceptedBearerToken
+    ) {
         this.walletService = walletService;
+        this.acceptedBearerToken = acceptedBearerToken;
     }
 
     @GetMapping("/{userId}")
@@ -119,10 +125,10 @@ public class WalletController {
     }
 
     private boolean isJastiper(String role) {
-        return "JASTIPER".equalsIgnoreCase(role);
+        return JASTIPER_ROLE.equalsIgnoreCase(role);
     }
 
     private boolean isAuthorizedForCurrentContract(String authorization) {
-        return TEST_BEARER_TOKEN.equals(authorization);
+        return acceptedBearerToken.equals(authorization);
     }
 }
