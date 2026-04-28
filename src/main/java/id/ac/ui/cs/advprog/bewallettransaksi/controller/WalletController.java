@@ -129,20 +129,7 @@ public class WalletController {
             @Valid @RequestBody WalletMutationRequest request
     ) {
         requireAuthorization(authorization);
-        if (walletRequestAccessPolicy.isValidJastiperJwt(authorization)) {
-            return ResponseEntity.ok(walletService.withdraw(
-                    request.getUserId(),
-                    request.getAmount(),
-                    request.getDescription()
-            ));
-        }
-        if (isMissingHeader(role)) {
-            throw new ForbiddenException(MISSING_JASTIPER_ROLE_MESSAGE);
-        }
-
-        if (!isJastiper(role)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
+        validateWithdrawAccess(authorization, role);
 
         return ResponseEntity.ok(walletService.withdraw(
                 request.getUserId(),
@@ -179,6 +166,18 @@ public class WalletController {
     private void requireAuthorization(String authorization) {
         if (isMissingHeader(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+    }
+
+    private void validateWithdrawAccess(String authorization, String role) {
+        if (walletRequestAccessPolicy.isValidJastiperJwt(authorization)) {
+            return;
+        }
+        if (isMissingHeader(role)) {
+            throw new ForbiddenException(MISSING_JASTIPER_ROLE_MESSAGE);
+        }
+        if (!isJastiper(role)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
     }
 }
