@@ -89,10 +89,7 @@ public class WalletRequestAccessPolicy {
     }
 
     public boolean isValidReadJwt(String authorization) {
-        if (isJwtToken(authorization)) {
-            return isJwtParsable(authorization);
-        }
-        return classify(authorization) == AuthorizationKind.VALID_READ_JWT;
+        return isJwtToken(authorization) && isJwtParsable(authorization);
     }
 
     public boolean isValidJastiperJwt(String authorization) {
