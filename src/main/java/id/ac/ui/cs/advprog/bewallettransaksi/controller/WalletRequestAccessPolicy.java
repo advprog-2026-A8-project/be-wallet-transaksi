@@ -19,7 +19,6 @@ public class WalletRequestAccessPolicy {
     private static final String VALID_JASTIPER_TOKEN = "Bearer valid-jastiper";
     private static final String INVALID_JWT_TOKEN = "Bearer invalid.jwt.token";
     private static final String VALID_JASTIPER_JWT = "Bearer valid-jastiper-jwt";
-    private static final String VALID_READ_JWT = "Bearer valid-read-jwt";
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final String jwtSecret;
@@ -140,9 +139,6 @@ public class WalletRequestAccessPolicy {
         if (VALID_JASTIPER_JWT.equals(authorization)) {
             return AuthorizationKind.DISALLOWED_PAY_ROLE;
         }
-        if (VALID_READ_JWT.equals(authorization)) {
-            return AuthorizationKind.VALID_READ_JWT;
-        }
         return AuthorizationKind.OTHER;
     }
 
@@ -204,7 +200,6 @@ public class WalletRequestAccessPolicy {
         OWNER_MISMATCH_NON_ADMIN,
         JASTIPER_TOPUP_TOKEN,
         DISALLOWED_PAY_ROLE,
-        VALID_READ_JWT,
         OTHER
     }
 }
