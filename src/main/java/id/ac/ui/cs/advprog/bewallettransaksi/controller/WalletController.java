@@ -121,7 +121,7 @@ public class WalletController {
             @Valid @RequestBody WalletMutationRequest request
     ) {
         requireAuthorization(authorization);
-        validateWithdrawAccess(authorization, role);
+        validateWithdrawAccess(authorization, role, request.getUserId());
 
         return ResponseEntity.ok(walletService.withdraw(
                 request.getUserId(),
@@ -161,8 +161,9 @@ public class WalletController {
         }
     }
 
-    private void validateWithdrawAccess(String authorization, String role) {
+    private void validateWithdrawAccess(String authorization, String role, UUID userId) {
         if (walletRequestAccessPolicy.isValidJastiperJwt(authorization)) {
+            validateOwnerAccess(authorization, userId);
             return;
         }
         if (isMissingOrNotJastiper(role)) {
