@@ -7,11 +7,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 @Component
 public class WalletRequestAccessPolicy {
     private static final String JASTIPER_ROLE = "JASTIPER";
     private static final String TITIPER_ROLE = "TITIPER";
+    private static final String ADMIN_ROLE = "ADMIN";
     private static final String ROLE_CLAIM = "role";
     private static final String NON_ADMIN_OTHER_USER_TOKEN = "Bearer valid-non-admin-other-user";
     private static final String VALID_JASTIPER_TOKEN = "Bearer valid-jastiper";
@@ -33,6 +35,30 @@ public class WalletRequestAccessPolicy {
             return false;
         }
         return classify(authorization) == AuthorizationKind.OWNER_MISMATCH_NON_ADMIN;
+    }
+
+    public boolean isOwnerMismatchJwt(String authorization, UUID targetUserId) {
+        if (!isJwtToken(authorization) || targetUserId == null) {
+            return false;
+        }
+        Claims claims = parseClaims(authorization);
+        if (claims == null) {
+            return false;
+        }
+        String role = claims.get(ROLE_CLAIM, String.class);
+        if (role != null && ADMIN_ROLE.equalsIgnoreCase(role)) {
+            return false;
+        }
+        String subject = claims.getSubject();
+        if (subject == null || subject.isBlank()) {
+            return true;
+        }
+        try {
+            UUID subjectUserId = UUID.fromString(subject);
+            return !subjectUserId.equals(targetUserId);
+        } catch (IllegalArgumentException ex) {
+            return true;
+        }
     }
 
     public boolean isForbiddenTopUpRole(String authorization, String role) {

@@ -55,6 +55,9 @@ public class WalletController {
         if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
+        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, userId)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
         if (!walletRequestAccessPolicy.isValidReadJwt(authorization)
                 && !walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
