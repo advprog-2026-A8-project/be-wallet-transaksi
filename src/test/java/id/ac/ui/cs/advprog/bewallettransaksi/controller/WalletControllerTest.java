@@ -98,7 +98,8 @@ class WalletControllerTest {
     void getWallet_Success() throws Exception {
         when(walletService.getWallet(userId)).thenReturn(walletResponse);
 
-        mockMvc.perform(get("/wallet/{userId}", userId))
+        mockMvc.perform(get("/wallet/{userId}", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.walletId").value(walletId.toString()))
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
@@ -141,7 +142,8 @@ class WalletControllerTest {
     void getWallet_NotFound() throws Exception {
         when(walletService.getWallet(userId)).thenThrow(new WalletNotFoundException(userId));
 
-        mockMvc.perform(get("/wallet/{userId}", userId))
+        mockMvc.perform(get("/wallet/{userId}", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE))
                 .andExpect(status().isNotFound());
     }
 
@@ -179,6 +181,7 @@ class WalletControllerTest {
                 .thenThrow(new DataIntegrityViolationException("duplicate userId"));
 
         mockMvc.perform(post("/wallet")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("userId", userId.toString()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").exists());
@@ -274,6 +277,7 @@ class WalletControllerTest {
         request.setAmount(BigDecimal.valueOf(0));
 
         mockMvc.perform(post("/wallet/topup")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -285,6 +289,7 @@ class WalletControllerTest {
         TopUpRequest request = buildTopUpRequest(null, BigDecimal.valueOf(50.00));
 
         mockMvc.perform(post("/wallet/topup")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -296,6 +301,7 @@ class WalletControllerTest {
         TopUpRequest request = buildTopUpRequest(null, BigDecimal.valueOf(50.00));
 
         mockMvc.perform(post("/wallet/topup")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -307,6 +313,7 @@ class WalletControllerTest {
         TopUpRequest request = buildTopUpRequest(userId, null);
 
         mockMvc.perform(post("/wallet/topup")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -368,6 +375,7 @@ class WalletControllerTest {
                 .thenReturn(List.of(failedWithdraw));
 
         mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("status", "FAILED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("FAILED"))
@@ -390,6 +398,7 @@ class WalletControllerTest {
                 .thenReturn(List.of(failedWithdraw));
 
         mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("status", "failed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("FAILED"));
@@ -399,13 +408,15 @@ class WalletControllerTest {
     void getTransactionHistory_WalletNotFound() throws Exception {
         when(walletService.getTransactionHistory(userId)).thenThrow(new WalletNotFoundException(userId));
 
-        mockMvc.perform(get("/wallet/{userId}/transactions", userId))
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void getTransactionHistory_InvalidStatus_BadRequest() throws Exception {
         mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("status", "INVALID_STATUS"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").exists());
@@ -426,6 +437,7 @@ class WalletControllerTest {
         when(walletService.getTransactionHistory(userId)).thenReturn(List.of(latest));
 
         mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("status", ""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].description").value("Latest payment"));
@@ -446,6 +458,7 @@ class WalletControllerTest {
         when(walletService.getTransactionHistory(userId)).thenReturn(List.of(latest));
 
         mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("status", "   "))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].description").value("Latest payment"));
@@ -581,6 +594,7 @@ class WalletControllerTest {
         request.setDescription("Order refund");
 
         mockMvc.perform(post("/wallet/refund")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -600,6 +614,7 @@ class WalletControllerTest {
         );
 
         mockMvc.perform(post("/wallet/withdraw")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .header("X-Role", "JASTIPER")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -654,6 +669,7 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("   ", BigDecimal.valueOf(30.00));
 
         mockMvc.perform(post("/wallet/withdraw")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .header("X-Role", "JASTIPER")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -706,6 +722,7 @@ class WalletControllerTest {
                 .thenThrow(new IllegalStateException("Insufficient balance"));
 
         mockMvc.perform(post("/wallet/withdraw")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .header("X-Role", "JASTIPER")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -717,6 +734,7 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
 
         mockMvc.perform(post("/wallet/withdraw")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .header("X-Role", "TITIPERS")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
