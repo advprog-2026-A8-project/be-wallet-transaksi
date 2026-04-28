@@ -214,16 +214,18 @@ public class WalletController {
         validateMutationRoleAllowed(authorization);
     }
 
-    private void validateMutationRoleAllowed(String authorization) {
+    private void validateSupportedRole(String authorization) {
         if (!walletRequestAccessPolicy.isAllowedWalletMutationRole(authorization)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
     }
 
+    private void validateMutationRoleAllowed(String authorization) {
+        validateSupportedRole(authorization);
+    }
+
     private void validateReadRoleAllowed(String authorization) {
-        if (!walletRequestAccessPolicy.isAllowedWalletMutationRole(authorization)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
+        validateSupportedRole(authorization);
     }
 
     private void validateReadAccess(String authorization, UUID userId) {
