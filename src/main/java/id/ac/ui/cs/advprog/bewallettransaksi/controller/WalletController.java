@@ -83,24 +83,13 @@ public class WalletController {
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody WalletMutationRequest request
     ) {
-        if (walletRequestAccessPolicy.isDisallowedRoleForPay(authorization)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
-        if (isAuthorizedPayPrincipal(authorization)) {
-            validateOwnerAccess(authorization, request.getUserId());
-            return ResponseEntity.ok(walletService.pay(
-                    request.getUserId(),
-                    request.getAmount(),
-                    request.getDescription()
-            ));
-        }
-        if (!walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
-            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
-        }
-        if (walletRequestAccessPolicy.isValidReadJwt(authorization)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
-        throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        validatePayAuthorization(authorization);
+        validateOwnerAccess(authorization, request.getUserId());
+        return ResponseEntity.ok(walletService.pay(
+                request.getUserId(),
+                request.getAmount(),
+                request.getDescription()
+        ));
     }
 
     @PostMapping("/refund")
@@ -179,6 +168,22 @@ public class WalletController {
     private boolean isAuthorizedPayPrincipal(String authorization) {
         return walletRequestAccessPolicy.isAllowedPayRole(authorization)
                 || isAuthorizedForCurrentContract(authorization);
+    }
+
+    private void validatePayAuthorization(String authorization) {
+        if (walletRequestAccessPolicy.isDisallowedRoleForPay(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+        if (isAuthorizedPayPrincipal(authorization)) {
+            return;
+        }
+        if (!walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+        if (walletRequestAccessPolicy.isValidReadJwt(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+        throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
     }
 
     private void requireAuthorization(String authorization) {
