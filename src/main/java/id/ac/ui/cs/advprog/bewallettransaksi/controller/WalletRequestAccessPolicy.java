@@ -69,10 +69,7 @@ public class WalletRequestAccessPolicy {
         if (!hasBearerPrefix(authorization)) {
             return false;
         }
-        if (isJwtToken(authorization)) {
-            return !isJwtParsable(authorization);
-        }
-        return classify(authorization) == AuthorizationKind.INVALID_JWT;
+        return isJwtToken(authorization) && !isJwtParsable(authorization);
     }
 
     public boolean isDisallowedRoleForPay(String authorization) {

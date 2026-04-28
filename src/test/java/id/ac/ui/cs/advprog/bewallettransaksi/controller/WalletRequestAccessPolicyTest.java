@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WalletRequestAccessPolicyTest {
 
@@ -31,9 +32,23 @@ class WalletRequestAccessPolicyTest {
     }
 
     @Test
-    void isInvalidJwtToken_ShouldRejectLegacySentinelToken() {
+    void isInvalidJwtToken_ShouldBeTrueForInvalidJwtStructure() {
         WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
 
-        assertFalse(policy.isInvalidJwtToken("Bearer invalid.jwt.token"));
+        assertTrue(policy.isInvalidJwtToken("Bearer invalid.jwt.token"));
+    }
+
+    @Test
+    void isInvalidJwtToken_ShouldReturnTrueForMalformedJwtStructure() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+
+        assertTrue(policy.isInvalidJwtToken("Bearer aaa.bbb.ccc"));
+    }
+
+    @Test
+    void isInvalidJwtToken_ShouldReturnFalseForNonJwtBearerToken() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+
+        assertFalse(policy.isInvalidJwtToken("Bearer invalid-jwt-token"));
     }
 }
