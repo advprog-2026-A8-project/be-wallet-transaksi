@@ -743,8 +743,9 @@ class WalletControllerTest {
         mockMvc.perform(post("/wallet/withdraw")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("Missing required role: JASTIPER"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test

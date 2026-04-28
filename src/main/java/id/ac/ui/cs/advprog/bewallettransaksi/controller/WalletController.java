@@ -30,7 +30,6 @@ import jakarta.validation.Valid;
 public class WalletController {
     private static final String UNAUTHORIZED_MESSAGE = "Autentikasi diperlukan!";
     private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
-    private static final String MISSING_JASTIPER_ROLE_MESSAGE = "Missing required role: JASTIPER";
     private static final String JASTIPER_ROLE = "JASTIPER";
 
     private final WalletService walletService;
@@ -174,7 +173,7 @@ public class WalletController {
             return;
         }
         if (isMissingHeader(role)) {
-            throw new ForbiddenException(MISSING_JASTIPER_ROLE_MESSAGE);
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
         if (!isJastiper(role)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
