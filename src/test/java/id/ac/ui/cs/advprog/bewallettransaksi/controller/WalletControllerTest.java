@@ -208,6 +208,20 @@ class WalletControllerTest {
     }
 
     @Test
+    void topUp_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/topup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
     void topUp_JastiperRole_ShouldReturnForbidden() throws Exception {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
@@ -505,6 +519,18 @@ class WalletControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(125.00));
+    }
+
+    @Test
+    void refund_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order refund", BigDecimal.valueOf(25.00));
+
+        mockMvc.perform(post("/wallet/refund")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test
