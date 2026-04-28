@@ -80,6 +80,7 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isValidJastiperJwt(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isAllowedPayRole(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isAllowedWalletMutationRole(anyString())).thenReturn(true);
+        when(walletRequestAccessPolicy.isJwtBearerToken(anyString())).thenReturn(true);
         when(walletRequestAccessPolicy.isOwnerMismatchToken(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole(isNull(), isNull())).thenReturn(false);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), isNull())).thenReturn(false);
@@ -90,6 +91,7 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isValidJastiperJwt(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isAllowedPayRole(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isAllowedWalletMutationRole(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isJwtBearerToken(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isOwnerMismatchToken("Bearer valid-non-admin-other-user")).thenReturn(true);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer valid-jastiper", "JASTIPER")).thenReturn(true);
         when(walletRequestAccessPolicy.isInvalidJwtToken("Bearer invalid.jwt.token")).thenReturn(true);
@@ -100,6 +102,8 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isAllowedPayRole("Bearer valid-jastiper-jwt")).thenReturn(false);
         when(walletRequestAccessPolicy.isAllowedPayRole("Bearer test-token")).thenReturn(false);
         when(walletRequestAccessPolicy.isAllowedWalletMutationRole("Bearer invalid.jwt.token")).thenReturn(false);
+        when(walletRequestAccessPolicy.isJwtBearerToken("Bearer test-token")).thenReturn(true);
+        when(walletRequestAccessPolicy.isJwtBearerToken("Bearer invalid.jwt.token")).thenReturn(true);
     }
 
     @Test

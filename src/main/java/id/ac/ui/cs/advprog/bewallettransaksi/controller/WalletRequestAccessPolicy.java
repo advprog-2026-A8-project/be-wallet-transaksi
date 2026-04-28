@@ -123,7 +123,11 @@ public class WalletRequestAccessPolicy {
             String role = claims.get(ROLE_CLAIM, String.class);
             return isSupportedMutationRole(role);
         }
-        return classify(authorization) == AuthorizationKind.VALID_READ_JWT;
+        return false;
+    }
+
+    public boolean isJwtBearerToken(String authorization) {
+        return isJwtToken(authorization);
     }
 
     private AuthorizationKind classify(String authorization) {

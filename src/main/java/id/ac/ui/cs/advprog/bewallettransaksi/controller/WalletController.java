@@ -204,6 +204,12 @@ public class WalletController {
         if (hasInvalidJwt(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
+        if (!walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+        if (!walletRequestAccessPolicy.isValidReadJwt(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
         validateOwnerAccess(authorization, userId);
         validateMutationRoleAllowed(authorization);
     }
