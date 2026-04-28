@@ -51,4 +51,11 @@ class WalletRequestAccessPolicyTest {
 
         assertFalse(policy.isInvalidJwtToken("Bearer invalid-jwt-token"));
     }
+
+    @Test
+    void isForbiddenTopUpRole_ShouldRejectLegacyJastiperSentinel() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+
+        assertFalse(policy.isForbiddenTopUpRole("Bearer valid-jastiper", "JASTIPER"));
+    }
 }
