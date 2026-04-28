@@ -155,6 +155,10 @@ public class WalletController {
         return acceptedBearerToken.equals(authorization);
     }
 
+    private boolean hasValidJastiperJwt(String authorization) {
+        return walletRequestAccessPolicy.isValidJastiperJwt(authorization);
+    }
+
     private void requireAuthorization(String authorization) {
         if (isMissingHeader(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
@@ -162,7 +166,7 @@ public class WalletController {
     }
 
     private void validateWithdrawAccess(String authorization, String role, UUID userId) {
-        if (walletRequestAccessPolicy.isValidJastiperJwt(authorization)) {
+        if (hasValidJastiperJwt(authorization)) {
             validateOwnerAccess(authorization, userId);
             return;
         }
