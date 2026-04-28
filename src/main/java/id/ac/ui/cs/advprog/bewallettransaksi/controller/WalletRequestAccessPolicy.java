@@ -47,7 +47,7 @@ public class WalletRequestAccessPolicy {
     }
 
     public boolean isInvalidJwtToken(String authorization) {
-        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+        if (!hasBearerPrefix(authorization)) {
             return false;
         }
         if (isJwtToken(authorization)) {
@@ -117,7 +117,7 @@ public class WalletRequestAccessPolicy {
     }
 
     private boolean isJwtToken(String authorization) {
-        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+        if (!hasBearerPrefix(authorization)) {
             return false;
         }
         String token = authorization.substring(BEARER_PREFIX.length());
@@ -135,6 +135,10 @@ public class WalletRequestAccessPolicy {
         } catch (RuntimeException ex) {
             return null;
         }
+    }
+
+    private boolean hasBearerPrefix(String authorization) {
+        return authorization != null && authorization.startsWith(BEARER_PREFIX);
     }
 
     private enum AuthorizationKind {
