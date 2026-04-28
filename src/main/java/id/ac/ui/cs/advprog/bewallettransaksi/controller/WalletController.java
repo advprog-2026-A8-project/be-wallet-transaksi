@@ -168,13 +168,15 @@ public class WalletController {
         if (isAuthorizedPayPrincipal(authorization)) {
             return;
         }
-        if (!walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
+        if (shouldRejectAsUnauthorizedPayRequest(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
-        if (walletRequestAccessPolicy.isValidReadJwt(authorization)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
-        throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        throw new ForbiddenException(FORBIDDEN_MESSAGE);
+    }
+
+    private boolean shouldRejectAsUnauthorizedPayRequest(String authorization) {
+        return !walletRequestAccessPolicy.isJwtBearerToken(authorization)
+                || !walletRequestAccessPolicy.isValidReadJwt(authorization);
     }
 
     private void requireAuthorization(String authorization) {
