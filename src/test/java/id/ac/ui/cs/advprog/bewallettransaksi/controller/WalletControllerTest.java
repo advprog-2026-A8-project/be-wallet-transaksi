@@ -93,6 +93,17 @@ class WalletControllerTest {
     }
 
     @Test
+    void getWallet_InvalidJwtToken_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        when(walletService.getWallet(userId)).thenReturn(walletResponse);
+
+        mockMvc.perform(get("/wallet/{userId}", userId)
+                        .header("Authorization", "Bearer invalid.jwt.token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
     void getWallet_NotFound() throws Exception {
         when(walletService.getWallet(userId)).thenThrow(new WalletNotFoundException(userId));
 
@@ -407,6 +418,19 @@ class WalletControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void pay_ValidJwtButDisallowedRole_ShouldReturnForbiddenWithApiResponse() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header("Authorization", "Bearer valid-jastiper-jwt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"))
                 .andExpect(jsonPath("$.data").doesNotExist());
     }
 
