@@ -91,6 +91,18 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void createWallet_SignedJwtOfDifferentUser_ShouldReturnForbidden() throws Exception {
+        when(walletService.createWallet(ownerUserId)).thenReturn(walletResponse);
+
+        String differentUserJwt = generateJwtToken(UUID.randomUUID().toString(), "TITIPER");
+        mockMvc.perform(post("/wallet")
+                        .header("Authorization", "Bearer " + differentUserJwt)
+                        .param("userId", ownerUserId.toString()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
+    @Test
     void getTransactionHistory_SignedJwtOfDifferentUser_ShouldReturnForbidden() throws Exception {
         when(walletService.getTransactionHistory(ownerUserId)).thenReturn(List.of(transactionResponse));
 
