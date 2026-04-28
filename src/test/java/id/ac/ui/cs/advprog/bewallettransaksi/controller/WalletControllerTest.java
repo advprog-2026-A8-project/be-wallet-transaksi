@@ -154,11 +154,21 @@ class WalletControllerTest {
         when(walletService.createWallet(userId)).thenReturn(newWalletResponse);
 
         mockMvc.perform(post("/wallet")
+                        .header("Authorization", "Bearer valid-read-jwt")
                         .param("userId", userId.toString()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.walletId").value(walletId.toString()))
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.balance").value(0));
+    }
+
+    @Test
+    void createWallet_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        mockMvc.perform(post("/wallet")
+                        .param("userId", userId.toString()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test
@@ -308,10 +318,19 @@ class WalletControllerTest {
 
         when(walletService.getTransactionHistory(userId)).thenReturn(List.of(latest, older));
 
-        mockMvc.perform(get("/wallet/{userId}/transactions", userId))
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header("Authorization", "Bearer valid-read-jwt"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].description").value("Latest payment"))
                 .andExpect(jsonPath("$[1].description").value("Older refund"));
+    }
+
+    @Test
+    void getTransactionHistory_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test
