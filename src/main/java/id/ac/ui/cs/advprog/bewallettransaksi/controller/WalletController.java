@@ -172,11 +172,12 @@ public class WalletController {
         if (walletRequestAccessPolicy.isValidJastiperJwt(authorization)) {
             return;
         }
-        if (isMissingHeader(role)) {
+        if (isMissingOrNotJastiper(role)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
-        if (!isJastiper(role)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
+    }
+
+    private boolean isMissingOrNotJastiper(String role) {
+        return isMissingHeader(role) || !isJastiper(role);
     }
 }
