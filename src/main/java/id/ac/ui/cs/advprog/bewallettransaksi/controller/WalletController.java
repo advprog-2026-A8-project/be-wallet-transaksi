@@ -60,8 +60,7 @@ public class WalletController {
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestParam UUID userId
     ) {
-        requireAuthorization(authorization);
-        validateOwnerAccess(authorization, userId);
+        validateMutationOwnerAccess(authorization, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(walletService.createWallet(userId));
     }
@@ -72,8 +71,7 @@ public class WalletController {
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody TopUpRequest request
     ) {
-        requireAuthorization(authorization);
-        validateOwnerAccess(authorization, request.getUserId());
+        validateMutationOwnerAccess(authorization, request.getUserId());
         if (walletRequestAccessPolicy.isForbiddenTopUpRole(authorization, role)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
@@ -106,8 +104,7 @@ public class WalletController {
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody WalletMutationRequest request
     ) {
-        requireAuthorization(authorization);
-        validateOwnerAccess(authorization, request.getUserId());
+        validateMutationOwnerAccess(authorization, request.getUserId());
         return ResponseEntity.ok(walletService.refund(
                 request.getUserId(),
                 request.getAmount(),
@@ -121,7 +118,7 @@ public class WalletController {
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody WalletMutationRequest request
     ) {
-        requireAuthorization(authorization);
+        validateMutationOwnerAccess(authorization, request.getUserId());
         validateWithdrawAccess(authorization, role, request.getUserId());
 
         return ResponseEntity.ok(walletService.withdraw(
@@ -185,6 +182,11 @@ public class WalletController {
                 || walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
+    }
+
+    private void validateMutationOwnerAccess(String authorization, UUID userId) {
+        requireAuthorization(authorization);
+        validateOwnerAccess(authorization, userId);
     }
 
     private void validateReadAccess(String authorization, UUID userId) {
