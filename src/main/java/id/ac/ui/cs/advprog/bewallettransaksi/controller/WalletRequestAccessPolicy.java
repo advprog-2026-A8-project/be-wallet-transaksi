@@ -15,7 +15,6 @@ public class WalletRequestAccessPolicy {
     private static final String TITIPER_ROLE = "TITIPER";
     private static final String ADMIN_ROLE = "ADMIN";
     private static final String ROLE_CLAIM = "role";
-    private static final String VALID_JASTIPER_TOKEN = "Bearer valid-jastiper";
     private static final String INVALID_JWT_TOKEN = "Bearer invalid.jwt.token";
     private static final String BEARER_PREFIX = "Bearer ";
 
@@ -61,8 +60,7 @@ public class WalletRequestAccessPolicy {
             }
             return JASTIPER_ROLE.equalsIgnoreCase(role);
         }
-        return VALID_JASTIPER_TOKEN.equals(authorization)
-                && JASTIPER_ROLE.equalsIgnoreCase(role);
+        return false;
     }
 
     public boolean isInvalidJwtToken(String authorization) {
