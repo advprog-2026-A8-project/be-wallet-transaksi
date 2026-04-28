@@ -52,7 +52,14 @@ public class WalletController {
             @PathVariable UUID userId,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
+        if (isMissingHeader(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
         if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+        if (!walletRequestAccessPolicy.isValidReadJwt(authorization)
+                && !walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
         if (walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
@@ -113,6 +120,13 @@ public class WalletController {
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody WalletMutationRequest request
     ) {
+        if (walletRequestAccessPolicy.isValidJastiperJwt(authorization)) {
+            return ResponseEntity.ok(walletService.withdraw(
+                    request.getUserId(),
+                    request.getAmount(),
+                    request.getDescription()
+            ));
+        }
         if (isMissingHeader(role)) {
             if (!isMissingHeader(authorization)) {
                 throw new ForbiddenException(FORBIDDEN_MESSAGE);

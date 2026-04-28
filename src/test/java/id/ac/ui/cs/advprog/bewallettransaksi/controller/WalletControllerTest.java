@@ -64,16 +64,22 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isInvalidJwtToken(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isDisallowedRoleForPay(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isValidReadJwt(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isValidJastiperJwt(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isOwnerMismatchToken(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole(org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull())).thenReturn(false);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), org.mockito.ArgumentMatchers.isNull())).thenReturn(false);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole(org.mockito.ArgumentMatchers.isNull(), anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isInvalidJwtToken(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isDisallowedRoleForPay(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isValidReadJwt(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isValidJastiperJwt(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isOwnerMismatchToken("Bearer valid-non-admin-other-user")).thenReturn(true);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer valid-jastiper", "JASTIPER")).thenReturn(true);
         when(walletRequestAccessPolicy.isInvalidJwtToken("Bearer invalid.jwt.token")).thenReturn(true);
         when(walletRequestAccessPolicy.isDisallowedRoleForPay("Bearer valid-jastiper-jwt")).thenReturn(true);
+        when(walletRequestAccessPolicy.isValidReadJwt("Bearer valid-read-jwt")).thenReturn(true);
+        when(walletRequestAccessPolicy.isValidJastiperJwt("Bearer valid-jastiper-jwt")).thenReturn(true);
     }
 
     @Test
