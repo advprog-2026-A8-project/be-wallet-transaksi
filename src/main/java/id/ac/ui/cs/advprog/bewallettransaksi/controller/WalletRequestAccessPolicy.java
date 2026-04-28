@@ -1,15 +1,32 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class WalletRequestAccessPolicy {
     private static final String JASTIPER_ROLE = "JASTIPER";
+    private static final String TITIPER_ROLE = "TITIPER";
+    private static final String ROLE_CLAIM = "role";
     private static final String NON_ADMIN_OTHER_USER_TOKEN = "Bearer valid-non-admin-other-user";
     private static final String VALID_JASTIPER_TOKEN = "Bearer valid-jastiper";
     private static final String INVALID_JWT_TOKEN = "Bearer invalid.jwt.token";
     private static final String VALID_JASTIPER_JWT = "Bearer valid-jastiper-jwt";
     private static final String VALID_READ_JWT = "Bearer valid-read-jwt";
+    private static final String BEARER_PREFIX = "Bearer ";
+
+    private final String jwtSecret;
+
+    public WalletRequestAccessPolicy(
+            @Value("${jwt.secret:DefaultSecretKeyUntukDevelopmentLokalYangSangatPanjangSekali123!@#}") String jwtSecret
+    ) {
+        this.jwtSecret = jwtSecret;
+    }
 
     public boolean isOwnerMismatchToken(String authorization) {
         return classify(authorization) == AuthorizationKind.OWNER_MISMATCH_NON_ADMIN;
@@ -25,6 +42,9 @@ public class WalletRequestAccessPolicy {
     }
 
     public boolean isDisallowedRoleForPay(String authorization) {
+        if (isValidSignedJwtWithRole(authorization, JASTIPER_ROLE)) {
+            return true;
+        }
         return classify(authorization) == AuthorizationKind.DISALLOWED_PAY_ROLE;
     }
 
@@ -33,7 +53,14 @@ public class WalletRequestAccessPolicy {
     }
 
     public boolean isValidJastiperJwt(String authorization) {
+        if (isValidSignedJwtWithRole(authorization, JASTIPER_ROLE)) {
+            return true;
+        }
         return classify(authorization) == AuthorizationKind.DISALLOWED_PAY_ROLE;
+    }
+
+    public boolean isValidTitiperJwt(String authorization) {
+        return isValidSignedJwtWithRole(authorization, TITIPER_ROLE);
     }
 
     private AuthorizationKind classify(String authorization) {
@@ -53,6 +80,24 @@ public class WalletRequestAccessPolicy {
             return AuthorizationKind.VALID_READ_JWT;
         }
         return AuthorizationKind.OTHER;
+    }
+
+    private boolean isValidSignedJwtWithRole(String authorization, String expectedRole) {
+        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+            return false;
+        }
+        String token = authorization.substring(BEARER_PREFIX.length());
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            String role = claims.get(ROLE_CLAIM, String.class);
+            return expectedRole.equalsIgnoreCase(role);
+        } catch (RuntimeException ex) {
+            return false;
+        }
     }
 
     private enum AuthorizationKind {

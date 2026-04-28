@@ -479,6 +479,7 @@ class WalletControllerTest {
         );
 
         String jwt = generateJwtToken("titiper-subject", "TITIPER");
+        when(walletRequestAccessPolicy.isValidTitiperJwt("Bearer " + jwt)).thenReturn(true);
         mockMvc.perform(post("/wallet/pay")
                         .header("Authorization", "Bearer " + jwt)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -573,6 +574,7 @@ class WalletControllerTest {
         );
 
         String jwt = generateJwtToken("jastiper-subject", "JASTIPER");
+        when(walletRequestAccessPolicy.isValidJastiperJwt("Bearer " + jwt)).thenReturn(true);
         mockMvc.perform(post("/wallet/withdraw")
                         .header("Authorization", "Bearer " + jwt)
                         .contentType(MediaType.APPLICATION_JSON)
