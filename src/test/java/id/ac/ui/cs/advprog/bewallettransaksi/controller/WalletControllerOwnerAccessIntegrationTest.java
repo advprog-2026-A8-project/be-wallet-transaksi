@@ -207,6 +207,16 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void getTransactionHistory_LegacyReadToken_ShouldReturnUnauthorized() throws Exception {
+        when(walletService.getTransactionHistory(ownerUserId)).thenReturn(List.of(transactionResponse));
+
+        mockMvc.perform(get("/wallet/{userId}/transactions", ownerUserId)
+                        .header("Authorization", "Bearer valid-read-jwt"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"));
+    }
+
+    @Test
     void pay_AdminJwt_ShouldReturnSuccess() throws Exception {
         when(walletService.pay(eq(ownerUserId), any(BigDecimal.class), eq("payment")))
                 .thenReturn(walletResponse);
