@@ -157,6 +157,11 @@ public class WalletController {
         return walletRequestAccessPolicy.isValidJastiperJwt(authorization);
     }
 
+    private boolean hasPrivilegedWithdrawJwt(String authorization) {
+        return walletRequestAccessPolicy.isValidAdminJwt(authorization)
+                || hasValidJastiperJwt(authorization);
+    }
+
     private boolean hasInvalidJwt(String authorization) {
         return walletRequestAccessPolicy.isInvalidJwtToken(authorization);
     }
@@ -168,10 +173,7 @@ public class WalletController {
     }
 
     private void validateWithdrawAccess(String authorization, String role, UUID userId) {
-        if (walletRequestAccessPolicy.isValidAdminJwt(authorization)) {
-            return;
-        }
-        if (hasValidJastiperJwt(authorization)) {
+        if (hasPrivilegedWithdrawJwt(authorization)) {
             validateOwnerAccess(authorization, userId);
             return;
         }
