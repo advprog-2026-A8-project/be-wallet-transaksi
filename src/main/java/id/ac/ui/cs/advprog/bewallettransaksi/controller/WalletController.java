@@ -86,8 +86,7 @@ public class WalletController {
         if (walletRequestAccessPolicy.isDisallowedRoleForPay(authorization)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
-        if (walletRequestAccessPolicy.isAllowedPayRole(authorization)
-                || isAuthorizedForCurrentContract(authorization)) {
+        if (isAuthorizedPayPrincipal(authorization)) {
             validateOwnerAccess(authorization, request.getUserId());
             return ResponseEntity.ok(walletService.pay(
                     request.getUserId(),
@@ -97,9 +96,6 @@ public class WalletController {
         }
         if (walletRequestAccessPolicy.isValidReadJwt(authorization)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
-        if (!walletRequestAccessPolicy.isAllowedPayRole(authorization)) {
-            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
         throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
     }
@@ -169,6 +165,11 @@ public class WalletController {
 
     private boolean hasInvalidJwt(String authorization) {
         return walletRequestAccessPolicy.isInvalidJwtToken(authorization);
+    }
+
+    private boolean isAuthorizedPayPrincipal(String authorization) {
+        return walletRequestAccessPolicy.isAllowedPayRole(authorization)
+                || isAuthorizedForCurrentContract(authorization);
     }
 
     private void requireAuthorization(String authorization) {
