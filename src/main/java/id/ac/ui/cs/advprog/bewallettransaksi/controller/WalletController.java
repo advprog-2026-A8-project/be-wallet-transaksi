@@ -86,17 +86,22 @@ public class WalletController {
         if (walletRequestAccessPolicy.isDisallowedRoleForPay(authorization)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
-        if (!walletRequestAccessPolicy.isAllowedPayRole(authorization)
-                && !isAuthorizedForCurrentContract(authorization)) {
+        if (walletRequestAccessPolicy.isAllowedPayRole(authorization)
+                || isAuthorizedForCurrentContract(authorization)) {
+            validateOwnerAccess(authorization, request.getUserId());
+            return ResponseEntity.ok(walletService.pay(
+                    request.getUserId(),
+                    request.getAmount(),
+                    request.getDescription()
+            ));
+        }
+        if (walletRequestAccessPolicy.isValidReadJwt(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+        if (!walletRequestAccessPolicy.isAllowedPayRole(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
-        validateOwnerAccess(authorization, request.getUserId());
-
-        return ResponseEntity.ok(walletService.pay(
-                request.getUserId(),
-                request.getAmount(),
-                request.getDescription()
-        ));
+        throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
     }
 
     @PostMapping("/refund")
