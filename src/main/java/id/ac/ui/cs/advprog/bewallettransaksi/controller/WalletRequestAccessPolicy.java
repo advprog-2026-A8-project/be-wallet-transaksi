@@ -29,10 +29,7 @@ public class WalletRequestAccessPolicy {
     }
 
     public boolean isOwnerMismatchToken(String authorization) {
-        if (isJwtToken(authorization)) {
-            return false;
-        }
-        return classify(authorization) == AuthorizationKind.OWNER_MISMATCH_NON_ADMIN;
+        return false;
     }
 
     public boolean isOwnerMismatchJwt(String authorization, UUID targetUserId) {
