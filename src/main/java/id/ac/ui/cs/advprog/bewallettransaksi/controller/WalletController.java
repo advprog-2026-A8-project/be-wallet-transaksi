@@ -128,6 +128,7 @@ public class WalletController {
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody WalletMutationRequest request
     ) {
+        requireAuthorization(authorization);
         if (walletRequestAccessPolicy.isValidJastiperJwt(authorization)) {
             return ResponseEntity.ok(walletService.withdraw(
                     request.getUserId(),
@@ -136,9 +137,6 @@ public class WalletController {
             ));
         }
         if (isMissingHeader(role)) {
-            if (!isMissingHeader(authorization)) {
-                throw new ForbiddenException(FORBIDDEN_MESSAGE);
-            }
             throw new ForbiddenException(MISSING_JASTIPER_ROLE_MESSAGE);
         }
 
