@@ -8,6 +8,7 @@ import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.WalletNotFoundException;
+import id.ac.ui.cs.advprog.bewallettransaksi.controller.WalletRequestAccessPolicy;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -38,6 +40,8 @@ class WalletControllerTest {
 
     @MockitoBean
     private WalletService walletService;
+    @MockitoBean
+    private WalletRequestAccessPolicy walletRequestAccessPolicy;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -55,6 +59,15 @@ class WalletControllerTest {
                 .userId(userId)
                 .balance(BigDecimal.valueOf(100.00))
                 .build();
+
+        when(walletRequestAccessPolicy.isOwnerMismatchToken(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isOwnerMismatchToken(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), org.mockito.ArgumentMatchers.isNull())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(org.mockito.ArgumentMatchers.isNull(), anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isOwnerMismatchToken("Bearer valid-non-admin-other-user")).thenReturn(true);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer valid-jastiper", "JASTIPER")).thenReturn(true);
     }
 
     @Test
