@@ -29,4 +29,11 @@ class WalletRequestAccessPolicyTest {
 
         assertFalse(policy.isOwnerMismatchToken("Bearer valid-non-admin-other-user"));
     }
+
+    @Test
+    void isInvalidJwtToken_ShouldRejectLegacySentinelToken() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+
+        assertFalse(policy.isInvalidJwtToken("Bearer invalid.jwt.token"));
+    }
 }
