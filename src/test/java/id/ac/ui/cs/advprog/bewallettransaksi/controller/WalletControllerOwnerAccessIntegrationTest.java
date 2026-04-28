@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -291,6 +292,21 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void refund_LegacyReadToken_ShouldReturnUnauthorized() throws Exception {
+        when(walletService.refund(ownerUserId, BigDecimal.valueOf(10.00), "payment"))
+                .thenReturn(walletResponse);
+
+        mockMvc.perform(post("/wallet/refund")
+                        .header("Authorization", "Bearer valid-read-jwt")
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"payment"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"));
+    }
+
+    @Test
     void topUp_UnsupportedRoleJwt_ShouldReturnForbidden() throws Exception {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(ownerUserId);
@@ -354,6 +370,38 @@ class WalletControllerOwnerAccessIntegrationTest {
                                 """.formatted(ownerUserId)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
+    @Test
+    void withdraw_TitiperJwtWithForgedJastiperHeader_ShouldReturnForbidden() throws Exception {
+        when(walletService.withdraw(eq(ownerUserId), any(BigDecimal.class), eq("bank-account")))
+                .thenReturn(walletResponse);
+
+        String titiperJwt = generateJwtToken(ownerUserId.toString(), "TITIPER");
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("Authorization", "Bearer " + titiperJwt)
+                        .header("X-Role", "JASTIPER")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"bank-account"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
+    @Test
+    void withdraw_LegacyReadToken_ShouldReturnUnauthorized() throws Exception {
+        when(walletService.withdraw(eq(ownerUserId), any(BigDecimal.class), eq("bank-account")))
+                .thenReturn(walletResponse);
+
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("Authorization", "Bearer valid-read-jwt")
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"bank-account"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"));
     }
 
     @Test
