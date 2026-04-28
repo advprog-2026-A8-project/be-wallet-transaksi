@@ -1,6 +1,9 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletMutationRequest;
@@ -19,7 +22,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(WalletController.class)
 class WalletControllerTest {
+    private static final String JWT_SECRET = "DefaultSecretKeyUntukDevelopmentLokalYangSangatPanjangSekali123!@#";
 
     @Autowired
     private MockMvc mockMvc;
@@ -461,6 +467,27 @@ class WalletControllerTest {
     }
 
     @Test
+    void pay_ValidSignedTitiperJwt_ShouldSucceed() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        when(walletService.pay(userId, BigDecimal.valueOf(50.00), "Order payment")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(50.00))
+                        .build()
+        );
+
+        String jwt = generateJwtToken("titiper-subject", "TITIPER");
+        mockMvc.perform(post("/wallet/pay")
+                        .header("Authorization", "Bearer " + jwt)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(50.00));
+    }
+
+    @Test
     void refund_Success() throws Exception {
         WalletMutationRequest request = buildMutationRequest("Order refund", BigDecimal.valueOf(25.00));
 
@@ -527,6 +554,27 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/withdraw")
                         .header("Authorization", "Bearer valid-jastiper-jwt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(70.00));
+    }
+
+    @Test
+    void withdraw_ValidSignedJastiperJwtWithoutLegacyRoleHeader_ShouldSucceed() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
+
+        when(walletService.withdraw(userId, BigDecimal.valueOf(30.00), "BCA-123456")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(70.00))
+                        .build()
+        );
+
+        String jwt = generateJwtToken("jastiper-subject", "JASTIPER");
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("Authorization", "Bearer " + jwt)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -644,5 +692,15 @@ class WalletControllerTest {
         request.setUserId(requestUserId);
         request.setAmount(amount);
         return request;
+    }
+
+    private String generateJwtToken(String subject, String role) {
+        return Jwts.builder()
+                .setSubject(subject)
+                .claim("role", role)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 86_400_000L))
+                .signWith(Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
+                .compact();
     }
 }
