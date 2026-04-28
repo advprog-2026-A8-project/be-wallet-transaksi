@@ -69,6 +69,17 @@ class WalletControllerTest {
     }
 
     @Test
+    void getWallet_NonAdminOwnerMismatch_ShouldReturnForbidden() throws Exception {
+        when(walletService.getWallet(userId)).thenReturn(walletResponse);
+
+        mockMvc.perform(get("/wallet/{userId}", userId)
+                        .header("Authorization", "Bearer valid-non-admin-other-user"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
     void getWallet_NotFound() throws Exception {
         when(walletService.getWallet(userId)).thenThrow(new WalletNotFoundException(userId));
 
@@ -138,6 +149,22 @@ class WalletControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(150.00));
+    }
+
+    @Test
+    void topUp_JastiperRole_ShouldReturnForbidden() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/topup")
+                        .header("Authorization", "Bearer valid-jastiper")
+                        .header("X-Role", "JASTIPER")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test
