@@ -88,6 +88,16 @@ class WalletControllerTest {
     }
 
     @Test
+    void getWallet_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        when(walletService.getWallet(userId)).thenReturn(walletResponse);
+
+        mockMvc.perform(get("/wallet/{userId}", userId))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
     void getWallet_NonAdminOwnerMismatch_ShouldReturnForbidden() throws Exception {
         when(walletService.getWallet(userId)).thenReturn(walletResponse);
 
@@ -487,6 +497,26 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/withdraw")
                         .header("X-Role", "JASTIPER")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(70.00));
+    }
+
+    @Test
+    void withdraw_ValidJastiperJwtWithoutLegacyRoleHeader_ShouldSucceed() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
+
+        when(walletService.withdraw(userId, BigDecimal.valueOf(30.00), "BCA-123456")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(70.00))
+                        .build()
+        );
+
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("Authorization", "Bearer valid-jastiper-jwt")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
