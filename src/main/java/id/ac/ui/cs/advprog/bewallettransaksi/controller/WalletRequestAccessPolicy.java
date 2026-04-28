@@ -15,7 +15,6 @@ public class WalletRequestAccessPolicy {
     private static final String TITIPER_ROLE = "TITIPER";
     private static final String ADMIN_ROLE = "ADMIN";
     private static final String ROLE_CLAIM = "role";
-    private static final String NON_ADMIN_OTHER_USER_TOKEN = "Bearer valid-non-admin-other-user";
     private static final String VALID_JASTIPER_TOKEN = "Bearer valid-jastiper";
     private static final String INVALID_JWT_TOKEN = "Bearer invalid.jwt.token";
     private static final String BEARER_PREFIX = "Bearer ";
@@ -120,9 +119,6 @@ public class WalletRequestAccessPolicy {
         if (INVALID_JWT_TOKEN.equals(authorization)) {
             return AuthorizationKind.INVALID_JWT;
         }
-        if (NON_ADMIN_OTHER_USER_TOKEN.equals(authorization)) {
-            return AuthorizationKind.OWNER_MISMATCH_NON_ADMIN;
-        }
         if (VALID_JASTIPER_TOKEN.equals(authorization)) {
             return AuthorizationKind.JASTIPER_TOPUP_TOKEN;
         }
@@ -184,7 +180,6 @@ public class WalletRequestAccessPolicy {
 
     private enum AuthorizationKind {
         INVALID_JWT,
-        OWNER_MISMATCH_NON_ADMIN,
         JASTIPER_TOPUP_TOKEN,
         OTHER
     }
