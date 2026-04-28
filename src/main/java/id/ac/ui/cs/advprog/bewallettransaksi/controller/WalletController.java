@@ -72,6 +72,10 @@ public class WalletController {
             @Valid @RequestBody TopUpRequest request
     ) {
         requireAuthorization(authorization);
+        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, request.getUserId())
+                || walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
         if (walletRequestAccessPolicy.isForbiddenTopUpRole(authorization, role)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
