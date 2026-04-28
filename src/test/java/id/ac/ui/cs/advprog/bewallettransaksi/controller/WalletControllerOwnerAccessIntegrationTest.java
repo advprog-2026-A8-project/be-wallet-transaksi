@@ -147,6 +147,24 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void createWallet_AdminJwtOfDifferentUser_ShouldReturnCreated() throws Exception {
+        UUID otherUserId = UUID.randomUUID();
+        WalletResponse otherWalletResponse = WalletResponse.builder()
+                .walletId(UUID.randomUUID())
+                .userId(otherUserId)
+                .balance(BigDecimal.ZERO)
+                .build();
+        when(walletService.createWallet(otherUserId)).thenReturn(otherWalletResponse);
+
+        String adminJwt = generateJwtToken(ownerUserId.toString(), "ADMIN");
+        mockMvc.perform(post("/wallet")
+                        .header("Authorization", "Bearer " + adminJwt)
+                        .param("userId", otherUserId.toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userId").value(otherUserId.toString()));
+    }
+
+    @Test
     void getTransactionHistory_SignedJwtOfDifferentUser_ShouldReturnForbidden() throws Exception {
         when(walletService.getTransactionHistory(ownerUserId)).thenReturn(List.of(transactionResponse));
 
@@ -212,6 +230,16 @@ class WalletControllerOwnerAccessIntegrationTest {
         when(walletService.getTransactionHistory(ownerUserId)).thenReturn(List.of(transactionResponse));
 
         mockMvc.perform(get("/wallet/{userId}/transactions", ownerUserId)
+                        .header("Authorization", "Bearer valid-read-jwt"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"));
+    }
+
+    @Test
+    void getWallet_LegacyReadToken_ShouldReturnUnauthorized() throws Exception {
+        when(walletService.getWallet(ownerUserId)).thenReturn(walletResponse);
+
+        mockMvc.perform(get("/wallet/{userId}", ownerUserId)
                         .header("Authorization", "Bearer valid-read-jwt"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"));
@@ -331,6 +359,24 @@ class WalletControllerOwnerAccessIntegrationTest {
         String unsupportedRoleJwt = generateJwtToken(ownerUserId.toString(), "CUSTOMER");
         mockMvc.perform(post("/wallet/topup")
                         .header("Authorization", "Bearer " + unsupportedRoleJwt)
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
+    @Test
+    void topUp_JastiperJwtOfOwner_ShouldReturnForbidden() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(ownerUserId);
+        request.setAmount(BigDecimal.valueOf(10.00));
+        when(walletService.topUp(request)).thenReturn(walletResponse);
+
+        String jastiperJwt = generateJwtToken(ownerUserId.toString(), "JASTIPER");
+        mockMvc.perform(post("/wallet/topup")
+                        .header("Authorization", "Bearer " + jastiperJwt)
                         .contentType("application/json")
                         .content("""
                                 {"userId":"%s","amount":10.00}
