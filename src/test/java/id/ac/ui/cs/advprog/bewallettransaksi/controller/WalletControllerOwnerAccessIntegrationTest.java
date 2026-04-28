@@ -252,6 +252,22 @@ class WalletControllerOwnerAccessIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Akses ditolak!"));
     }
 
+    @Test
+    void withdraw_AdminJwt_ShouldReturnSuccess() throws Exception {
+        when(walletService.withdraw(ownerUserId, BigDecimal.valueOf(10.00), "bank-account"))
+                .thenReturn(walletResponse);
+
+        String adminJwt = generateJwtToken(ownerUserId.toString(), "ADMIN");
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("Authorization", "Bearer " + adminJwt)
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"bank-account"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(ownerUserId.toString()));
+    }
+
     private String generateJwtToken(String subject, String role) {
         return Jwts.builder()
                 .setSubject(subject)
