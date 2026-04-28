@@ -94,6 +94,9 @@ public class WalletController {
                     request.getDescription()
             ));
         }
+        if (!walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
         if (walletRequestAccessPolicy.isValidReadJwt(authorization)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
