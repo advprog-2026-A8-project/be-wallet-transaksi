@@ -73,7 +73,7 @@ class WalletControllerTest {
 
     private void stubAccessPolicyDefaults() {
         when(walletRequestAccessPolicy.isOwnerMismatchToken(anyString())).thenReturn(false);
-        when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isInvalidJwtToken(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isDisallowedRoleForPay(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isValidReadJwt(anyString())).thenReturn(false);
@@ -82,9 +82,9 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isAllowedWalletMutationRole(anyString())).thenReturn(true);
         when(walletRequestAccessPolicy.isJwtBearerToken(anyString())).thenReturn(true);
         when(walletRequestAccessPolicy.isOwnerMismatchToken(null)).thenReturn(false);
-        when(walletRequestAccessPolicy.isForbiddenTopUpRole(isNull(), isNull())).thenReturn(false);
-        when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), isNull())).thenReturn(false);
-        when(walletRequestAccessPolicy.isForbiddenTopUpRole(isNull(), anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(isNull())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(isNull())).thenReturn(false);
         when(walletRequestAccessPolicy.isInvalidJwtToken(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isDisallowedRoleForPay(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isValidReadJwt(null)).thenReturn(false);
@@ -93,7 +93,7 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isAllowedWalletMutationRole(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isJwtBearerToken(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isOwnerMismatchToken("Bearer valid-non-admin-other-user")).thenReturn(true);
-        when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer valid-jastiper", "JASTIPER")).thenReturn(true);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer valid-jastiper")).thenReturn(true);
         when(walletRequestAccessPolicy.isInvalidJwtToken("Bearer invalid.jwt.token")).thenReturn(true);
         when(walletRequestAccessPolicy.isDisallowedRoleForPay("Bearer valid-jastiper-jwt")).thenReturn(true);
         when(walletRequestAccessPolicy.isValidReadJwt("Bearer valid-read-jwt")).thenReturn(true);
@@ -250,7 +250,7 @@ class WalletControllerTest {
     }
 
     @Test
-    void topUp_JastiperRole_ShouldReturnForbidden() throws Exception {
+    void topUp_LegacyJastiperToken_ShouldReturnUnauthorized() throws Exception {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
         request.setAmount(BigDecimal.valueOf(50.00));
@@ -260,8 +260,8 @@ class WalletControllerTest {
                         .header("X-Role", "JASTIPER")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("Akses ditolak!"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
                 .andExpect(jsonPath("$.data").doesNotExist());
     }
 
@@ -272,7 +272,7 @@ class WalletControllerTest {
         request.setAmount(BigDecimal.valueOf(50.00));
 
         String jwt = generateJwtToken("jastiper-subject", "JASTIPER");
-        when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer " + jwt, null)).thenReturn(true);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer " + jwt)).thenReturn(true);
         mockMvc.perform(post("/wallet/topup")
                         .header(AUTH_HEADER, "Bearer " + jwt)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -816,3 +816,4 @@ class WalletControllerTest {
                 .compact();
     }
 }
+

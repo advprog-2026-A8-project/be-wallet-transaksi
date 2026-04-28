@@ -64,11 +64,10 @@ public class WalletController {
     @PostMapping("/topup")
     public ResponseEntity<WalletResponse> topUp(
             @RequestHeader(value = "Authorization", required = false) String authorization,
-            @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody TopUpRequest request
     ) {
         validateMutationOwnerAccess(authorization, request.getUserId());
-        if (walletRequestAccessPolicy.isForbiddenTopUpRole(authorization, role)) {
+        if (walletRequestAccessPolicy.isForbiddenTopUpRole(authorization)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
         return ResponseEntity.ok(walletService.topUp(request));

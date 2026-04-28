@@ -52,7 +52,7 @@ public class WalletRequestAccessPolicy {
         }
     }
 
-    public boolean isForbiddenTopUpRole(String authorization, String role) {
+    public boolean isForbiddenTopUpRole(String authorization) {
         if (isJwtToken(authorization)) {
             return isValidSignedJwtWithRole(authorization, JASTIPER_ROLE);
         }
