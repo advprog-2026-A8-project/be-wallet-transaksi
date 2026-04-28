@@ -40,6 +40,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(WalletController.class)
 class WalletControllerTest {
     private static final String JWT_SECRET = "DefaultSecretKeyUntukDevelopmentLokalYangSangatPanjangSekali123!@#";
+    private static final String AUTH_HEADER = "Authorization";
+    private static final String READ_JWT_HEADER_VALUE = "Bearer valid-read-jwt";
 
     @Autowired
     private MockMvc mockMvc;
@@ -154,7 +156,7 @@ class WalletControllerTest {
         when(walletService.createWallet(userId)).thenReturn(newWalletResponse);
 
         mockMvc.perform(post("/wallet")
-                        .header("Authorization", "Bearer valid-read-jwt")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("userId", userId.toString()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.walletId").value(walletId.toString()))
@@ -211,7 +213,7 @@ class WalletControllerTest {
         when(walletService.topUp(any(TopUpRequest.class))).thenReturn(updatedResponse);
 
         mockMvc.perform(post("/wallet/topup")
-                        .header("Authorization", "Bearer valid-read-jwt")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
