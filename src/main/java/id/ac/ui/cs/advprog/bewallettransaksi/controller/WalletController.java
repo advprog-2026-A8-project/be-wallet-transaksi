@@ -61,6 +61,9 @@ public class WalletController {
             @RequestParam UUID userId
     ) {
         validateMutationOwnerAccess(authorization, userId);
+        if (!walletRequestAccessPolicy.isAllowedWalletMutationRole(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(walletService.createWallet(userId));
     }

@@ -106,6 +106,22 @@ public class WalletRequestAccessPolicy {
         return isValidSignedJwtWithRole(authorization, TITIPER_ROLE);
     }
 
+    public boolean isAllowedWalletMutationRole(String authorization) {
+        if (isJwtToken(authorization)) {
+            Claims claims = parseClaims(authorization);
+            if (claims == null) {
+                return false;
+            }
+            String role = claims.get(ROLE_CLAIM, String.class);
+            return role != null && (
+                    ADMIN_ROLE.equalsIgnoreCase(role)
+                            || TITIPER_ROLE.equalsIgnoreCase(role)
+                            || JASTIPER_ROLE.equalsIgnoreCase(role)
+            );
+        }
+        return classify(authorization) == AuthorizationKind.VALID_READ_JWT;
+    }
+
     private AuthorizationKind classify(String authorization) {
         if (INVALID_JWT_TOKEN.equals(authorization)) {
             return AuthorizationKind.INVALID_JWT;
