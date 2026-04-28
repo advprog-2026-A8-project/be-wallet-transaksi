@@ -201,6 +201,7 @@ class WalletControllerTest {
         when(walletService.topUp(any(TopUpRequest.class))).thenReturn(updatedResponse);
 
         mockMvc.perform(post("/wallet/topup")
+                        .header("Authorization", "Bearer valid-read-jwt")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -515,6 +516,7 @@ class WalletControllerTest {
         );
 
         mockMvc.perform(post("/wallet/refund")
+                        .header("Authorization", "Bearer valid-read-jwt")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())

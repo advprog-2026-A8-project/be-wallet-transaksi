@@ -80,6 +80,9 @@ public class WalletController {
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody TopUpRequest request
     ) {
+        if (isMissingHeader(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
         if (walletRequestAccessPolicy.isForbiddenTopUpRole(authorization, role)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
@@ -107,7 +110,13 @@ public class WalletController {
     }
 
     @PostMapping("/refund")
-    public ResponseEntity<WalletResponse> refund(@Valid @RequestBody WalletMutationRequest request) {
+    public ResponseEntity<WalletResponse> refund(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @Valid @RequestBody WalletMutationRequest request
+    ) {
+        if (isMissingHeader(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
         return ResponseEntity.ok(walletService.refund(
                 request.getUserId(),
                 request.getAmount(),
