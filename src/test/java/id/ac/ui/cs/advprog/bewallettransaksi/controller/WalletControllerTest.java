@@ -8,7 +8,6 @@ import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.WalletNotFoundException;
-import id.ac.ui.cs.advprog.bewallettransaksi.controller.WalletRequestAccessPolicy;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +25,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -60,6 +60,10 @@ class WalletControllerTest {
                 .balance(BigDecimal.valueOf(100.00))
                 .build();
 
+        stubAccessPolicyDefaults();
+    }
+
+    private void stubAccessPolicyDefaults() {
         when(walletRequestAccessPolicy.isOwnerMismatchToken(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isInvalidJwtToken(anyString())).thenReturn(false);
@@ -67,9 +71,9 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isValidReadJwt(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isValidJastiperJwt(anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isOwnerMismatchToken(null)).thenReturn(false);
-        when(walletRequestAccessPolicy.isForbiddenTopUpRole(org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull())).thenReturn(false);
-        when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), org.mockito.ArgumentMatchers.isNull())).thenReturn(false);
-        when(walletRequestAccessPolicy.isForbiddenTopUpRole(org.mockito.ArgumentMatchers.isNull(), anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(isNull(), isNull())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString(), isNull())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(isNull(), anyString())).thenReturn(false);
         when(walletRequestAccessPolicy.isInvalidJwtToken(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isDisallowedRoleForPay(null)).thenReturn(false);
         when(walletRequestAccessPolicy.isValidReadJwt(null)).thenReturn(false);
