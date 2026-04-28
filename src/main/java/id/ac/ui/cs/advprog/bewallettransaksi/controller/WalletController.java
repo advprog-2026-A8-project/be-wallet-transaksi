@@ -61,6 +61,7 @@ public class WalletController {
             @RequestParam UUID userId
     ) {
         requireAuthorization(authorization);
+        validateOwnerAccess(authorization, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(walletService.createWallet(userId));
     }
