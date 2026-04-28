@@ -5,6 +5,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletMutationRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
@@ -24,6 +25,7 @@ import java.util.UUID;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -41,6 +43,7 @@ class WalletControllerOwnerAccessIntegrationTest {
     private UUID ownerUserId;
     private WalletResponse walletResponse;
     private TransactionResponse transactionResponse;
+    private WalletMutationRequest mutationRequest;
 
     @BeforeEach
     void setUp() {
@@ -58,6 +61,10 @@ class WalletControllerOwnerAccessIntegrationTest {
                 .status(TransactionStatus.SUCCESS)
                 .description("sample")
                 .build();
+        mutationRequest = new WalletMutationRequest();
+        mutationRequest.setUserId(ownerUserId);
+        mutationRequest.setAmount(BigDecimal.valueOf(10.00));
+        mutationRequest.setDescription("payment");
     }
 
     @Test
@@ -89,6 +96,38 @@ class WalletControllerOwnerAccessIntegrationTest {
         String differentUserJwt = generateJwtToken(UUID.randomUUID().toString(), "TITIPER");
         mockMvc.perform(get("/wallet/{userId}/transactions", ownerUserId)
                         .header("Authorization", "Bearer " + differentUserJwt))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
+    @Test
+    void pay_SignedJwtOfDifferentUser_ShouldReturnForbidden() throws Exception {
+        when(walletService.pay(ownerUserId, BigDecimal.valueOf(10.00), "payment"))
+                .thenReturn(walletResponse);
+
+        String differentUserJwt = generateJwtToken(UUID.randomUUID().toString(), "TITIPER");
+        mockMvc.perform(post("/wallet/pay")
+                        .header("Authorization", "Bearer " + differentUserJwt)
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"payment"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
+    @Test
+    void refund_SignedJwtOfDifferentUser_ShouldReturnForbidden() throws Exception {
+        when(walletService.refund(ownerUserId, BigDecimal.valueOf(10.00), "payment"))
+                .thenReturn(walletResponse);
+
+        String differentUserJwt = generateJwtToken(UUID.randomUUID().toString(), "TITIPER");
+        mockMvc.perform(post("/wallet/refund")
+                        .header("Authorization", "Bearer " + differentUserJwt)
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"payment"}
+                                """.formatted(ownerUserId)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("Akses ditolak!"));
     }

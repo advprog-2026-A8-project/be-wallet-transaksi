@@ -90,6 +90,10 @@ public class WalletController {
                 && !isAuthorizedForCurrentContract(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
+        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, request.getUserId())
+                || walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
 
         return ResponseEntity.ok(walletService.pay(
                 request.getUserId(),
@@ -104,6 +108,10 @@ public class WalletController {
             @Valid @RequestBody WalletMutationRequest request
     ) {
         requireAuthorization(authorization);
+        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, request.getUserId())
+                || walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
         return ResponseEntity.ok(walletService.refund(
                 request.getUserId(),
                 request.getAmount(),
