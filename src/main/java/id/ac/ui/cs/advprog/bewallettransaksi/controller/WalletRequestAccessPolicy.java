@@ -106,6 +106,10 @@ public class WalletRequestAccessPolicy {
         return isValidSignedJwtWithRole(authorization, TITIPER_ROLE);
     }
 
+    public boolean isValidAdminJwt(String authorization) {
+        return isValidSignedJwtWithRole(authorization, ADMIN_ROLE);
+    }
+
     public boolean isAllowedWalletMutationRole(String authorization) {
         if (isJwtToken(authorization)) {
             Claims claims = parseClaims(authorization);

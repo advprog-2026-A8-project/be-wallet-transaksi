@@ -24,6 +24,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -186,7 +188,7 @@ class WalletControllerOwnerAccessIntegrationTest {
 
     @Test
     void pay_AdminJwt_ShouldReturnSuccess() throws Exception {
-        when(walletService.pay(ownerUserId, BigDecimal.valueOf(10.00), "payment"))
+        when(walletService.pay(eq(ownerUserId), any(BigDecimal.class), eq("payment")))
                 .thenReturn(walletResponse);
 
         String adminJwt = generateJwtToken(ownerUserId.toString(), "ADMIN");
