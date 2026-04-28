@@ -185,6 +185,22 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void pay_AdminJwt_ShouldReturnSuccess() throws Exception {
+        when(walletService.pay(ownerUserId, BigDecimal.valueOf(10.00), "payment"))
+                .thenReturn(walletResponse);
+
+        String adminJwt = generateJwtToken(ownerUserId.toString(), "ADMIN");
+        mockMvc.perform(post("/wallet/pay")
+                        .header("Authorization", "Bearer " + adminJwt)
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"payment"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(ownerUserId.toString()));
+    }
+
+    @Test
     void refund_UnsupportedRoleJwt_ShouldReturnForbidden() throws Exception {
         when(walletService.refund(ownerUserId, BigDecimal.valueOf(10.00), "payment"))
                 .thenReturn(walletResponse);
