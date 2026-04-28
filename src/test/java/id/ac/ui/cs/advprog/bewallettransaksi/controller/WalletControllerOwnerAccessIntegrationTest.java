@@ -276,6 +276,21 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void pay_LegacyAcceptedBearerToken_ShouldReturnUnauthorized() throws Exception {
+        when(walletService.pay(eq(ownerUserId), any(BigDecimal.class), eq("payment")))
+                .thenReturn(walletResponse);
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header("Authorization", "Bearer test-token")
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"payment"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"));
+    }
+
+    @Test
     void refund_UnsupportedRoleJwt_ShouldReturnForbidden() throws Exception {
         when(walletService.refund(ownerUserId, BigDecimal.valueOf(10.00), "payment"))
                 .thenReturn(walletResponse);
