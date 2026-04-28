@@ -86,8 +86,7 @@ public class WalletController {
         if (walletRequestAccessPolicy.isDisallowedRoleForPay(authorization)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
-        if (!walletRequestAccessPolicy.isValidTitiperJwt(authorization)
-                && !walletRequestAccessPolicy.isValidAdminJwt(authorization)
+        if (!walletRequestAccessPolicy.isAllowedPayRole(authorization)
                 && !isAuthorizedForCurrentContract(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
