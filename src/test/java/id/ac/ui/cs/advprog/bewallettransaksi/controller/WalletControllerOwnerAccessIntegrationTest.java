@@ -94,6 +94,17 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void getWallet_UsernameSubjectJwtOfOwner_ShouldReturnSuccess() throws Exception {
+        when(walletService.getWallet(ownerUserId)).thenReturn(walletResponse);
+
+        String ownerJwt = generateJwtToken("owner_username", "TITIPER");
+        mockMvc.perform(get("/wallet/{userId}", ownerUserId)
+                        .header("Authorization", "Bearer " + ownerJwt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(ownerUserId.toString()));
+    }
+
+    @Test
     void getWallet_UnsupportedRoleJwt_ShouldReturnForbidden() throws Exception {
         when(walletService.getWallet(ownerUserId)).thenReturn(walletResponse);
 
@@ -476,6 +487,22 @@ class WalletControllerOwnerAccessIntegrationTest {
 
         mockMvc.perform(post("/wallet/withdraw")
                         .header("Authorization", "Bearer valid-read-jwt")
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"bank-account"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"));
+    }
+
+    @Test
+    void withdraw_NonJwtBearerWithLegacyJastiperHeader_ShouldReturnUnauthorized() throws Exception {
+        when(walletService.withdraw(eq(ownerUserId), any(BigDecimal.class), eq("bank-account")))
+                .thenReturn(walletResponse);
+
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("Authorization", "Bearer legacy-token")
+                        .header("X-Role", "JASTIPER")
                         .contentType("application/json")
                         .content("""
                                 {"userId":"%s","amount":10.00,"description":"bank-account"}

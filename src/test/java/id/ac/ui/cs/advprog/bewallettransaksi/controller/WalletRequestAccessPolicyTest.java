@@ -1,6 +1,13 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.Test;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -57,5 +64,31 @@ class WalletRequestAccessPolicyTest {
         WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
 
         assertFalse(policy.isForbiddenTopUpRole("Bearer valid-jastiper"));
+    }
+
+    @Test
+    void isOwnerMismatchJwt_ShouldReturnTrueForNonAdminWithInvalidUuidSubject() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+        String jwt = generateJwtToken("not-a-uuid", "TITIPER");
+
+        assertTrue(policy.isOwnerMismatchJwt("Bearer " + jwt, UUID.randomUUID()));
+    }
+
+    @Test
+    void isOwnerMismatchJwt_ShouldReturnFalseForAdminWithInvalidUuidSubject() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET);
+        String jwt = generateJwtToken("not-a-uuid", "ADMIN");
+
+        assertFalse(policy.isOwnerMismatchJwt("Bearer " + jwt, UUID.randomUUID()));
+    }
+
+    private String generateJwtToken(String subject, String role) {
+        return Jwts.builder()
+                .setSubject(subject)
+                .claim("role", role)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 86_400_000L))
+                .signWith(Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
+                .compact();
     }
 }
