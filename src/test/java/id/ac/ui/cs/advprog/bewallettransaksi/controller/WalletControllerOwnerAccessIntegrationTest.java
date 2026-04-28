@@ -386,6 +386,25 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void topUp_AdminJwtWithForgedJastiperHeader_ShouldReturnSuccess() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(ownerUserId);
+        request.setAmount(BigDecimal.valueOf(10.00));
+        when(walletService.topUp(any(TopUpRequest.class))).thenReturn(walletResponse);
+
+        String adminJwt = generateJwtToken(ownerUserId.toString(), "ADMIN");
+        mockMvc.perform(post("/wallet/topup")
+                        .header("Authorization", "Bearer " + adminJwt)
+                        .header("X-Role", "JASTIPER")
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(ownerUserId.toString()));
+    }
+
+    @Test
     void withdraw_SignedJwtOfDifferentUser_ShouldReturnForbidden() throws Exception {
         when(walletService.withdraw(ownerUserId, BigDecimal.valueOf(10.00), "bank-account"))
                 .thenReturn(walletResponse);
