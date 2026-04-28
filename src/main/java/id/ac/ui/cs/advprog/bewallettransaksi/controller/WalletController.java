@@ -167,6 +167,12 @@ public class WalletController {
         return walletRequestAccessPolicy.isInvalidJwtToken(authorization);
     }
 
+    private void requireJwtBearerToken(String authorization) {
+        if (!walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+    }
+
     private boolean isAuthorizedPayPrincipal(String authorization) {
         return walletRequestAccessPolicy.isAllowedPayRole(authorization)
                 || isAuthorizedForCurrentContract(authorization);
@@ -204,9 +210,7 @@ public class WalletController {
         if (hasInvalidJwt(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
-        if (!walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
-            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
-        }
+        requireJwtBearerToken(authorization);
         if (!walletRequestAccessPolicy.isValidReadJwt(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
@@ -233,6 +237,7 @@ public class WalletController {
         if (hasInvalidJwt(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
+        requireJwtBearerToken(authorization);
         validateOwnerAccess(authorization, userId);
         if (!walletRequestAccessPolicy.isValidReadJwt(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
