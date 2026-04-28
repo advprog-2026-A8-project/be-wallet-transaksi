@@ -6,6 +6,7 @@ import io.jsonwebtoken.security.Keys;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletMutationRequest;
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
@@ -127,6 +128,24 @@ class WalletControllerOwnerAccessIntegrationTest {
                         .contentType("application/json")
                         .content("""
                                 {"userId":"%s","amount":10.00,"description":"payment"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
+    @Test
+    void topUp_SignedJwtOfDifferentUser_ShouldReturnForbidden() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(ownerUserId);
+        request.setAmount(BigDecimal.valueOf(10.00));
+        when(walletService.topUp(request)).thenReturn(walletResponse);
+
+        String differentUserJwt = generateJwtToken(UUID.randomUUID().toString(), "TITIPER");
+        mockMvc.perform(post("/wallet/topup")
+                        .header("Authorization", "Bearer " + differentUserJwt)
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00}
                                 """.formatted(ownerUserId)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("Akses ditolak!"));
