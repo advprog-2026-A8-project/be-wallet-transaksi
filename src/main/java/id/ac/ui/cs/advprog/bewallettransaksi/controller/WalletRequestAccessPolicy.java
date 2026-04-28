@@ -61,7 +61,7 @@ public class WalletRequestAccessPolicy {
             }
             return JASTIPER_ROLE.equalsIgnoreCase(role);
         }
-        return classify(authorization) == AuthorizationKind.JASTIPER_TOPUP_TOKEN
+        return VALID_JASTIPER_TOKEN.equals(authorization)
                 && JASTIPER_ROLE.equalsIgnoreCase(role);
     }
 
@@ -110,16 +110,6 @@ public class WalletRequestAccessPolicy {
 
     public boolean isJwtBearerToken(String authorization) {
         return isJwtToken(authorization);
-    }
-
-    private AuthorizationKind classify(String authorization) {
-        if (INVALID_JWT_TOKEN.equals(authorization)) {
-            return AuthorizationKind.INVALID_JWT;
-        }
-        if (VALID_JASTIPER_TOKEN.equals(authorization)) {
-            return AuthorizationKind.JASTIPER_TOPUP_TOKEN;
-        }
-        return AuthorizationKind.OTHER;
     }
 
     private boolean isValidSignedJwtWithRole(String authorization, String expectedRole) {
@@ -175,9 +165,4 @@ public class WalletRequestAccessPolicy {
                 || JASTIPER_ROLE.equalsIgnoreCase(role));
     }
 
-    private enum AuthorizationKind {
-        INVALID_JWT,
-        JASTIPER_TOPUP_TOKEN,
-        OTHER
-    }
 }
