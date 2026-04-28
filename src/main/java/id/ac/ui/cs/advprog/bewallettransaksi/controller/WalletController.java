@@ -72,10 +72,7 @@ public class WalletController {
             @Valid @RequestBody TopUpRequest request
     ) {
         requireAuthorization(authorization);
-        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, request.getUserId())
-                || walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
+        validateOwnerAccess(authorization, request.getUserId());
         if (walletRequestAccessPolicy.isForbiddenTopUpRole(authorization, role)) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
@@ -94,10 +91,7 @@ public class WalletController {
                 && !isAuthorizedForCurrentContract(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
-        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, request.getUserId())
-                || walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
+        validateOwnerAccess(authorization, request.getUserId());
 
         return ResponseEntity.ok(walletService.pay(
                 request.getUserId(),
@@ -112,10 +106,7 @@ public class WalletController {
             @Valid @RequestBody WalletMutationRequest request
     ) {
         requireAuthorization(authorization);
-        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, request.getUserId())
-                || walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
+        validateOwnerAccess(authorization, request.getUserId());
         return ResponseEntity.ok(walletService.refund(
                 request.getUserId(),
                 request.getAmount(),
@@ -183,15 +174,19 @@ public class WalletController {
         return isMissingHeader(role) || !isJastiper(role);
     }
 
+    private void validateOwnerAccess(String authorization, UUID userId) {
+        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, userId)
+                || walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+    }
+
     private void validateReadAccess(String authorization, UUID userId) {
         requireAuthorization(authorization);
         if (walletRequestAccessPolicy.isInvalidJwtToken(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
-        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, userId)
-                || walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
+        validateOwnerAccess(authorization, userId);
         if (!walletRequestAccessPolicy.isValidReadJwt(authorization)) {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
