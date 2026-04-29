@@ -63,7 +63,8 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     }
 
     private URI buildUserLookupUri(String username) {
-        String encoded = URLEncoder.encode(username, StandardCharsets.UTF_8);
+        String encoded = URLEncoder.encode(username, StandardCharsets.UTF_8)
+                .replace("+", "%20");
         return URI.create(authServiceBaseUrl + USER_LOOKUP_PATH + "?username=" + encoded);
     }
 
