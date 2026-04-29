@@ -18,7 +18,7 @@ import java.util.stream.Stream;
 public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdResolver {
     private static final String USER_LOOKUP_PATH = "/internal/users/by-username";
     private static final Duration DEFAULT_HTTP_TIMEOUT = Duration.ofMillis(1000);
-    private static final Pattern USER_ID_PATTERN =
+    private static final Pattern USER_ID_CASE_INSENSITIVE_PATTERN =
             uuidFieldPattern("userid", true);
     private static final Pattern USER_ID_CAMEL_PATTERN =
             uuidFieldPattern("userId", false);
@@ -32,7 +32,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
             USER_ID_CAMEL_PATTERN,
             USER_ID_SNAKE_PATTERN,
             USER_ID_KEBAB_PATTERN,
-            USER_ID_PATTERN,
+            USER_ID_CASE_INSENSITIVE_PATTERN,
             ID_PATTERN
     );
 
