@@ -37,7 +37,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient, Duration httpTimeout) {
         this.authServiceBaseUrl = normalizeBaseUrl(authServiceBaseUrl);
         this.httpClient = httpClient;
-        this.httpTimeout = httpTimeout;
+        this.httpTimeout = httpTimeout == null ? DEFAULT_HTTP_TIMEOUT : httpTimeout;
     }
 
     private static HttpClient createHttpClient(Duration httpTimeout) {
