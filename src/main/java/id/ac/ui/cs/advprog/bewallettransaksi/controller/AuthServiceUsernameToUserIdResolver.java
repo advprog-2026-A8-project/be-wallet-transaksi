@@ -21,6 +21,8 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
             Pattern.compile("(?i)\"userid\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
     private static final Pattern USER_ID_CAMEL_PATTERN =
             Pattern.compile("\"userId\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
+    private static final Pattern USER_ID_SNAKE_PATTERN =
+            Pattern.compile("\"user_id\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
     private static final Pattern ID_PATTERN =
             Pattern.compile("\"id\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
 
@@ -120,7 +122,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     }
 
     private Optional<UUID> extractUserId(String responseBody) {
-        return Stream.of(USER_ID_CAMEL_PATTERN, USER_ID_PATTERN, ID_PATTERN)
+        return Stream.of(USER_ID_CAMEL_PATTERN, USER_ID_SNAKE_PATTERN, USER_ID_PATTERN, ID_PATTERN)
                 .map(pattern -> extractUuidWithPattern(responseBody, pattern))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
