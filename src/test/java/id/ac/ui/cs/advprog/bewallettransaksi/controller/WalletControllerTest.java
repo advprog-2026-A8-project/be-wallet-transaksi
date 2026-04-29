@@ -895,6 +895,16 @@ class WalletControllerTest {
                 .andExpect(jsonPath("$.message").value("Missing required header: X-Signature-Key"));
     }
 
+    @Test
+    void paymentCallback_InvalidSignature_ShouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "invalid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Invalid callback signature"));
+    }
+
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
         WalletMutationRequest request = new WalletMutationRequest();
         request.setUserId(userId);
