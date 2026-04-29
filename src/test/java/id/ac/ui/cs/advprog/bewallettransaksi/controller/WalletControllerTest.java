@@ -492,6 +492,7 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/pay")
                         .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-pay-success")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -526,6 +527,7 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/pay")
                         .header("Authorization", "Bearer invalid.token.value")
+                        .header("Idempotency-Key", "idem-pay-invalid-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
@@ -539,6 +541,7 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/pay")
                         .header("Authorization", "Bearer valid-jastiper-jwt")
+                        .header("Idempotency-Key", "idem-pay-forbidden-role")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
@@ -563,6 +566,7 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isAllowedPayRole("Bearer " + jwt)).thenReturn(true);
         mockMvc.perform(post("/wallet/pay")
                         .header("Authorization", "Bearer " + jwt)
+                        .header("Idempotency-Key", "idem-pay-valid-jwt")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -721,6 +725,7 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/pay")
                         .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-pay-decimal")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -732,6 +737,7 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/pay")
                         .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-pay-blank-desc")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());

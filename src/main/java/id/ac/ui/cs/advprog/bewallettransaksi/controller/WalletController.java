@@ -76,9 +76,11 @@ public class WalletController {
     @PostMapping("/pay")
     public ResponseEntity<WalletResponse> pay(
             @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody WalletMutationRequest request
     ) {
         validatePayAuthorization(authorization);
+        validateIdempotencyKey(idempotencyKey);
         validateOwnerAccess(authorization, request.getUserId());
         return ResponseEntity.ok(walletService.pay(
                 request.getUserId(),
@@ -171,6 +173,12 @@ public class WalletController {
             throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
         }
         throw new ForbiddenException(FORBIDDEN_MESSAGE);
+    }
+
+    private void validateIdempotencyKey(String idempotencyKey) {
+        if (isMissingHeader(idempotencyKey)) {
+            throw new IllegalArgumentException("Missing required header: Idempotency-Key");
+        }
     }
 
     private boolean shouldRejectAsUnauthorizedPayRequest(String authorization) {

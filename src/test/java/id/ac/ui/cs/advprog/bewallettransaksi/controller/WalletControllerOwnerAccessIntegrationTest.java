@@ -209,6 +209,7 @@ class WalletControllerOwnerAccessIntegrationTest {
         String differentUserJwt = generateJwtToken(UUID.randomUUID().toString(), "TITIPER");
         mockMvc.perform(post("/wallet/pay")
                         .header("Authorization", "Bearer " + differentUserJwt)
+                        .header("Idempotency-Key", "idem-owner-forbidden")
                         .contentType("application/json")
                         .content("""
                                 {"userId":"%s","amount":10.00,"description":"payment"}
@@ -290,6 +291,7 @@ class WalletControllerOwnerAccessIntegrationTest {
         String adminJwt = generateJwtToken(ownerUserId.toString(), "ADMIN");
         mockMvc.perform(post("/wallet/pay")
                         .header("Authorization", "Bearer " + adminJwt)
+                        .header("Idempotency-Key", "idem-owner-admin")
                         .contentType("application/json")
                         .content("""
                                 {"userId":"%s","amount":10.00,"description":"payment"}
@@ -306,6 +308,7 @@ class WalletControllerOwnerAccessIntegrationTest {
         String unsupportedRoleJwt = generateJwtToken(ownerUserId.toString(), "CUSTOMER");
         mockMvc.perform(post("/wallet/pay")
                         .header("Authorization", "Bearer " + unsupportedRoleJwt)
+                        .header("Idempotency-Key", "idem-owner-unsupported-role")
                         .contentType("application/json")
                         .content("""
                                 {"userId":"%s","amount":10.00,"description":"payment"}
@@ -321,6 +324,7 @@ class WalletControllerOwnerAccessIntegrationTest {
 
         mockMvc.perform(post("/wallet/pay")
                         .header("Authorization", "Bearer valid-read-jwt")
+                        .header("Idempotency-Key", "idem-owner-legacy-read")
                         .contentType("application/json")
                         .content("""
                                 {"userId":"%s","amount":10.00,"description":"payment"}
@@ -336,6 +340,7 @@ class WalletControllerOwnerAccessIntegrationTest {
 
         mockMvc.perform(post("/wallet/pay")
                         .header("Authorization", "Bearer test-token")
+                        .header("Idempotency-Key", "idem-owner-legacy-token")
                         .contentType("application/json")
                         .content("""
                                 {"userId":"%s","amount":10.00,"description":"payment"}
