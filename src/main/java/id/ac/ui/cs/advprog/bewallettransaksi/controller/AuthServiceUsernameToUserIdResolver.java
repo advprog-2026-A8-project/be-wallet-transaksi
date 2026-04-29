@@ -17,10 +17,14 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
 
     @Override
     public Optional<UUID> resolve(String username) {
-        if (username == null || username.isBlank()) {
+        if (username == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(STATIC_MAPPINGS.get(username));
+        String normalized = username.trim();
+        if (normalized.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(STATIC_MAPPINGS.get(normalized));
     }
 
     String getAuthServiceBaseUrl() {
