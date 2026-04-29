@@ -109,6 +109,17 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     @Test
+    void getWallet_UsernameSubjectJwtWithoutResolverMapping_ShouldReturnForbidden() throws Exception {
+        when(walletService.getWallet(ownerUserId)).thenReturn(walletResponse);
+
+        String ownerJwt = generateJwtToken("unknown_username", "TITIPER");
+        mockMvc.perform(get("/wallet/{userId}", ownerUserId)
+                        .header("Authorization", "Bearer " + ownerJwt))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"));
+    }
+
+    @Test
     void getWallet_UnsupportedRoleJwt_ShouldReturnForbidden() throws Exception {
         when(walletService.getWallet(ownerUserId)).thenReturn(walletResponse);
 
