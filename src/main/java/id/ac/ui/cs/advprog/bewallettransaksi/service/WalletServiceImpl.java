@@ -236,7 +236,6 @@ public class WalletServiceImpl implements WalletService {
         BigDecimal updatedBalance = applyMutation(wallet.getBalance(), amount, TransactionType.PAYMENT);
         validateUpdatedBalance(updatedBalance);
         Transaction transaction = createTransaction(wallet.getWalletId(), amount, TransactionType.PAYMENT, description);
-        persistPendingSnapshot(transaction);
         updateWalletBalance(wallet, updatedBalance);
         finalizeTransaction(transaction);
     }
@@ -270,20 +269,6 @@ public class WalletServiceImpl implements WalletService {
     private void finalizeTransaction(Transaction transaction) {
         transaction.setStatus(TransactionStatus.SUCCESS);
         transactionRepository.save(transaction);
-    }
-
-    private void persistPendingSnapshot(Transaction transaction) {
-        transactionRepository.save(copyTransaction(transaction));
-    }
-
-    private Transaction copyTransaction(Transaction source) {
-        Transaction copy = new Transaction();
-        copy.setWalletId(source.getWalletId());
-        copy.setAmount(source.getAmount());
-        copy.setType(source.getType());
-        copy.setStatus(source.getStatus());
-        copy.setDescription(source.getDescription());
-        return copy;
     }
 
     private BigDecimal normalizeBalance(BigDecimal balance) {

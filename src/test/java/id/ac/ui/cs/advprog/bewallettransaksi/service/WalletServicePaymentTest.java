@@ -75,15 +75,8 @@ class WalletServicePaymentTest {
         verify(walletRepository).save(wallet);
 
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
-        verify(transactionRepository, times(2)).save(transactionCaptor.capture());
-        Transaction pendingTransaction = transactionCaptor.getAllValues().get(0);
-        Transaction successTransaction = transactionCaptor.getAllValues().get(1);
-
-        assertEquals(walletId, pendingTransaction.getWalletId());
-        assertEquals(BigDecimal.valueOf(60.00), pendingTransaction.getAmount());
-        assertEquals(TransactionType.PAYMENT, pendingTransaction.getType());
-        assertEquals(TransactionStatus.PENDING, pendingTransaction.getStatus());
-        assertEquals("Order payment", pendingTransaction.getDescription());
+        verify(transactionRepository).save(transactionCaptor.capture());
+        Transaction successTransaction = transactionCaptor.getValue();
 
         assertEquals(walletId, successTransaction.getWalletId());
         assertEquals(BigDecimal.valueOf(60.00), successTransaction.getAmount());
@@ -101,18 +94,14 @@ class WalletServicePaymentTest {
         walletService.pay(userId, BigDecimal.valueOf(60.00), "Order payment");
 
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
-        verify(transactionRepository, times(2)).save(transactionCaptor.capture());
-        Transaction firstSave = transactionCaptor.getAllValues().get(0);
-        Transaction secondSave = transactionCaptor.getAllValues().get(1);
+        verify(transactionRepository).save(transactionCaptor.capture());
+        Transaction savedTransaction = transactionCaptor.getValue();
 
-        assertEquals(TransactionStatus.PENDING, firstSave.getStatus());
-        assertEquals(TransactionStatus.SUCCESS, secondSave.getStatus());
-        assertEquals(firstSave.getWalletId(), secondSave.getWalletId());
-        assertEquals(firstSave.getAmount(), secondSave.getAmount());
+        assertEquals(TransactionStatus.SUCCESS, savedTransaction.getStatus());
     }
 
     @Test
-    void pay_ShouldPersistPendingThenPromoteToSuccess() {
+    void pay_ShouldPersistSuccessTransaction() {
         when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
         when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -120,11 +109,9 @@ class WalletServicePaymentTest {
         walletService.pay(userId, BigDecimal.valueOf(60.00), "Order payment");
 
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
-        verify(transactionRepository, times(2)).save(transactionCaptor.capture());
-        Transaction firstSave = transactionCaptor.getAllValues().get(0);
-        Transaction secondSave = transactionCaptor.getAllValues().get(1);
-        assertEquals(TransactionStatus.PENDING, firstSave.getStatus());
-        assertEquals(TransactionStatus.SUCCESS, secondSave.getStatus());
+        verify(transactionRepository).save(transactionCaptor.capture());
+        Transaction savedTransaction = transactionCaptor.getValue();
+        assertEquals(TransactionStatus.SUCCESS, savedTransaction.getStatus());
     }
 
     @Test
@@ -183,7 +170,7 @@ class WalletServicePaymentTest {
         assertNotNull(response);
         assertEquals(BigDecimal.ZERO, response.getBalance());
         verify(walletRepository).save(wallet);
-        verify(transactionRepository, times(2)).save(any(Transaction.class));
+        verify(transactionRepository).save(any(Transaction.class));
     }
 
     @Test

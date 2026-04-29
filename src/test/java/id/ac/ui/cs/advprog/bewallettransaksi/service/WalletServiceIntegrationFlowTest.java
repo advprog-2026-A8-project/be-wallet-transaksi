@@ -64,17 +64,16 @@ class WalletServiceIntegrationFlowTest {
         assertEquals(new BigDecimal("700000.00"), finalWallet.getBalance());
 
         List<TransactionResponse> history = walletService.getTransactionHistory(userId);
-        assertEquals(5, history.size());
+        assertEquals(4, history.size());
 
         List<TransactionType> types = history.stream()
                 .map(TransactionResponse::getType)
                 .toList();
         assertEquals(1, types.stream().filter(type -> type == TransactionType.TOPUP).count());
-        assertEquals(2, types.stream().filter(type -> type == TransactionType.PAYMENT).count());
+        assertEquals(1, types.stream().filter(type -> type == TransactionType.PAYMENT).count());
         assertEquals(1, types.stream().filter(type -> type == TransactionType.REFUND).count());
         assertEquals(1, types.stream().filter(type -> type == TransactionType.WITHDRAW).count());
         assertEquals(4, history.stream().filter(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS).count());
-        assertEquals(1, history.stream().filter(transaction -> transaction.getStatus() == TransactionStatus.PENDING).count());
     }
 
     @Test
