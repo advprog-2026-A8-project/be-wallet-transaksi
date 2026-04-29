@@ -909,6 +909,16 @@ class WalletControllerTest {
                 .andExpect(jsonPath("$.message").value("Invalid callback signature"));
     }
 
+    @Test
+    void paymentCallback_UnsupportedTransactionStatus_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\",\"transaction_status\":\"mystery\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Unsupported callback status: mystery"));
+    }
+
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
         WalletMutationRequest request = new WalletMutationRequest();
         request.setUserId(userId);
