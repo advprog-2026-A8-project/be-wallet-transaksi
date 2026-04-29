@@ -2,6 +2,8 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import java.util.UUID;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,7 @@ import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletMutationRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.ForbiddenException;
+import id.ac.ui.cs.advprog.bewallettransaksi.exception.ConflictException;
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
 import jakarta.validation.Valid;
@@ -30,10 +33,12 @@ public class WalletController {
     private static final String UNAUTHORIZED_MESSAGE = "Autentikasi diperlukan!";
     private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
+    private static final String DUPLICATE_IDEMPOTENCY_MESSAGE = "Duplicate idempotency key";
     private static final String JASTIPER_ROLE = "JASTIPER";
 
     private final WalletService walletService;
     private final WalletRequestAccessPolicy walletRequestAccessPolicy;
+    private final Set<String> processedIdempotencyKeys = ConcurrentHashMap.newKeySet();
 
     public WalletController(
             WalletService walletService,
@@ -82,6 +87,7 @@ public class WalletController {
     ) {
         validatePayAuthorization(authorization);
         validateIdempotencyKey(idempotencyKey);
+        registerIdempotencyKeyOrThrow(idempotencyKey);
         validateOwnerAccess(authorization, request.getUserId());
         return ResponseEntity.ok(walletService.pay(
                 request.getUserId(),
@@ -178,6 +184,12 @@ public class WalletController {
 
     private void validateIdempotencyKey(String idempotencyKey) {
         requireHeader(idempotencyKey, IDEMPOTENCY_HEADER);
+    }
+
+    private void registerIdempotencyKeyOrThrow(String idempotencyKey) {
+        if (!processedIdempotencyKeys.add(idempotencyKey)) {
+            throw new ConflictException(DUPLICATE_IDEMPOTENCY_MESSAGE);
+        }
     }
 
     private void requireHeader(String value, String headerName) {
