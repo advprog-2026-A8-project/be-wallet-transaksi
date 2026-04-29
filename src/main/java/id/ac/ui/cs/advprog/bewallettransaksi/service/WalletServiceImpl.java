@@ -225,8 +225,7 @@ public class WalletServiceImpl implements WalletService {
 
     private void processMutation(Wallet wallet, BigDecimal amount, TransactionType type,
                                  String description) {
-        WalletMutationStrategy strategy = strategyResolver.resolve(type);
-        BigDecimal updatedBalance = strategy.apply(wallet.getBalance(), amount);
+        BigDecimal updatedBalance = applyMutation(wallet.getBalance(), amount, type);
         validateUpdatedBalance(updatedBalance);
         Transaction transaction = createTransaction(wallet.getWalletId(), amount, type, description);
         updateWalletBalance(wallet, updatedBalance);
@@ -234,13 +233,17 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private void processPaymentMutation(Wallet wallet, BigDecimal amount, String description) {
-        WalletMutationStrategy strategy = strategyResolver.resolve(TransactionType.PAYMENT);
-        BigDecimal updatedBalance = strategy.apply(wallet.getBalance(), amount);
+        BigDecimal updatedBalance = applyMutation(wallet.getBalance(), amount, TransactionType.PAYMENT);
         validateUpdatedBalance(updatedBalance);
         Transaction transaction = createTransaction(wallet.getWalletId(), amount, TransactionType.PAYMENT, description);
         persistPendingSnapshot(transaction);
         updateWalletBalance(wallet, updatedBalance);
         finalizeTransaction(transaction);
+    }
+
+    private BigDecimal applyMutation(BigDecimal currentBalance, BigDecimal amount, TransactionType type) {
+        WalletMutationStrategy strategy = strategyResolver.resolve(type);
+        return strategy.apply(currentBalance, amount);
     }
 
     private void validateUpdatedBalance(BigDecimal updatedBalance) {
