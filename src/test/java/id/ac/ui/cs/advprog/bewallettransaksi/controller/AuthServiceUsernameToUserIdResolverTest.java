@@ -51,4 +51,14 @@ class AuthServiceUsernameToUserIdResolverTest {
             server.stop(0);
         }
     }
+
+    @Test
+    void resolve_WhenAuthServiceUnavailable_ShouldReturnEmpty() {
+        AuthServiceUsernameToUserIdResolver resolver =
+                new AuthServiceUsernameToUserIdResolver("http://localhost:1");
+
+        Optional<UUID> resolved = resolver.resolve("owner_username");
+
+        assertTrue(resolved.isEmpty());
+    }
 }
