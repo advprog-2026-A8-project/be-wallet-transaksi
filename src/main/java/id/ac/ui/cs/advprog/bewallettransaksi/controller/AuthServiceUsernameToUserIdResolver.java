@@ -90,10 +90,11 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
         if (baseUrl == null || baseUrl.isBlank()) {
             return "";
         }
-        if (baseUrl.endsWith("/")) {
-            return baseUrl.substring(0, baseUrl.length() - 1);
+        String normalized = baseUrl.trim();
+        if (normalized.endsWith("/")) {
+            return normalized.substring(0, normalized.length() - 1);
         }
-        return baseUrl;
+        return normalized;
     }
 
     private String encodeQueryParam(String value) {
