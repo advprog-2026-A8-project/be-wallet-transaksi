@@ -630,6 +630,39 @@ class WalletControllerTest {
     }
 
     @Test
+    void pay_SameIdempotencyKeyAfterFailedBusinessValidation_ShouldRetrySuccessfully() throws Exception {
+        WalletMutationRequest failedRequest = buildMutationRequest("Order payment", BigDecimal.valueOf(500.00));
+        WalletMutationRequest successRequest = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        when(walletService.pay(userId, BigDecimal.valueOf(500.00), "Order payment"))
+                .thenThrow(new IllegalStateException("Insufficient balance"));
+        when(walletService.pay(userId, BigDecimal.valueOf(50.00), "Order payment"))
+                .thenReturn(WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(50.00))
+                        .build());
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-retry-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(failedRequest)))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-retry-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(successRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(50.00));
+
+        verify(walletService, times(1)).pay(userId, BigDecimal.valueOf(500.00), "Order payment");
+        verify(walletService, times(1)).pay(userId, BigDecimal.valueOf(50.00), "Order payment");
+    }
+
+    @Test
     void refund_Success() throws Exception {
         WalletMutationRequest request = buildMutationRequest("Order refund", BigDecimal.valueOf(25.00));
 

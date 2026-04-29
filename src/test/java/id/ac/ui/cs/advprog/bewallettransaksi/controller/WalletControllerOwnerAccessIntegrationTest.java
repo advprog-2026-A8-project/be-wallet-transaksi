@@ -27,6 +27,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -347,6 +348,34 @@ class WalletControllerOwnerAccessIntegrationTest {
                                 """.formatted(ownerUserId)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"));
+    }
+
+    @Test
+    void pay_SameIdempotencyKeyAfterFirstFailure_ShouldAllowRetrySuccess() throws Exception {
+        doReturn(walletResponse)
+                .when(walletService).pay(eq(ownerUserId), eq(BigDecimal.valueOf(10.00)), eq("payment"));
+        when(walletService.pay(eq(ownerUserId), eq(BigDecimal.valueOf(9999.00)), eq("payment")))
+                .thenThrow(new IllegalStateException("Insufficient balance"));
+
+        String ownerJwt = generateJwtToken(ownerUserId.toString(), "TITIPER");
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header("Authorization", "Bearer " + ownerJwt)
+                        .header("Idempotency-Key", "idem-retry-int-001")
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":9999.00,"description":"payment"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header("Authorization", "Bearer " + ownerJwt)
+                        .header("Idempotency-Key", "idem-retry-int-001")
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","amount":10.00,"description":"payment"}
+                                """.formatted(ownerUserId)))
+                .andExpect(status().isOk());
     }
 
     @Test
