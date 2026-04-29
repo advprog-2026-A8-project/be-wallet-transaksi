@@ -4,7 +4,11 @@ import java.util.UUID;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,21 +39,25 @@ public class WalletController {
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
     private static final String SIGNATURE_HEADER = "X-Signature-Key";
     private static final String CALLBACK_ACCEPTED_MESSAGE = "Callback accepted";
+    private static final String INVALID_CALLBACK_SIGNATURE_MESSAGE = "Invalid callback signature";
     private static final String DUPLICATE_IDEMPOTENCY_MESSAGE = "Duplicate idempotency key";
     private static final String JASTIPER_ROLE = "JASTIPER";
 
     private final WalletService walletService;
     private final WalletRequestAccessPolicy walletRequestAccessPolicy;
     private final IdempotencyKeyGuard idempotencyKeyGuard;
+    private final String midtransServerKey;
 
     public WalletController(
             WalletService walletService,
             WalletRequestAccessPolicy walletRequestAccessPolicy,
-            IdempotencyKeyGuard idempotencyKeyGuard
+            IdempotencyKeyGuard idempotencyKeyGuard,
+            @Value("${midtrans.server-key:}") String midtransServerKey
     ) {
         this.walletService = walletService;
         this.walletRequestAccessPolicy = walletRequestAccessPolicy;
         this.idempotencyKeyGuard = idempotencyKeyGuard;
+        this.midtransServerKey = midtransServerKey == null ? "" : midtransServerKey;
     }
 
     @GetMapping("/{userId}")
@@ -119,6 +127,7 @@ public class WalletController {
     ) {
         requireHeader(signatureKey, SIGNATURE_HEADER);
         validateCallbackPayload(payload);
+        validateCallbackSignature(payload, signatureKey);
         return ResponseEntity.ok(callbackAcceptedResponse());
     }
 
@@ -234,6 +243,47 @@ public class WalletController {
 
     private Map<String, String> callbackAcceptedResponse() {
         return Map.of("message", CALLBACK_ACCEPTED_MESSAGE);
+    }
+
+    private void validateCallbackSignature(Map<String, Object> payload, String signatureKey) {
+        String expectedSignature = buildExpectedSignature(payload);
+        if (!expectedSignature.equals(signatureKey)) {
+            throw new UnauthorizedException(INVALID_CALLBACK_SIGNATURE_MESSAGE);
+        }
+    }
+
+    private String buildExpectedSignature(Map<String, Object> payload) {
+        String orderId = extractRequiredPayloadValue(payload, "order_id");
+        String statusCode = extractRequiredPayloadValue(payload, "status_code");
+        String grossAmount = extractRequiredPayloadValue(payload, "gross_amount");
+        String rawSignature = orderId + statusCode + grossAmount + midtransServerKey;
+        return sha512Hex(rawSignature);
+    }
+
+    private String extractRequiredPayloadValue(Map<String, Object> payload, String key) {
+        Object value = payload.get(key);
+        if (value == null) {
+            throw new IllegalArgumentException("Missing required callback field: " + key);
+        }
+        String text = value.toString().trim();
+        if (text.isEmpty()) {
+            throw new IllegalArgumentException("Missing required callback field: " + key);
+        }
+        return text;
+    }
+
+    private String sha512Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-512");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-512 algorithm is unavailable", ex);
+        }
     }
 
     private void requireAuthorization(String authorization) {
