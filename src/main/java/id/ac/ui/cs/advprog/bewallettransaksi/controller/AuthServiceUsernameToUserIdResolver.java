@@ -33,40 +33,57 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
 
     @Override
     public Optional<UUID> resolve(String username) {
-        if (username == null) {
-            return Optional.empty();
-        }
-        String normalized = username.trim();
-        if (normalized.isEmpty()) {
-            return Optional.empty();
-        }
-        return resolveFromAuthService(normalized)
-                .or(() -> Optional.ofNullable(STATIC_MAPPINGS.get(normalized)));
+        return normalize(username)
+                .flatMap(this::resolveWithFallback);
     }
 
     String getAuthServiceBaseUrl() {
         return authServiceBaseUrl;
     }
 
+    private Optional<String> normalize(String username) {
+        if (username == null) {
+            return Optional.empty();
+        }
+        String normalized = username.trim();
+        return normalized.isEmpty() ? Optional.empty() : Optional.of(normalized);
+    }
+
+    private Optional<UUID> resolveWithFallback(String username) {
+        return resolveFromAuthService(username)
+                .or(() -> resolveFromStaticMapping(username));
+    }
+
+    private Optional<UUID> resolveFromStaticMapping(String username) {
+        return Optional.ofNullable(STATIC_MAPPINGS.get(username));
+    }
+
     private Optional<UUID> resolveFromAuthService(String username) {
         try {
-            String encoded = URLEncoder.encode(username, StandardCharsets.UTF_8);
-            String endpoint = authServiceBaseUrl + "/internal/users/by-username?username=" + encoded;
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint))
+                    .uri(buildUserLookupUri(username))
                     .GET()
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200 || response.body() == null) {
                 return Optional.empty();
             }
-            Matcher matcher = USER_ID_PATTERN.matcher(response.body());
-            if (!matcher.find()) {
-                return Optional.empty();
-            }
-            return Optional.of(UUID.fromString(matcher.group(1)));
+            return extractUserId(response.body());
         } catch (Exception ex) {
             return Optional.empty();
         }
+    }
+
+    private URI buildUserLookupUri(String username) {
+        String encoded = URLEncoder.encode(username, StandardCharsets.UTF_8);
+        return URI.create(authServiceBaseUrl + "/internal/users/by-username?username=" + encoded);
+    }
+
+    private Optional<UUID> extractUserId(String responseBody) {
+        Matcher matcher = USER_ID_PATTERN.matcher(responseBody);
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+        return Optional.of(UUID.fromString(matcher.group(1)));
     }
 }
