@@ -4,6 +4,8 @@ import java.util.Set;
 
 public final class MidtransTransactionStatus {
 
+    public static final String SETTLEMENT = "settlement";
+
     private static final Set<String> SUPPORTED_STATUSES = Set.of(
             "capture", "settlement", "pending", "deny", "cancel", "expire", "failure"
     );
@@ -13,5 +15,9 @@ public final class MidtransTransactionStatus {
 
     public static boolean isSupported(String status) {
         return SUPPORTED_STATUSES.contains(status);
+    }
+
+    public static boolean isSettlement(String status) {
+        return SETTLEMENT.equalsIgnoreCase(status);
     }
 }
