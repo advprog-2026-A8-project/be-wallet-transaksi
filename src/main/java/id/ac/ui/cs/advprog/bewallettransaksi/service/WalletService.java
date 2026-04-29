@@ -18,4 +18,5 @@ public interface WalletService {
     WalletResponse withdraw(UUID userId, BigDecimal amount, String description);
     List<TransactionResponse> getTransactionHistory(UUID userId);
     List<TransactionResponse> getTransactionHistoryByStatus(UUID userId, TransactionStatus status);
+    void handlePaymentSettlement(String orderId);
 }
