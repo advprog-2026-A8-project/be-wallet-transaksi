@@ -7,6 +7,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -36,8 +37,8 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
 
     AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient, Duration httpTimeout) {
         this.authServiceBaseUrl = normalizeBaseUrl(authServiceBaseUrl);
-        this.httpClient = httpClient;
-        this.httpTimeout = httpTimeout == null ? DEFAULT_HTTP_TIMEOUT : httpTimeout;
+        this.httpClient = Objects.requireNonNull(httpClient, "httpClient must not be null");
+        this.httpTimeout = normalizeTimeout(httpTimeout);
     }
 
     private static HttpClient createHttpClient(Duration httpTimeout) {
@@ -95,6 +96,10 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
             normalized = normalized.substring(0, normalized.length() - 1);
         }
         return normalized;
+    }
+
+    private static Duration normalizeTimeout(Duration timeout) {
+        return timeout == null ? DEFAULT_HTTP_TIMEOUT : timeout;
     }
 
     private String encodeQueryParam(String value) {
