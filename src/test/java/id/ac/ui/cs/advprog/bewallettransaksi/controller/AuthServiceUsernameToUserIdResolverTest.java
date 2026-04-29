@@ -447,4 +447,31 @@ class AuthServiceUsernameToUserIdResolverTest {
             server.stop(0);
         }
     }
+
+    @Test
+    void resolve_WhenAuthServiceReturnsUserIdKebabCase_ShouldResolveUserId() throws Exception {
+        UUID expectedUserId = UUID.fromString("12121212-3434-5656-7878-909090909090");
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/internal/users/by-username", exchange -> {
+            String response = "{\"user-id\":\"" + expectedUserId + "\"}";
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.getBytes().length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
+            }
+        });
+        server.start();
+        try {
+            String baseUrl = "http://localhost:" + server.getAddress().getPort();
+            AuthServiceUsernameToUserIdResolver resolver =
+                    new AuthServiceUsernameToUserIdResolver(baseUrl);
+
+            Optional<UUID> resolved = resolver.resolve("owner_username");
+
+            assertTrue(resolved.isPresent());
+            assertEquals(expectedUserId, resolved.get());
+        } finally {
+            server.stop(0);
+        }
+    }
 }
