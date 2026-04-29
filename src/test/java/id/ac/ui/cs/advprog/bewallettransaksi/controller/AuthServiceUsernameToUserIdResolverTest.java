@@ -5,11 +5,13 @@ import org.junit.jupiter.api.Test;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.OutputStream;
+import java.time.Duration;
 import java.net.InetSocketAddress;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AuthServiceUsernameToUserIdResolverTest {
@@ -82,6 +84,31 @@ class AuthServiceUsernameToUserIdResolverTest {
     }
 
     @Test
+    void resolve_WhenAuthServiceReturnsInvalidUserIdFormat_ShouldReturnEmpty() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/internal/users/by-username", exchange -> {
+            String response = "{\"userId\":\"not-a-uuid\"}";
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.getBytes().length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
+            }
+        });
+        server.start();
+        try {
+            String baseUrl = "http://localhost:" + server.getAddress().getPort();
+            AuthServiceUsernameToUserIdResolver resolver =
+                    new AuthServiceUsernameToUserIdResolver(baseUrl);
+
+            Optional<UUID> resolved = resolver.resolve("broken_user");
+
+            assertTrue(resolved.isEmpty());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void resolve_WhenAuthServiceUnavailable_ShouldReturnEmpty() {
         AuthServiceUsernameToUserIdResolver resolver =
                 new AuthServiceUsernameToUserIdResolver("http://localhost:1");
@@ -89,5 +116,37 @@ class AuthServiceUsernameToUserIdResolverTest {
         Optional<UUID> resolved = resolver.resolve("owner_username");
 
         assertTrue(resolved.isEmpty());
+    }
+
+    @Test
+    void resolve_WhenAuthServiceIsSlow_ShouldFailFastAndReturnEmpty() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/internal/users/by-username", exchange -> {
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            String response = "{\"userId\":\"44444444-4444-4444-4444-444444444444\"}";
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.getBytes().length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
+            }
+        });
+        server.start();
+        try {
+            String baseUrl = "http://localhost:" + server.getAddress().getPort();
+            AuthServiceUsernameToUserIdResolver resolver =
+                    new AuthServiceUsernameToUserIdResolver(baseUrl);
+
+            Optional<UUID> resolved = assertTimeoutPreemptively(
+                    Duration.ofMillis(1200),
+                    () -> resolver.resolve("slow_user")
+            );
+            assertTrue(resolved.isEmpty());
+        } finally {
+            server.stop(0);
+        }
     }
 }
