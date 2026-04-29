@@ -7,33 +7,20 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdResolver {
     private static final String USER_LOOKUP_PATH = "/internal/users/by-username";
     private static final Duration DEFAULT_HTTP_TIMEOUT = Duration.ofMillis(1000);
-    private static final Pattern USER_ID_CASE_INSENSITIVE_PATTERN =
-            uuidFieldPattern("userid", true);
     private static final Pattern USER_ID_CAMEL_PATTERN =
             uuidFieldPattern("userId", false);
-    private static final Pattern USER_ID_SNAKE_PATTERN =
-            uuidFieldPattern("user_id", false);
-    private static final Pattern USER_ID_KEBAB_PATTERN =
-            uuidFieldPattern("user-id", false);
-    private static final Pattern ID_PATTERN =
-            uuidFieldPattern("id", true);
     private static final List<Pattern> USER_ID_PATTERNS = List.of(
-            USER_ID_CAMEL_PATTERN,
-            USER_ID_SNAKE_PATTERN,
-            USER_ID_KEBAB_PATTERN,
-            USER_ID_CASE_INSENSITIVE_PATTERN,
-            ID_PATTERN
+            USER_ID_CAMEL_PATTERN
     );
 
     private final String authServiceBaseUrl;
@@ -141,8 +128,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
                 .map(pattern -> extractUuidWithPattern(responseBody, pattern))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .findFirst()
-                .or(() -> extractRawUuid(responseBody));
+                .findFirst();
     }
 
     private Optional<UUID> extractUuidWithPattern(String responseBody, Pattern pattern) {
@@ -153,22 +139,4 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
         return Optional.empty();
     }
 
-    private Optional<UUID> extractRawUuid(String responseBody) {
-        if (responseBody == null) {
-            return Optional.empty();
-        }
-        String normalized = stripOptionalQuotes(responseBody.trim());
-        try {
-            return Optional.of(UUID.fromString(normalized));
-        } catch (IllegalArgumentException ex) {
-            return Optional.empty();
-        }
-    }
-
-    private String stripOptionalQuotes(String value) {
-        if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
-            return value.substring(1, value.length() - 1).trim();
-        }
-        return value;
-    }
 }

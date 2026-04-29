@@ -1,13 +1,12 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
+import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 
-import com.sun.net.httpserver.HttpServer;
-
 import java.io.OutputStream;
-import java.time.Duration;
-import java.net.http.HttpClient;
 import java.net.InetSocketAddress;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,15 +29,7 @@ class AuthServiceUsernameToUserIdResolverTest {
     @Test
     void resolve_ShouldFetchUserIdFromAuthServiceEndpoint() throws Exception {
         UUID expectedUserId = UUID.fromString("22222222-2222-2222-2222-222222222222");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"userId\":\"" + expectedUserId + "\"}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
+        HttpServer server = createServerWithResponse("{\"userId\":\"" + expectedUserId + "\"}");
         server.start();
         try {
             String baseUrl = "http://localhost:" + server.getAddress().getPort();
@@ -86,15 +77,7 @@ class AuthServiceUsernameToUserIdResolverTest {
 
     @Test
     void resolve_WhenAuthServiceReturnsInvalidUserIdFormat_ShouldReturnEmpty() throws Exception {
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"userId\":\"not-a-uuid\"}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
+        HttpServer server = createServerWithResponse("{\"userId\":\"not-a-uuid\"}");
         server.start();
         try {
             String baseUrl = "http://localhost:" + server.getAddress().getPort();
@@ -154,15 +137,7 @@ class AuthServiceUsernameToUserIdResolverTest {
     @Test
     void resolve_WithTrailingSlashBaseUrl_ShouldStillResolveUserId() throws Exception {
         UUID expectedUserId = UUID.fromString("55555555-5555-5555-5555-555555555555");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"userId\":\"" + expectedUserId + "\"}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
+        HttpServer server = createServerWithResponse("{\"userId\":\"" + expectedUserId + "\"}");
         server.start();
         try {
             String baseUrl = "http://localhost:" + server.getAddress().getPort() + "/";
@@ -181,15 +156,7 @@ class AuthServiceUsernameToUserIdResolverTest {
     @Test
     void resolve_WithWhitespaceAroundBaseUrl_ShouldStillResolveUserId() throws Exception {
         UUID expectedUserId = UUID.fromString("66666666-6666-6666-6666-666666666666");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"userId\":\"" + expectedUserId + "\"}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
+        HttpServer server = createServerWithResponse("{\"userId\":\"" + expectedUserId + "\"}");
         server.start();
         try {
             String baseUrl = "  http://localhost:" + server.getAddress().getPort() + "/  ";
@@ -208,15 +175,7 @@ class AuthServiceUsernameToUserIdResolverTest {
     @Test
     void resolve_WhenTimeoutConfigIsNull_ShouldFallbackToDefaultTimeout() throws Exception {
         UUID expectedUserId = UUID.fromString("77777777-7777-7777-7777-777777777777");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"userId\":\"" + expectedUserId + "\"}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
+        HttpServer server = createServerWithResponse("{\"userId\":\"" + expectedUserId + "\"}");
         server.start();
         try {
             String baseUrl = "http://localhost:" + server.getAddress().getPort();
@@ -235,15 +194,7 @@ class AuthServiceUsernameToUserIdResolverTest {
     @Test
     void resolve_WhenTimeoutConfigIsZero_ShouldFallbackToDefaultTimeout() throws Exception {
         UUID expectedUserId = UUID.fromString("88888888-8888-8888-8888-888888888888");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"userId\":\"" + expectedUserId + "\"}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
+        HttpServer server = createServerWithResponse("{\"userId\":\"" + expectedUserId + "\"}");
         server.start();
         try {
             String baseUrl = "http://localhost:" + server.getAddress().getPort();
@@ -259,273 +210,15 @@ class AuthServiceUsernameToUserIdResolverTest {
         }
     }
 
-    @Test
-    void resolve_WhenAuthServiceReturnsIdField_ShouldResolveUserId() throws Exception {
-        UUID expectedUserId = UUID.fromString("99999999-9999-9999-9999-999999999999");
+    private HttpServer createServerWithResponse(String response) throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"id\":\"" + expectedUserId + "\"}";
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, response.getBytes().length);
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(response.getBytes());
             }
         });
-        server.start();
-        try {
-            String baseUrl = "http://localhost:" + server.getAddress().getPort();
-            AuthServiceUsernameToUserIdResolver resolver =
-                    new AuthServiceUsernameToUserIdResolver(baseUrl);
-
-            Optional<UUID> resolved = resolver.resolve("owner_username");
-
-            assertTrue(resolved.isPresent());
-            assertEquals(expectedUserId, resolved.get());
-        } finally {
-            server.stop(0);
-        }
-    }
-
-    @Test
-    void resolve_WhenAuthServiceReturnsNestedDataUserId_ShouldResolveUserId() throws Exception {
-        UUID expectedUserId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"data\":{\"userId\":\"" + expectedUserId + "\"}}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
-        server.start();
-        try {
-            String baseUrl = "http://localhost:" + server.getAddress().getPort();
-            AuthServiceUsernameToUserIdResolver resolver =
-                    new AuthServiceUsernameToUserIdResolver(baseUrl);
-
-            Optional<UUID> resolved = resolver.resolve("owner_username");
-
-            assertTrue(resolved.isPresent());
-            assertEquals(expectedUserId, resolved.get());
-        } finally {
-            server.stop(0);
-        }
-    }
-
-    @Test
-    void resolve_WhenAuthServiceReturnsRawUuidBody_ShouldResolveUserId() throws Exception {
-        UUID expectedUserId = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = expectedUserId.toString();
-            exchange.getResponseHeaders().add("Content-Type", "text/plain");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
-        server.start();
-        try {
-            String baseUrl = "http://localhost:" + server.getAddress().getPort();
-            AuthServiceUsernameToUserIdResolver resolver =
-                    new AuthServiceUsernameToUserIdResolver(baseUrl);
-
-            Optional<UUID> resolved = resolver.resolve("owner_username");
-
-            assertTrue(resolved.isPresent());
-            assertEquals(expectedUserId, resolved.get());
-        } finally {
-            server.stop(0);
-        }
-    }
-
-    @Test
-    void resolve_WhenAuthServiceReturnsQuotedUuidBody_ShouldResolveUserId() throws Exception {
-        UUID expectedUserId = UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "\"" + expectedUserId + "\"";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
-        server.start();
-        try {
-            String baseUrl = "http://localhost:" + server.getAddress().getPort();
-            AuthServiceUsernameToUserIdResolver resolver =
-                    new AuthServiceUsernameToUserIdResolver(baseUrl);
-
-            Optional<UUID> resolved = resolver.resolve("owner_username");
-
-            assertTrue(resolved.isPresent());
-            assertEquals(expectedUserId, resolved.get());
-        } finally {
-            server.stop(0);
-        }
-    }
-
-    @Test
-    void resolve_WhenAuthServiceReturnsQuotedUuidWithNewline_ShouldResolveUserId() throws Exception {
-        UUID expectedUserId = UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "\"\n" + expectedUserId + "\n\"";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
-        server.start();
-        try {
-            String baseUrl = "http://localhost:" + server.getAddress().getPort();
-            AuthServiceUsernameToUserIdResolver resolver =
-                    new AuthServiceUsernameToUserIdResolver(baseUrl);
-
-            Optional<UUID> resolved = resolver.resolve("owner_username");
-
-            assertTrue(resolved.isPresent());
-            assertEquals(expectedUserId, resolved.get());
-        } finally {
-            server.stop(0);
-        }
-    }
-
-    @Test
-    void resolve_WhenAuthServiceReturnsUserIDFieldVariant_ShouldResolveUserId() throws Exception {
-        UUID expectedUserId = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"userID\":\"" + expectedUserId + "\"}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
-        server.start();
-        try {
-            String baseUrl = "http://localhost:" + server.getAddress().getPort();
-            AuthServiceUsernameToUserIdResolver resolver =
-                    new AuthServiceUsernameToUserIdResolver(baseUrl);
-
-            Optional<UUID> resolved = resolver.resolve("owner_username");
-
-            assertTrue(resolved.isPresent());
-            assertEquals(expectedUserId, resolved.get());
-        } finally {
-            server.stop(0);
-        }
-    }
-
-    @Test
-    void resolve_WhenAuthServiceReturnsUserIdSnakeCase_ShouldResolveUserId() throws Exception {
-        UUID expectedUserId = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"user_id\":\"" + expectedUserId + "\"}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
-        server.start();
-        try {
-            String baseUrl = "http://localhost:" + server.getAddress().getPort();
-            AuthServiceUsernameToUserIdResolver resolver =
-                    new AuthServiceUsernameToUserIdResolver(baseUrl);
-
-            Optional<UUID> resolved = resolver.resolve("owner_username");
-
-            assertTrue(resolved.isPresent());
-            assertEquals(expectedUserId, resolved.get());
-        } finally {
-            server.stop(0);
-        }
-    }
-
-    @Test
-    void resolve_WhenAuthServiceReturnsUserIdKebabCase_ShouldResolveUserId() throws Exception {
-        UUID expectedUserId = UUID.fromString("12121212-3434-5656-7878-909090909090");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"user-id\":\"" + expectedUserId + "\"}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
-        server.start();
-        try {
-            String baseUrl = "http://localhost:" + server.getAddress().getPort();
-            AuthServiceUsernameToUserIdResolver resolver =
-                    new AuthServiceUsernameToUserIdResolver(baseUrl);
-
-            Optional<UUID> resolved = resolver.resolve("owner_username");
-
-            assertTrue(resolved.isPresent());
-            assertEquals(expectedUserId, resolved.get());
-        } finally {
-            server.stop(0);
-        }
-    }
-
-    @Test
-    void resolve_WhenAuthServiceReturnsUppercaseIdField_ShouldResolveUserId() throws Exception {
-        UUID expectedUserId = UUID.fromString("abababab-cdcd-efef-1212-343434343434");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"ID\":\"" + expectedUserId + "\"}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
-        server.start();
-        try {
-            String baseUrl = "http://localhost:" + server.getAddress().getPort();
-            AuthServiceUsernameToUserIdResolver resolver =
-                    new AuthServiceUsernameToUserIdResolver(baseUrl);
-
-            Optional<UUID> resolved = resolver.resolve("owner_username");
-
-            assertTrue(resolved.isPresent());
-            assertEquals(expectedUserId, resolved.get());
-        } finally {
-            server.stop(0);
-        }
-    }
-
-    @Test
-    void resolve_WhenAuthServiceReturnsUppercaseUserIdSnakeCase_ShouldResolveUserId() throws Exception {
-        UUID expectedUserId = UUID.fromString("56565656-7878-9090-abab-cdcdcdcdcdcd");
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
-            String response = "{\"USER_ID\":\"" + expectedUserId + "\"}";
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        });
-        server.start();
-        try {
-            String baseUrl = "http://localhost:" + server.getAddress().getPort();
-            AuthServiceUsernameToUserIdResolver resolver =
-                    new AuthServiceUsernameToUserIdResolver(baseUrl);
-
-            Optional<UUID> resolved = resolver.resolve("owner_username");
-
-            assertTrue(resolved.isPresent());
-            assertEquals(expectedUserId, resolved.get());
-        } finally {
-            server.stop(0);
-        }
+        return server;
     }
 }
