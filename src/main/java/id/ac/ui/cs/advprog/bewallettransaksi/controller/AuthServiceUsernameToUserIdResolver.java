@@ -118,7 +118,8 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
 
     private Optional<UUID> extractUserId(String responseBody) {
         return extractUuidWithPattern(responseBody, USER_ID_PATTERN)
-                .or(() -> extractUuidWithPattern(responseBody, ID_PATTERN));
+                .or(() -> extractUuidWithPattern(responseBody, ID_PATTERN))
+                .or(() -> extractRawUuid(responseBody));
     }
 
     private Optional<UUID> extractUuidWithPattern(String responseBody, Pattern pattern) {
@@ -127,5 +128,16 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
             return Optional.of(UUID.fromString(matcher.group(1)));
         }
         return Optional.empty();
+    }
+
+    private Optional<UUID> extractRawUuid(String responseBody) {
+        if (responseBody == null) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(UUID.fromString(responseBody.trim()));
+        } catch (IllegalArgumentException ex) {
+            return Optional.empty();
+        }
     }
 }
