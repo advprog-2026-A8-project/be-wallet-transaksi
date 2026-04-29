@@ -56,6 +56,8 @@ class WalletControllerTest {
     private IdempotencyKeyGuard idempotencyKeyGuard;
     @MockitoBean
     private MidtransCallbackSignatureVerifier callbackSignatureVerifier;
+    @MockitoBean
+    private PaymentCallbackProcessor paymentCallbackProcessor;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -917,6 +919,20 @@ class WalletControllerTest {
                         .content("{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\",\"transaction_status\":\"mystery\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Unsupported callback status: mystery"));
+    }
+
+    @Test
+    void paymentCallback_ValidPayload_ShouldDelegateToProcessor() throws Exception {
+        String payload = "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\",\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Callback accepted"));
+
+        verify(paymentCallbackProcessor, times(1)).process(any());
     }
 
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
