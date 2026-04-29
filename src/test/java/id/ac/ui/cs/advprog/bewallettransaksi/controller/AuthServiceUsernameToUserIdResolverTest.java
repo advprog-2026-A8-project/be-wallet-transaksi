@@ -474,4 +474,31 @@ class AuthServiceUsernameToUserIdResolverTest {
             server.stop(0);
         }
     }
+
+    @Test
+    void resolve_WhenAuthServiceReturnsUppercaseIdField_ShouldResolveUserId() throws Exception {
+        UUID expectedUserId = UUID.fromString("abababab-cdcd-efef-1212-343434343434");
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/internal/users/by-username", exchange -> {
+            String response = "{\"ID\":\"" + expectedUserId + "\"}";
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.getBytes().length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
+            }
+        });
+        server.start();
+        try {
+            String baseUrl = "http://localhost:" + server.getAddress().getPort();
+            AuthServiceUsernameToUserIdResolver resolver =
+                    new AuthServiceUsernameToUserIdResolver(baseUrl);
+
+            Optional<UUID> resolved = resolver.resolve("owner_username");
+
+            assertTrue(resolved.isPresent());
+            assertEquals(expectedUserId, resolved.get());
+        } finally {
+            server.stop(0);
+        }
+    }
 }
