@@ -35,7 +35,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     }
 
     AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient, Duration httpTimeout) {
-        this.authServiceBaseUrl = authServiceBaseUrl;
+        this.authServiceBaseUrl = normalizeBaseUrl(authServiceBaseUrl);
         this.httpClient = httpClient;
         this.httpTimeout = httpTimeout;
     }
@@ -83,7 +83,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
 
     private URI buildUserLookupUri(String username) {
         String encoded = encodeQueryParam(username);
-        return URI.create(normalizeBaseUrl(authServiceBaseUrl) + USER_LOOKUP_PATH + "?username=" + encoded);
+        return URI.create(authServiceBaseUrl + USER_LOOKUP_PATH + "?username=" + encoded);
     }
 
     private String normalizeBaseUrl(String baseUrl) {
