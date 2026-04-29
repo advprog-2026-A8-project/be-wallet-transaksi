@@ -14,22 +14,36 @@ import java.util.regex.Pattern;
 
 public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdResolver {
     private static final String USER_LOOKUP_PATH = "/internal/users/by-username";
-    private static final Duration HTTP_TIMEOUT = Duration.ofMillis(1000);
+    private static final Duration DEFAULT_HTTP_TIMEOUT = Duration.ofMillis(1000);
     private static final Pattern USER_ID_PATTERN =
             Pattern.compile("\"userId\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
 
     private final String authServiceBaseUrl;
     private final HttpClient httpClient;
+    private final Duration httpTimeout;
 
     public AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl) {
-        this(authServiceBaseUrl, HttpClient.newBuilder()
-                .connectTimeout(HTTP_TIMEOUT)
-                .build());
+        this(authServiceBaseUrl, DEFAULT_HTTP_TIMEOUT);
+    }
+
+    AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, Duration httpTimeout) {
+        this(authServiceBaseUrl, createHttpClient(httpTimeout), httpTimeout);
     }
 
     AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient) {
+        this(authServiceBaseUrl, httpClient, DEFAULT_HTTP_TIMEOUT);
+    }
+
+    AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient, Duration httpTimeout) {
         this.authServiceBaseUrl = authServiceBaseUrl;
         this.httpClient = httpClient;
+        this.httpTimeout = httpTimeout;
+    }
+
+    private static HttpClient createHttpClient(Duration httpTimeout) {
+        return HttpClient.newBuilder()
+                .connectTimeout(httpTimeout)
+                .build();
     }
 
     @Override
@@ -54,7 +68,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(buildUserLookupUri(username))
-                    .timeout(HTTP_TIMEOUT)
+                    .timeout(httpTimeout)
                     .GET()
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
