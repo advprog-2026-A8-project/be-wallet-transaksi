@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import java.util.UUID;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -87,18 +88,12 @@ public class WalletController {
     ) {
         validatePayAuthorization(authorization);
         validateIdempotencyKey(idempotencyKey);
-        registerIdempotencyKeyOrThrow(idempotencyKey);
         validateOwnerAccess(authorization, request.getUserId());
-        try {
-            return ResponseEntity.ok(walletService.pay(
-                    request.getUserId(),
-                    request.getAmount(),
-                    request.getDescription()
-            ));
-        } catch (RuntimeException ex) {
-            idempotencyKeyGuard.release(idempotencyKey);
-            throw ex;
-        }
+        return withIdempotencyKey(idempotencyKey, () -> ResponseEntity.ok(walletService.pay(
+                request.getUserId(),
+                request.getAmount(),
+                request.getDescription()
+        )));
     }
 
     @PostMapping("/refund")
@@ -194,6 +189,16 @@ public class WalletController {
     private void registerIdempotencyKeyOrThrow(String idempotencyKey) {
         if (!idempotencyKeyGuard.register(idempotencyKey)) {
             throw new ConflictException(DUPLICATE_IDEMPOTENCY_MESSAGE);
+        }
+    }
+
+    private <T> T withIdempotencyKey(String idempotencyKey, Supplier<T> action) {
+        registerIdempotencyKeyOrThrow(idempotencyKey);
+        try {
+            return action.get();
+        } catch (RuntimeException ex) {
+            idempotencyKeyGuard.release(idempotencyKey);
+            throw ex;
         }
     }
 
