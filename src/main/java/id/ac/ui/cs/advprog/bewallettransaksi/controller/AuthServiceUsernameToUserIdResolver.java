@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -27,6 +28,13 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
             uuidFieldPattern("user-id", false);
     private static final Pattern ID_PATTERN =
             uuidFieldPattern("id", false);
+    private static final List<Pattern> USER_ID_PATTERNS = List.of(
+            USER_ID_CAMEL_PATTERN,
+            USER_ID_SNAKE_PATTERN,
+            USER_ID_KEBAB_PATTERN,
+            USER_ID_PATTERN,
+            ID_PATTERN
+    );
 
     private final String authServiceBaseUrl;
     private final HttpClient httpClient;
@@ -129,7 +137,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     }
 
     private Optional<UUID> extractUserId(String responseBody) {
-        return Stream.of(USER_ID_CAMEL_PATTERN, USER_ID_SNAKE_PATTERN, USER_ID_KEBAB_PATTERN, USER_ID_PATTERN, ID_PATTERN)
+        return USER_ID_PATTERNS.stream()
                 .map(pattern -> extractUuidWithPattern(responseBody, pattern))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
