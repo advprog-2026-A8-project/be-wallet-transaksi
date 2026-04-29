@@ -86,21 +86,6 @@ class WalletServicePaymentTest {
     }
 
     @Test
-    void pay_ShouldPersistPendingThenSuccessTransaction() {
-        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
-        when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
-        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        walletService.pay(userId, BigDecimal.valueOf(60.00), "Order payment");
-
-        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
-        verify(transactionRepository).save(transactionCaptor.capture());
-        Transaction savedTransaction = transactionCaptor.getValue();
-
-        assertEquals(TransactionStatus.SUCCESS, savedTransaction.getStatus());
-    }
-
-    @Test
     void pay_ShouldPersistSuccessTransaction() {
         when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
         when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
