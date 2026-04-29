@@ -18,13 +18,13 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     private static final String USER_LOOKUP_PATH = "/internal/users/by-username";
     private static final Duration DEFAULT_HTTP_TIMEOUT = Duration.ofMillis(1000);
     private static final Pattern USER_ID_PATTERN =
-            Pattern.compile("(?i)\"userid\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
+            uuidFieldPattern("userid", true);
     private static final Pattern USER_ID_CAMEL_PATTERN =
-            Pattern.compile("\"userId\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
+            uuidFieldPattern("userId", false);
     private static final Pattern USER_ID_SNAKE_PATTERN =
-            Pattern.compile("\"user_id\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
+            uuidFieldPattern("user_id", false);
     private static final Pattern ID_PATTERN =
-            Pattern.compile("\"id\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
+            uuidFieldPattern("id", false);
 
     private final String authServiceBaseUrl;
     private final HttpClient httpClient;
@@ -52,6 +52,11 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
         return HttpClient.newBuilder()
                 .connectTimeout(httpTimeout)
                 .build();
+    }
+
+    private static Pattern uuidFieldPattern(String fieldName, boolean caseInsensitive) {
+        String prefix = caseInsensitive ? "(?i)" : "";
+        return Pattern.compile(prefix + "\"" + fieldName + "\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
     }
 
     @Override
