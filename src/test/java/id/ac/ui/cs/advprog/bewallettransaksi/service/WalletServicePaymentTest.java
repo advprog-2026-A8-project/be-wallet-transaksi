@@ -112,6 +112,22 @@ class WalletServicePaymentTest {
     }
 
     @Test
+    void pay_ShouldPersistPendingThenPromoteToSuccess() {
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        walletService.pay(userId, BigDecimal.valueOf(60.00), "Order payment");
+
+        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository, times(2)).save(transactionCaptor.capture());
+        Transaction firstSave = transactionCaptor.getAllValues().get(0);
+        Transaction secondSave = transactionCaptor.getAllValues().get(1);
+        assertEquals(TransactionStatus.PENDING, firstSave.getStatus());
+        assertEquals(TransactionStatus.SUCCESS, secondSave.getStatus());
+    }
+
+    @Test
     void pay_InsufficientBalance() {
         when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
         BigDecimal amount = BigDecimal.valueOf(150.00);
