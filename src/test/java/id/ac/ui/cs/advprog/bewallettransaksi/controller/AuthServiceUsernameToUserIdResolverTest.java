@@ -52,6 +52,36 @@ class AuthServiceUsernameToUserIdResolverTest {
     }
 
     @Test
+    void resolve_ShouldEncodeSpaceInUsernameAsPercent20() throws Exception {
+        UUID expectedUserId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/internal/users/by-username", exchange -> {
+            String query = exchange.getRequestURI().getRawQuery();
+            String response = query != null && query.contains("username=owner%20name")
+                    ? "{\"userId\":\"" + expectedUserId + "\"}"
+                    : "{}";
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.getBytes().length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
+            }
+        });
+        server.start();
+        try {
+            String baseUrl = "http://localhost:" + server.getAddress().getPort();
+            AuthServiceUsernameToUserIdResolver resolver =
+                    new AuthServiceUsernameToUserIdResolver(baseUrl);
+
+            Optional<UUID> resolved = resolver.resolve("owner name");
+
+            assertTrue(resolved.isPresent());
+            assertEquals(expectedUserId, resolved.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void resolve_WhenAuthServiceUnavailable_ShouldReturnEmpty() {
         AuthServiceUsernameToUserIdResolver resolver =
                 new AuthServiceUsernameToUserIdResolver("http://localhost:1");
