@@ -27,7 +27,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     private static final Pattern USER_ID_KEBAB_PATTERN =
             uuidFieldPattern("user-id", false);
     private static final Pattern ID_PATTERN =
-            uuidFieldPattern("id", false);
+            uuidFieldPattern("id", true);
     private static final List<Pattern> USER_ID_PATTERNS = List.of(
             USER_ID_CAMEL_PATTERN,
             USER_ID_SNAKE_PATTERN,
