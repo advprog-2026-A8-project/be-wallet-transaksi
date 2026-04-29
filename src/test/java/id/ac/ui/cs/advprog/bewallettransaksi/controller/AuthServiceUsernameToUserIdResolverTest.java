@@ -6,6 +6,7 @@ import com.sun.net.httpserver.HttpServer;
 
 import java.io.OutputStream;
 import java.time.Duration;
+import java.net.http.HttpClient;
 import java.net.InetSocketAddress;
 import java.util.Optional;
 import java.util.UUID;
@@ -194,6 +195,33 @@ class AuthServiceUsernameToUserIdResolverTest {
             String baseUrl = "  http://localhost:" + server.getAddress().getPort() + "/  ";
             AuthServiceUsernameToUserIdResolver resolver =
                     new AuthServiceUsernameToUserIdResolver(baseUrl);
+
+            Optional<UUID> resolved = resolver.resolve("owner_username");
+
+            assertTrue(resolved.isPresent());
+            assertEquals(expectedUserId, resolved.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void resolve_WhenTimeoutConfigIsNull_ShouldFallbackToDefaultTimeout() throws Exception {
+        UUID expectedUserId = UUID.fromString("77777777-7777-7777-7777-777777777777");
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/internal/users/by-username", exchange -> {
+            String response = "{\"userId\":\"" + expectedUserId + "\"}";
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.getBytes().length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
+            }
+        });
+        server.start();
+        try {
+            String baseUrl = "http://localhost:" + server.getAddress().getPort();
+            AuthServiceUsernameToUserIdResolver resolver =
+                    new AuthServiceUsernameToUserIdResolver(baseUrl, HttpClient.newHttpClient(), null);
 
             Optional<UUID> resolved = resolver.resolve("owner_username");
 
