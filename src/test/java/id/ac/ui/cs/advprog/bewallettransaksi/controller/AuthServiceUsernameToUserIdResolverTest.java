@@ -2,6 +2,10 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import org.junit.jupiter.api.Test;
 
+import com.sun.net.httpserver.HttpServer;
+
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,5 +23,32 @@ class AuthServiceUsernameToUserIdResolverTest {
 
         assertTrue(resolved.isPresent());
         assertEquals(UUID.fromString("11111111-1111-1111-1111-111111111111"), resolved.get());
+    }
+
+    @Test
+    void resolve_ShouldFetchUserIdFromAuthServiceEndpoint() throws Exception {
+        UUID expectedUserId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/internal/users/by-username", exchange -> {
+            String response = "{\"userId\":\"" + expectedUserId + "\"}";
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.getBytes().length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
+            }
+        });
+        server.start();
+        try {
+            String baseUrl = "http://localhost:" + server.getAddress().getPort();
+            AuthServiceUsernameToUserIdResolver resolver =
+                    new AuthServiceUsernameToUserIdResolver(baseUrl);
+
+            Optional<UUID> resolved = resolver.resolve("api_user");
+
+            assertTrue(resolved.isPresent());
+            assertEquals(expectedUserId, resolved.get());
+        } finally {
+            server.stop(0);
+        }
     }
 }
