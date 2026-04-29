@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -81,6 +82,25 @@ class WalletServicePaymentTest {
         assertEquals(TransactionType.PAYMENT, savedTransaction.getType());
         assertEquals(TransactionStatus.SUCCESS, savedTransaction.getStatus());
         assertEquals("Order payment", savedTransaction.getDescription());
+    }
+
+    @Test
+    void pay_ShouldPersistPendingThenSuccessTransaction() {
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.save(any(Wallet.class))).thenReturn(wallet);
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        walletService.pay(userId, BigDecimal.valueOf(60.00), "Order payment");
+
+        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository, times(2)).save(transactionCaptor.capture());
+        Transaction firstSave = transactionCaptor.getAllValues().get(0);
+        Transaction secondSave = transactionCaptor.getAllValues().get(1);
+
+        assertEquals(TransactionStatus.PENDING, firstSave.getStatus());
+        assertEquals(TransactionStatus.SUCCESS, secondSave.getStatus());
+        assertEquals(firstSave.getWalletId(), secondSave.getWalletId());
+        assertEquals(firstSave.getAmount(), secondSave.getAmount());
     }
 
     @Test
