@@ -54,6 +54,8 @@ class WalletControllerTest {
     private WalletRequestAccessPolicy walletRequestAccessPolicy;
     @MockitoBean
     private IdempotencyKeyGuard idempotencyKeyGuard;
+    @MockitoBean
+    private MidtransCallbackSignatureVerifier callbackSignatureVerifier;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -110,6 +112,8 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isJwtBearerToken("Bearer test-token")).thenReturn(true);
         when(walletRequestAccessPolicy.isJwtBearerToken("Bearer invalid.jwt.token")).thenReturn(true);
         when(idempotencyKeyGuard.register(anyString())).thenReturn(true);
+        when(callbackSignatureVerifier.isValid(any(), anyString())).thenReturn(true);
+        when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("invalid-signature"))).thenReturn(false);
     }
 
     @Test
