@@ -23,6 +23,8 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
             uuidFieldPattern("userId", false);
     private static final Pattern USER_ID_SNAKE_PATTERN =
             uuidFieldPattern("user_id", false);
+    private static final Pattern USER_ID_KEBAB_PATTERN =
+            uuidFieldPattern("user-id", false);
     private static final Pattern ID_PATTERN =
             uuidFieldPattern("id", false);
 
@@ -127,7 +129,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     }
 
     private Optional<UUID> extractUserId(String responseBody) {
-        return Stream.of(USER_ID_CAMEL_PATTERN, USER_ID_SNAKE_PATTERN, USER_ID_PATTERN, ID_PATTERN)
+        return Stream.of(USER_ID_CAMEL_PATTERN, USER_ID_SNAKE_PATTERN, USER_ID_KEBAB_PATTERN, USER_ID_PATTERN, ID_PATTERN)
                 .map(pattern -> extractUuidWithPattern(responseBody, pattern))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
