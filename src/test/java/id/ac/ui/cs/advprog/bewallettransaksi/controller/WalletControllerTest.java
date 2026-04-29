@@ -886,6 +886,15 @@ class WalletControllerTest {
                 .andExpect(jsonPath("$.data").doesNotExist());
     }
 
+    @Test
+    void paymentCallback_MissingSignature_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"transactionId\":\"dummy\",\"status\":\"settlement\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing required header: X-Signature-Key"));
+    }
+
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
         WalletMutationRequest request = new WalletMutationRequest();
         request.setUserId(userId);
