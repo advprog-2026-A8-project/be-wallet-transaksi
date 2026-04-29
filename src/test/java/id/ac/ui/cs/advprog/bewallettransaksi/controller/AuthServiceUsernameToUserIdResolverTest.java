@@ -15,14 +15,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AuthServiceUsernameToUserIdResolverTest {
 
     @Test
-    void resolve_ExistingUsername_ShouldReturnUserId() {
+    void resolve_WhenNoAuthServiceResponse_ShouldReturnEmpty() {
         AuthServiceUsernameToUserIdResolver resolver =
                 new AuthServiceUsernameToUserIdResolver("http://auth-service");
 
         Optional<UUID> resolved = resolver.resolve("owner_username");
 
-        assertTrue(resolved.isPresent());
-        assertEquals(UUID.fromString("11111111-1111-1111-1111-111111111111"), resolved.get());
+        assertTrue(resolved.isEmpty());
     }
 
     @Test

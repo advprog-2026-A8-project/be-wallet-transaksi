@@ -12,6 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdResolver {
+    private static final String USER_LOOKUP_PATH = "/internal/users/by-username";
     private static final Pattern USER_ID_PATTERN =
             Pattern.compile("\"userId\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
 
@@ -30,7 +31,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     @Override
     public Optional<UUID> resolve(String username) {
         return normalize(username)
-                .flatMap(this::resolveWithFallback);
+                .flatMap(this::resolveFromAuthService);
     }
 
     String getAuthServiceBaseUrl() {
@@ -43,10 +44,6 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
         }
         String normalized = username.trim();
         return normalized.isEmpty() ? Optional.empty() : Optional.of(normalized);
-    }
-
-    private Optional<UUID> resolveWithFallback(String username) {
-        return resolveFromAuthService(username);
     }
 
     private Optional<UUID> resolveFromAuthService(String username) {
@@ -67,7 +64,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
 
     private URI buildUserLookupUri(String username) {
         String encoded = URLEncoder.encode(username, StandardCharsets.UTF_8);
-        return URI.create(authServiceBaseUrl + "/internal/users/by-username?username=" + encoded);
+        return URI.create(authServiceBaseUrl + USER_LOOKUP_PATH + "?username=" + encoded);
     }
 
     private Optional<UUID> extractUserId(String responseBody) {
