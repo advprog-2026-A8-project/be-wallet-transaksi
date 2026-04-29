@@ -83,7 +83,17 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
 
     private URI buildUserLookupUri(String username) {
         String encoded = encodeQueryParam(username);
-        return URI.create(authServiceBaseUrl + USER_LOOKUP_PATH + "?username=" + encoded);
+        return URI.create(normalizeBaseUrl(authServiceBaseUrl) + USER_LOOKUP_PATH + "?username=" + encoded);
+    }
+
+    private String normalizeBaseUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return "";
+        }
+        if (baseUrl.endsWith("/")) {
+            return baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return baseUrl;
     }
 
     private String encodeQueryParam(String value) {
