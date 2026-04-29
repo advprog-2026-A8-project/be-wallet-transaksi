@@ -138,14 +138,18 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
         if (responseBody == null) {
             return Optional.empty();
         }
-        String normalized = responseBody.trim();
-        if (normalized.length() >= 2 && normalized.startsWith("\"") && normalized.endsWith("\"")) {
-            normalized = normalized.substring(1, normalized.length() - 1).trim();
-        }
+        String normalized = stripOptionalQuotes(responseBody.trim());
         try {
             return Optional.of(UUID.fromString(normalized));
         } catch (IllegalArgumentException ex) {
             return Optional.empty();
         }
+    }
+
+    private String stripOptionalQuotes(String value) {
+        if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
+            return value.substring(1, value.length() - 1).trim();
+        }
+        return value;
     }
 }
