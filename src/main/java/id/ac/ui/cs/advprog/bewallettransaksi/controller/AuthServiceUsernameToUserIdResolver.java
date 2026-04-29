@@ -99,10 +99,14 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     }
 
     private static Duration normalizeTimeout(Duration timeout) {
-        if (timeout == null || timeout.isZero() || timeout.isNegative()) {
+        if (!isPositive(timeout)) {
             return DEFAULT_HTTP_TIMEOUT;
         }
         return timeout;
+    }
+
+    private static boolean isPositive(Duration timeout) {
+        return timeout != null && !timeout.isZero() && !timeout.isNegative();
     }
 
     private String encodeQueryParam(String value) {
