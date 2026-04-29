@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import java.util.UUID;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,7 @@ public class WalletController {
     private static final String UNAUTHORIZED_MESSAGE = "Autentikasi diperlukan!";
     private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
+    private static final String SIGNATURE_HEADER = "X-Signature-Key";
     private static final String DUPLICATE_IDEMPOTENCY_MESSAGE = "Duplicate idempotency key";
     private static final String JASTIPER_ROLE = "JASTIPER";
 
@@ -107,6 +109,15 @@ public class WalletController {
                 request.getAmount(),
                 request.getDescription()
         ));
+    }
+
+    @PostMapping("/payments/callback")
+    public ResponseEntity<Map<String, String>> paymentCallback(
+            @RequestHeader(value = SIGNATURE_HEADER, required = false) String signatureKey,
+            @RequestBody(required = false) Map<String, Object> payload
+    ) {
+        requireHeader(signatureKey, SIGNATURE_HEADER);
+        return ResponseEntity.ok(Map.of("message", "Callback accepted"));
     }
 
     @PostMapping("/withdraw")
