@@ -116,4 +116,29 @@ class WalletServiceIntegrationFlowTest {
         assertEquals(TransactionType.WITHDRAW, failedHistory.get(0).getType());
         assertEquals(new BigDecimal("150.00"), failedHistory.get(0).getAmount());
     }
+
+    @Test
+    void pay_ShouldCreateSinglePaymentTransactionRecord() {
+        UUID userId = UUID.randomUUID();
+        walletService.createWallet(userId);
+
+        TopUpRequest topUpRequest = new TopUpRequest();
+        topUpRequest.setUserId(userId);
+        topUpRequest.setAmount(new BigDecimal("100.00"));
+        walletService.topUp(topUpRequest);
+
+        walletService.pay(userId, new BigDecimal("40.00"), "Order payment");
+
+        List<TransactionResponse> history = walletService.getTransactionHistory(userId);
+        long paymentCount = history.stream()
+                .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
+                .count();
+
+        assertEquals(1, paymentCount);
+        TransactionResponse paymentTransaction = history.stream()
+                .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(TransactionStatus.SUCCESS, paymentTransaction.getStatus());
+    }
 }
