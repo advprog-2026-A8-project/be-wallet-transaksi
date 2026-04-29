@@ -29,6 +29,7 @@ import jakarta.validation.Valid;
 public class WalletController {
     private static final String UNAUTHORIZED_MESSAGE = "Autentikasi diperlukan!";
     private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
+    private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
     private static final String JASTIPER_ROLE = "JASTIPER";
 
     private final WalletService walletService;
@@ -76,7 +77,7 @@ public class WalletController {
     @PostMapping("/pay")
     public ResponseEntity<WalletResponse> pay(
             @RequestHeader(value = "Authorization", required = false) String authorization,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(value = IDEMPOTENCY_HEADER, required = false) String idempotencyKey,
             @Valid @RequestBody WalletMutationRequest request
     ) {
         validatePayAuthorization(authorization);
@@ -176,8 +177,12 @@ public class WalletController {
     }
 
     private void validateIdempotencyKey(String idempotencyKey) {
-        if (isMissingHeader(idempotencyKey)) {
-            throw new IllegalArgumentException("Missing required header: Idempotency-Key");
+        requireHeader(idempotencyKey, IDEMPOTENCY_HEADER);
+    }
+
+    private void requireHeader(String value, String headerName) {
+        if (isMissingHeader(value)) {
+            throw new IllegalArgumentException("Missing required header: " + headerName);
         }
     }
 
