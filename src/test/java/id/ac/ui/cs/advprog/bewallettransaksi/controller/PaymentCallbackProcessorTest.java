@@ -31,4 +31,17 @@ class PaymentCallbackProcessorTest {
 
         verify(walletService).handlePaymentSettlement("ORDER-1");
     }
+
+    @Test
+    void process_DenyStatus_ShouldTriggerPaymentFailureHandling() {
+        PaymentCallbackRequest request = new PaymentCallbackRequest();
+        request.setOrderId("ORDER-2");
+        request.setStatusCode("202");
+        request.setGrossAmount("10000.00");
+        request.setTransactionStatus("deny");
+
+        processor.process(request);
+
+        verify(walletService).handlePaymentFailure("ORDER-2");
+    }
 }
