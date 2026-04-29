@@ -5,6 +5,7 @@ import java.util.Set;
 public final class MidtransTransactionStatus {
 
     public static final String SETTLEMENT = "settlement";
+    public static final Set<String> FAILURE_STATUSES = Set.of("deny", "cancel", "expire", "failure");
 
     private static final Set<String> SUPPORTED_STATUSES = Set.of(
             "capture", "settlement", "pending", "deny", "cancel", "expire", "failure"
@@ -19,5 +20,9 @@ public final class MidtransTransactionStatus {
 
     public static boolean isSettlement(String status) {
         return SETTLEMENT.equalsIgnoreCase(status);
+    }
+
+    public static boolean isFailure(String status) {
+        return status != null && FAILURE_STATUSES.contains(status.toLowerCase());
     }
 }

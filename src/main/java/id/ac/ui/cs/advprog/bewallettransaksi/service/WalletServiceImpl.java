@@ -152,6 +152,15 @@ public class WalletServiceImpl implements WalletService {
         // Placeholder: callback business persistence/mapping is implemented incrementally in next TDD cycles.
     }
 
+    @Override
+    @Transactional
+    public void handlePaymentFailure(String orderId) {
+        if (orderId == null || orderId.isBlank()) {
+            throw new IllegalArgumentException("Order ID must not be blank");
+        }
+        // Placeholder: callback failure persistence/mapping is implemented incrementally in next TDD cycles.
+    }
+
     private void validateUserId(UUID userId) {
         validateRequired(userId, USER_ID_REQUIRED_MESSAGE);
     }

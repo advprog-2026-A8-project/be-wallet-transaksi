@@ -19,4 +19,5 @@ public interface WalletService {
     List<TransactionResponse> getTransactionHistory(UUID userId);
     List<TransactionResponse> getTransactionHistoryByStatus(UUID userId, TransactionStatus status);
     void handlePaymentSettlement(String orderId);
+    void handlePaymentFailure(String orderId);
 }
