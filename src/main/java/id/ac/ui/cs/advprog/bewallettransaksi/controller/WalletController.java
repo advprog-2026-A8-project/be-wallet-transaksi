@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import java.util.UUID;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -36,6 +37,9 @@ public class WalletController {
     private static final String SIGNATURE_HEADER = "X-Signature-Key";
     private static final String CALLBACK_ACCEPTED_MESSAGE = "Callback accepted";
     private static final String INVALID_CALLBACK_SIGNATURE_MESSAGE = "Invalid callback signature";
+    private static final Set<String> SUPPORTED_CALLBACK_STATUSES = Set.of(
+            "capture", "settlement", "pending", "deny", "cancel", "expire", "failure"
+    );
     private static final String DUPLICATE_IDEMPOTENCY_MESSAGE = "Duplicate idempotency key";
     private static final String JASTIPER_ROLE = "JASTIPER";
 
@@ -124,6 +128,7 @@ public class WalletController {
         requireHeader(signatureKey, SIGNATURE_HEADER);
         validateCallbackPayload(payload);
         validateCallbackSignature(payload, signatureKey);
+        validateCallbackStatus(payload);
         return ResponseEntity.ok(callbackAcceptedResponse());
     }
 
@@ -245,6 +250,25 @@ public class WalletController {
         if (!callbackSignatureVerifier.isValid(payload, signatureKey)) {
             throw new UnauthorizedException(INVALID_CALLBACK_SIGNATURE_MESSAGE);
         }
+    }
+
+    private void validateCallbackStatus(Map<String, Object> payload) {
+        String transactionStatus = extractCallbackField(payload, "transaction_status");
+        if (!SUPPORTED_CALLBACK_STATUSES.contains(transactionStatus)) {
+            throw new IllegalArgumentException("Unsupported callback status: " + transactionStatus);
+        }
+    }
+
+    private String extractCallbackField(Map<String, Object> payload, String key) {
+        Object value = payload.get(key);
+        if (value == null) {
+            throw new IllegalArgumentException("Missing required callback field: " + key);
+        }
+        String text = value.toString().trim();
+        if (text.isEmpty()) {
+            throw new IllegalArgumentException("Missing required callback field: " + key);
+        }
+        return text.toLowerCase();
     }
 
     private void requireAuthorization(String authorization) {
