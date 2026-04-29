@@ -6,7 +6,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -15,9 +14,6 @@ import java.util.regex.Pattern;
 public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdResolver {
     private static final Pattern USER_ID_PATTERN =
             Pattern.compile("\"userId\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
-    private static final Map<String, UUID> STATIC_MAPPINGS = Map.of(
-            "owner_username", UUID.fromString("11111111-1111-1111-1111-111111111111")
-    );
 
     private final String authServiceBaseUrl;
     private final HttpClient httpClient;
@@ -50,12 +46,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     }
 
     private Optional<UUID> resolveWithFallback(String username) {
-        return resolveFromAuthService(username)
-                .or(() -> resolveFromStaticMapping(username));
-    }
-
-    private Optional<UUID> resolveFromStaticMapping(String username) {
-        return Optional.ofNullable(STATIC_MAPPINGS.get(username));
+        return resolveFromAuthService(username);
     }
 
     private Optional<UUID> resolveFromAuthService(String username) {
