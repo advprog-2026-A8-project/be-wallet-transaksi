@@ -31,6 +31,8 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -591,6 +593,36 @@ class WalletControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Missing required header: Idempotency-Key"));
+    }
+
+    @Test
+    void pay_DuplicateIdempotencyKey_ShouldReturnConflict() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        when(walletService.pay(userId, BigDecimal.valueOf(50.00), "Order payment")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(50.00))
+                        .build()
+        );
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-dup-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-dup-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Duplicate idempotency key"));
+
+        verify(walletService, times(1)).pay(userId, BigDecimal.valueOf(50.00), "Order payment");
     }
 
     @Test
