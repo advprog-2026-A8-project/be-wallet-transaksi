@@ -17,7 +17,9 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     private static final String USER_LOOKUP_PATH = "/internal/users/by-username";
     private static final Duration DEFAULT_HTTP_TIMEOUT = Duration.ofMillis(1000);
     private static final Pattern USER_ID_PATTERN =
-            Pattern.compile("\"(?:userId|id)\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
+            Pattern.compile("\"userId\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
+    private static final Pattern ID_PATTERN =
+            Pattern.compile("\"id\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
 
     private final String authServiceBaseUrl;
     private final HttpClient httpClient;
@@ -115,10 +117,15 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     }
 
     private Optional<UUID> extractUserId(String responseBody) {
-        Matcher matcher = USER_ID_PATTERN.matcher(responseBody);
-        if (!matcher.find()) {
-            return Optional.empty();
+        return extractUuidWithPattern(responseBody, USER_ID_PATTERN)
+                .or(() -> extractUuidWithPattern(responseBody, ID_PATTERN));
+    }
+
+    private Optional<UUID> extractUuidWithPattern(String responseBody, Pattern pattern) {
+        Matcher matcher = pattern.matcher(responseBody);
+        if (matcher.find()) {
+            return Optional.of(UUID.fromString(matcher.group(1)));
         }
-        return Optional.of(UUID.fromString(matcher.group(1)));
+        return Optional.empty();
     }
 }
