@@ -6,6 +6,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -13,6 +14,7 @@ import java.util.regex.Pattern;
 
 public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdResolver {
     private static final String USER_LOOKUP_PATH = "/internal/users/by-username";
+    private static final Duration HTTP_TIMEOUT = Duration.ofMillis(1000);
     private static final Pattern USER_ID_PATTERN =
             Pattern.compile("\"userId\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"");
 
@@ -20,7 +22,9 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     private final HttpClient httpClient;
 
     public AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl) {
-        this(authServiceBaseUrl, HttpClient.newHttpClient());
+        this(authServiceBaseUrl, HttpClient.newBuilder()
+                .connectTimeout(HTTP_TIMEOUT)
+                .build());
     }
 
     AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient) {
@@ -50,6 +54,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(buildUserLookupUri(username))
+                    .timeout(HTTP_TIMEOUT)
                     .GET()
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
