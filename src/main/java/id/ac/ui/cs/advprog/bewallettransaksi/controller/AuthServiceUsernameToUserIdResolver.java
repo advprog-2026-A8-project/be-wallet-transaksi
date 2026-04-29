@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdResolver {
     private static final String USER_LOOKUP_PATH = "/internal/users/by-username";
@@ -117,8 +118,11 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
     }
 
     private Optional<UUID> extractUserId(String responseBody) {
-        return extractUuidWithPattern(responseBody, USER_ID_PATTERN)
-                .or(() -> extractUuidWithPattern(responseBody, ID_PATTERN))
+        return Stream.of(USER_ID_PATTERN, ID_PATTERN)
+                .map(pattern -> extractUuidWithPattern(responseBody, pattern))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst()
                 .or(() -> extractRawUuid(responseBody));
     }
 
