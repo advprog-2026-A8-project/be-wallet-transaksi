@@ -352,10 +352,9 @@ class WalletControllerOwnerAccessIntegrationTest {
 
     @Test
     void pay_SameIdempotencyKeyAfterFirstFailure_ShouldAllowRetrySuccess() throws Exception {
-        doReturn(walletResponse)
-                .when(walletService).pay(eq(ownerUserId), eq(BigDecimal.valueOf(10.00)), eq("payment"));
-        when(walletService.pay(eq(ownerUserId), eq(BigDecimal.valueOf(9999.00)), eq("payment")))
-                .thenThrow(new IllegalStateException("Insufficient balance"));
+        when(walletService.pay(eq(ownerUserId), any(BigDecimal.class), eq("payment")))
+                .thenThrow(new IllegalStateException("Insufficient balance"))
+                .thenReturn(walletResponse);
 
         String ownerJwt = generateJwtToken(ownerUserId.toString(), "TITIPER");
 

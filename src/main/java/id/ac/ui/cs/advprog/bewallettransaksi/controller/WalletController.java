@@ -89,11 +89,16 @@ public class WalletController {
         validateIdempotencyKey(idempotencyKey);
         registerIdempotencyKeyOrThrow(idempotencyKey);
         validateOwnerAccess(authorization, request.getUserId());
-        return ResponseEntity.ok(walletService.pay(
-                request.getUserId(),
-                request.getAmount(),
-                request.getDescription()
-        ));
+        try {
+            return ResponseEntity.ok(walletService.pay(
+                    request.getUserId(),
+                    request.getAmount(),
+                    request.getDescription()
+            ));
+        } catch (RuntimeException ex) {
+            idempotencyKeyGuard.release(idempotencyKey);
+            throw ex;
+        }
     }
 
     @PostMapping("/refund")

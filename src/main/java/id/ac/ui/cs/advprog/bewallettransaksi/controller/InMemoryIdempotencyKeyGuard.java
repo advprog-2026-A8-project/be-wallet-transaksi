@@ -13,4 +13,9 @@ public class InMemoryIdempotencyKeyGuard implements IdempotencyKeyGuard {
     public boolean register(String key) {
         return processedKeys.add(key);
     }
+
+    @Override
+    public void release(String key) {
+        processedKeys.remove(key);
+    }
 }
