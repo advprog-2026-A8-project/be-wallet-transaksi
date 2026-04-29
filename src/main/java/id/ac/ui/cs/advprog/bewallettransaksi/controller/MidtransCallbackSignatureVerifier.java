@@ -1,9 +1,9 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.PaymentCallbackRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -17,25 +17,24 @@ public class MidtransCallbackSignatureVerifier {
         this.midtransServerKey = midtransServerKey == null ? "" : midtransServerKey;
     }
 
-    public boolean isValid(Map<String, Object> payload, String signatureKey) {
+    public boolean isValid(PaymentCallbackRequest payload, String signatureKey) {
         String expectedSignature = buildExpectedSignature(payload);
         return expectedSignature.equals(signatureKey);
     }
 
-    private String buildExpectedSignature(Map<String, Object> payload) {
-        String orderId = extractRequiredPayloadValue(payload, "order_id");
-        String statusCode = extractRequiredPayloadValue(payload, "status_code");
-        String grossAmount = extractRequiredPayloadValue(payload, "gross_amount");
+    private String buildExpectedSignature(PaymentCallbackRequest payload) {
+        String orderId = requiredValue(payload.getOrderId(), "order_id");
+        String statusCode = requiredValue(payload.getStatusCode(), "status_code");
+        String grossAmount = requiredValue(payload.getGrossAmount(), "gross_amount");
         String rawSignature = orderId + statusCode + grossAmount + midtransServerKey;
         return sha512Hex(rawSignature);
     }
 
-    private String extractRequiredPayloadValue(Map<String, Object> payload, String key) {
-        Object value = payload.get(key);
+    private String requiredValue(String value, String key) {
         if (value == null) {
             throw new IllegalArgumentException("Missing required callback field: " + key);
         }
-        String text = value.toString().trim();
+        String text = value.trim();
         if (text.isEmpty()) {
             throw new IllegalArgumentException("Missing required callback field: " + key);
         }

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.PaymentCallbackRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletMutationRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
@@ -122,7 +123,7 @@ public class WalletController {
     @PostMapping("/payments/callback")
     public ResponseEntity<Map<String, String>> paymentCallback(
             @RequestHeader(value = SIGNATURE_HEADER, required = false) String signatureKey,
-            @RequestBody(required = false) Map<String, Object> payload
+            @RequestBody(required = false) PaymentCallbackRequest payload
     ) {
         requireHeader(signatureKey, SIGNATURE_HEADER);
         validateCallbackPayload(payload);
@@ -236,8 +237,8 @@ public class WalletController {
                 || !walletRequestAccessPolicy.isValidReadJwt(authorization);
     }
 
-    private void validateCallbackPayload(Map<String, Object> payload) {
-        if (payload == null || payload.isEmpty()) {
+    private void validateCallbackPayload(PaymentCallbackRequest payload) {
+        if (payload == null) {
             throw new IllegalArgumentException("Callback payload must not be empty");
         }
     }
@@ -246,25 +247,24 @@ public class WalletController {
         return Map.of("message", CALLBACK_ACCEPTED_MESSAGE);
     }
 
-    private void validateCallbackSignature(Map<String, Object> payload, String signatureKey) {
+    private void validateCallbackSignature(PaymentCallbackRequest payload, String signatureKey) {
         if (!callbackSignatureVerifier.isValid(payload, signatureKey)) {
             throw new UnauthorizedException(INVALID_CALLBACK_SIGNATURE_MESSAGE);
         }
     }
 
-    private void validateCallbackStatus(Map<String, Object> payload) {
-        String transactionStatus = extractCallbackField(payload, "transaction_status");
+    private void validateCallbackStatus(PaymentCallbackRequest payload) {
+        String transactionStatus = requiredCallbackField(payload.getTransactionStatus(), "transaction_status");
         if (!MidtransTransactionStatus.isSupported(transactionStatus)) {
             throw new IllegalArgumentException("Unsupported callback status: " + transactionStatus);
         }
     }
 
-    private String extractCallbackField(Map<String, Object> payload, String key) {
-        Object value = payload.get(key);
+    private String requiredCallbackField(String value, String key) {
         if (value == null) {
             throw new IllegalArgumentException("Missing required callback field: " + key);
         }
-        String text = value.toString().trim();
+        String text = value.trim();
         if (text.isEmpty()) {
             throw new IllegalArgumentException("Missing required callback field: " + key);
         }
