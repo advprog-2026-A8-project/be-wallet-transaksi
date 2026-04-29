@@ -97,6 +97,7 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isInvalidJwtToken("Bearer invalid.jwt.token")).thenReturn(true);
         when(walletRequestAccessPolicy.isDisallowedRoleForPay("Bearer valid-jastiper-jwt")).thenReturn(true);
         when(walletRequestAccessPolicy.isValidReadJwt("Bearer valid-read-jwt")).thenReturn(true);
+        when(walletRequestAccessPolicy.isValidReadJwt("Bearer valid-jastiper-jwt")).thenReturn(true);
         when(walletRequestAccessPolicy.isValidJastiperJwt("Bearer valid-jastiper-jwt")).thenReturn(true);
         when(walletRequestAccessPolicy.isAllowedPayRole("Bearer valid-read-jwt")).thenReturn(true);
         when(walletRequestAccessPolicy.isAllowedPayRole("Bearer valid-jastiper-jwt")).thenReturn(false);
@@ -273,6 +274,7 @@ class WalletControllerTest {
 
         String jwt = generateJwtToken("jastiper-subject", "JASTIPER");
         when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer " + jwt)).thenReturn(true);
+        when(walletRequestAccessPolicy.isValidReadJwt("Bearer " + jwt)).thenReturn(true);
         mockMvc.perform(post("/wallet/topup")
                         .header(AUTH_HEADER, "Bearer " + jwt)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -489,7 +491,7 @@ class WalletControllerTest {
         );
 
         mockMvc.perform(post("/wallet/pay")
-                        .header("Authorization", "Bearer test-token")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -627,8 +629,7 @@ class WalletControllerTest {
         );
 
         mockMvc.perform(post("/wallet/withdraw")
-                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
-                        .header("X-Role", "JASTIPER")
+                        .header("Authorization", "Bearer valid-jastiper-jwt")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -669,6 +670,7 @@ class WalletControllerTest {
 
         String jwt = generateJwtToken("jastiper-subject", "JASTIPER");
         when(walletRequestAccessPolicy.isValidJastiperJwt("Bearer " + jwt)).thenReturn(true);
+        when(walletRequestAccessPolicy.isValidReadJwt("Bearer " + jwt)).thenReturn(true);
         mockMvc.perform(post("/wallet/withdraw")
                         .header("Authorization", "Bearer " + jwt)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -698,7 +700,7 @@ class WalletControllerTest {
                 .thenThrow(new IllegalStateException("Insufficient balance"));
 
         mockMvc.perform(post("/wallet/pay")
-                        .header("Authorization", "Bearer test-token")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -709,7 +711,7 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("Order payment", new BigDecimal("1.001"));
 
         mockMvc.perform(post("/wallet/pay")
-                        .header("Authorization", "Bearer test-token")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -720,7 +722,7 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("   ", BigDecimal.valueOf(50.00));
 
         mockMvc.perform(post("/wallet/pay")
-                        .header("Authorization", "Bearer test-token")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -735,8 +737,7 @@ class WalletControllerTest {
                 .thenThrow(new IllegalStateException("Insufficient balance"));
 
         mockMvc.perform(post("/wallet/withdraw")
-                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
-                        .header("X-Role", "JASTIPER")
+                        .header("Authorization", "Bearer valid-jastiper-jwt")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -748,7 +749,6 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/withdraw")
                         .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
-                        .header("X-Role", "TITIPERS")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
@@ -759,7 +759,7 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
 
         mockMvc.perform(post("/wallet/withdraw")
-                        .header("Authorization", "Bearer valid-but-not-allowed")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
