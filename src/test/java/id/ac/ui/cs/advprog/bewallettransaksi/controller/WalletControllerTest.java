@@ -570,6 +570,26 @@ class WalletControllerTest {
     }
 
     @Test
+    void pay_MissingIdempotencyKey_ShouldReturnBadRequest() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        when(walletService.pay(userId, BigDecimal.valueOf(50.00), "Order payment")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(50.00))
+                        .build()
+        );
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing required header: Idempotency-Key"));
+    }
+
+    @Test
     void refund_Success() throws Exception {
         WalletMutationRequest request = buildMutationRequest("Order refund", BigDecimal.valueOf(25.00));
 
