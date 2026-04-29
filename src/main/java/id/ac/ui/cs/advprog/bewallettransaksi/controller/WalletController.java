@@ -43,17 +43,20 @@ public class WalletController {
     private final WalletRequestAccessPolicy walletRequestAccessPolicy;
     private final IdempotencyKeyGuard idempotencyKeyGuard;
     private final MidtransCallbackSignatureVerifier callbackSignatureVerifier;
+    private final PaymentCallbackProcessor paymentCallbackProcessor;
 
     public WalletController(
             WalletService walletService,
             WalletRequestAccessPolicy walletRequestAccessPolicy,
             IdempotencyKeyGuard idempotencyKeyGuard,
-            MidtransCallbackSignatureVerifier callbackSignatureVerifier
+            MidtransCallbackSignatureVerifier callbackSignatureVerifier,
+            PaymentCallbackProcessor paymentCallbackProcessor
     ) {
         this.walletService = walletService;
         this.walletRequestAccessPolicy = walletRequestAccessPolicy;
         this.idempotencyKeyGuard = idempotencyKeyGuard;
         this.callbackSignatureVerifier = callbackSignatureVerifier;
+        this.paymentCallbackProcessor = paymentCallbackProcessor;
     }
 
     @GetMapping("/{userId}")
@@ -125,6 +128,7 @@ public class WalletController {
         validateCallbackPayload(payload);
         validateCallbackSignature(payload, signatureKey);
         validateCallbackStatus(payload);
+        paymentCallbackProcessor.process(payload);
         return ResponseEntity.ok(callbackAcceptedResponse());
     }
 
