@@ -2,8 +2,6 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import java.util.UUID;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,14 +36,16 @@ public class WalletController {
 
     private final WalletService walletService;
     private final WalletRequestAccessPolicy walletRequestAccessPolicy;
-    private final Set<String> processedIdempotencyKeys = ConcurrentHashMap.newKeySet();
+    private final IdempotencyKeyGuard idempotencyKeyGuard;
 
     public WalletController(
             WalletService walletService,
-            WalletRequestAccessPolicy walletRequestAccessPolicy
+            WalletRequestAccessPolicy walletRequestAccessPolicy,
+            IdempotencyKeyGuard idempotencyKeyGuard
     ) {
         this.walletService = walletService;
         this.walletRequestAccessPolicy = walletRequestAccessPolicy;
+        this.idempotencyKeyGuard = idempotencyKeyGuard;
     }
 
     @GetMapping("/{userId}")
@@ -187,7 +187,7 @@ public class WalletController {
     }
 
     private void registerIdempotencyKeyOrThrow(String idempotencyKey) {
-        if (!processedIdempotencyKeys.add(idempotencyKey)) {
+        if (!idempotencyKeyGuard.register(idempotencyKey)) {
             throw new ConflictException(DUPLICATE_IDEMPOTENCY_MESSAGE);
         }
     }

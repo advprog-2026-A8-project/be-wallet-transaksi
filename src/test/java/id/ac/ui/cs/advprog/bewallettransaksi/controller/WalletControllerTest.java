@@ -52,6 +52,8 @@ class WalletControllerTest {
     private WalletService walletService;
     @MockitoBean
     private WalletRequestAccessPolicy walletRequestAccessPolicy;
+    @MockitoBean
+    private IdempotencyKeyGuard idempotencyKeyGuard;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -107,6 +109,7 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isAllowedWalletMutationRole("Bearer invalid.jwt.token")).thenReturn(false);
         when(walletRequestAccessPolicy.isJwtBearerToken("Bearer test-token")).thenReturn(true);
         when(walletRequestAccessPolicy.isJwtBearerToken("Bearer invalid.jwt.token")).thenReturn(true);
+        when(idempotencyKeyGuard.register(anyString())).thenReturn(true);
     }
 
     @Test
@@ -614,6 +617,7 @@ class WalletControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
+        when(idempotencyKeyGuard.register("idem-dup-001")).thenReturn(false);
         mockMvc.perform(post("/wallet/pay")
                         .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .header("Idempotency-Key", "idem-dup-001")
