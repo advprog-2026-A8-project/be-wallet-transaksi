@@ -86,13 +86,13 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
         return URI.create(authServiceBaseUrl + USER_LOOKUP_PATH + "?username=" + encoded);
     }
 
-    private String normalizeBaseUrl(String baseUrl) {
+    private static String normalizeBaseUrl(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
             return "";
         }
         String normalized = baseUrl.trim();
-        if (normalized.endsWith("/")) {
-            return normalized.substring(0, normalized.length() - 1);
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
         }
         return normalized;
     }
