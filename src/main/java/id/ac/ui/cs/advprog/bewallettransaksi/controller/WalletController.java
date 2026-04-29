@@ -34,6 +34,7 @@ public class WalletController {
     private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
     private static final String SIGNATURE_HEADER = "X-Signature-Key";
+    private static final String CALLBACK_ACCEPTED_MESSAGE = "Callback accepted";
     private static final String DUPLICATE_IDEMPOTENCY_MESSAGE = "Duplicate idempotency key";
     private static final String JASTIPER_ROLE = "JASTIPER";
 
@@ -117,7 +118,8 @@ public class WalletController {
             @RequestBody(required = false) Map<String, Object> payload
     ) {
         requireHeader(signatureKey, SIGNATURE_HEADER);
-        return ResponseEntity.ok(Map.of("message", "Callback accepted"));
+        validateCallbackPayload(payload);
+        return ResponseEntity.ok(callbackAcceptedResponse());
     }
 
     @PostMapping("/withdraw")
@@ -222,6 +224,16 @@ public class WalletController {
     private boolean shouldRejectAsUnauthorizedPayRequest(String authorization) {
         return !walletRequestAccessPolicy.isJwtBearerToken(authorization)
                 || !walletRequestAccessPolicy.isValidReadJwt(authorization);
+    }
+
+    private void validateCallbackPayload(Map<String, Object> payload) {
+        if (payload == null || payload.isEmpty()) {
+            throw new IllegalArgumentException("Callback payload must not be empty");
+        }
+    }
+
+    private Map<String, String> callbackAcceptedResponse() {
+        return Map.of("message", CALLBACK_ACCEPTED_MESSAGE);
     }
 
     private void requireAuthorization(String authorization) {
