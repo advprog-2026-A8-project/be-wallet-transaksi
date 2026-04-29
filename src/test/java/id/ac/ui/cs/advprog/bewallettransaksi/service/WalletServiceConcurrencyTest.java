@@ -106,42 +106,7 @@ class WalletServiceConcurrencyTest {
         topUpRequest.setAmount(new BigDecimal("100.00"));
         walletService.topUp(topUpRequest);
 
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        CountDownLatch readyLatch = new CountDownLatch(2);
-        CountDownLatch startLatch = new CountDownLatch(1);
-
-        Future<?> first = executor.submit(() -> {
-            readyLatch.countDown();
-            startLatch.await();
-            walletService.withdraw(userId, WITHDRAW_AMOUNT, "BCA-111");
-            return null;
-        });
-
-        Future<?> second = executor.submit(() -> {
-            readyLatch.countDown();
-            startLatch.await();
-            walletService.withdraw(userId, WITHDRAW_AMOUNT, "BCA-222");
-            return null;
-        });
-
-        assertTrue(readyLatch.await(5, TimeUnit.SECONDS));
-        startLatch.countDown();
-
-        int failedCount = 0;
-        try {
-            first.get(10, TimeUnit.SECONDS);
-        } catch (Exception ex) {
-            failedCount++;
-        }
-
-        try {
-            second.get(10, TimeUnit.SECONDS);
-        } catch (Exception ex) {
-            failedCount++;
-        }
-
-        executor.shutdown();
-        assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+        int failedCount = runConcurrentWithdrawAndCountFailures(userId);
         assertEquals(1, failedCount);
 
         Wallet wallet = walletRepository.findByUserId(userId).orElseThrow();
@@ -164,5 +129,46 @@ class WalletServiceConcurrencyTest {
         request.setUserId(userId);
         request.setAmount(TOP_UP_AMOUNT);
         return request;
+    }
+
+    private int runConcurrentWithdrawAndCountFailures(UUID userId) throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            CountDownLatch readyLatch = new CountDownLatch(2);
+            CountDownLatch startLatch = new CountDownLatch(1);
+
+            Future<?> first = submitWithdraw(executor, readyLatch, startLatch, userId, "BCA-111");
+            Future<?> second = submitWithdraw(executor, readyLatch, startLatch, userId, "BCA-222");
+
+            assertTrue(readyLatch.await(5, TimeUnit.SECONDS));
+            startLatch.countDown();
+
+            return countFailures(first, second);
+        } finally {
+            executor.shutdown();
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+        }
+    }
+
+    private Future<?> submitWithdraw(ExecutorService executor, CountDownLatch readyLatch, CountDownLatch startLatch,
+                                     UUID userId, String description) {
+        return executor.submit(() -> {
+            readyLatch.countDown();
+            startLatch.await();
+            walletService.withdraw(userId, WITHDRAW_AMOUNT, description);
+            return null;
+        });
+    }
+
+    private int countFailures(Future<?>... futures) {
+        int failedCount = 0;
+        for (Future<?> future : futures) {
+            try {
+                future.get(10, TimeUnit.SECONDS);
+            } catch (Exception ex) {
+                failedCount++;
+            }
+        }
+        return failedCount;
     }
 }
