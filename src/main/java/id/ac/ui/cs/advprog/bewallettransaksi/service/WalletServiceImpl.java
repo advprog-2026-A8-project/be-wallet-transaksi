@@ -91,12 +91,7 @@ public class WalletServiceImpl implements WalletService {
         validateMutationInput(userId, amount, description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         validateSufficientBalanceOrRecordFailure(wallet, amount, TransactionType.PAYMENT, description);
-        processMutation(
-                wallet,
-                amount,
-                TransactionType.PAYMENT,
-                description
-        );
+        processPaymentMutation(wallet, amount, description);
         return toResponse(wallet);
     }
 
@@ -238,6 +233,16 @@ public class WalletServiceImpl implements WalletService {
         finalizeTransaction(transaction);
     }
 
+    private void processPaymentMutation(Wallet wallet, BigDecimal amount, String description) {
+        WalletMutationStrategy strategy = strategyResolver.resolve(TransactionType.PAYMENT);
+        BigDecimal updatedBalance = strategy.apply(wallet.getBalance(), amount);
+        validateUpdatedBalance(updatedBalance);
+        Transaction transaction = createTransaction(wallet.getWalletId(), amount, TransactionType.PAYMENT, description);
+        persistPendingSnapshot(transaction);
+        updateWalletBalance(wallet, updatedBalance);
+        finalizeTransaction(transaction);
+    }
+
     private void validateUpdatedBalance(BigDecimal updatedBalance) {
         validateNotAboveMaximum(updatedBalance);
     }
@@ -262,6 +267,20 @@ public class WalletServiceImpl implements WalletService {
     private void finalizeTransaction(Transaction transaction) {
         transaction.setStatus(TransactionStatus.SUCCESS);
         transactionRepository.save(transaction);
+    }
+
+    private void persistPendingSnapshot(Transaction transaction) {
+        transactionRepository.save(copyTransaction(transaction));
+    }
+
+    private Transaction copyTransaction(Transaction source) {
+        Transaction copy = new Transaction();
+        copy.setWalletId(source.getWalletId());
+        copy.setAmount(source.getAmount());
+        copy.setType(source.getType());
+        copy.setStatus(source.getStatus());
+        copy.setDescription(source.getDescription());
+        return copy;
     }
 
     private BigDecimal normalizeBalance(BigDecimal balance) {

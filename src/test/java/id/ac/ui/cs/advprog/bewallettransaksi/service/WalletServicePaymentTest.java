@@ -75,13 +75,21 @@ class WalletServicePaymentTest {
         verify(walletRepository).save(wallet);
 
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
-        verify(transactionRepository).save(transactionCaptor.capture());
-        Transaction savedTransaction = transactionCaptor.getValue();
-        assertEquals(walletId, savedTransaction.getWalletId());
-        assertEquals(BigDecimal.valueOf(60.00), savedTransaction.getAmount());
-        assertEquals(TransactionType.PAYMENT, savedTransaction.getType());
-        assertEquals(TransactionStatus.SUCCESS, savedTransaction.getStatus());
-        assertEquals("Order payment", savedTransaction.getDescription());
+        verify(transactionRepository, times(2)).save(transactionCaptor.capture());
+        Transaction pendingTransaction = transactionCaptor.getAllValues().get(0);
+        Transaction successTransaction = transactionCaptor.getAllValues().get(1);
+
+        assertEquals(walletId, pendingTransaction.getWalletId());
+        assertEquals(BigDecimal.valueOf(60.00), pendingTransaction.getAmount());
+        assertEquals(TransactionType.PAYMENT, pendingTransaction.getType());
+        assertEquals(TransactionStatus.PENDING, pendingTransaction.getStatus());
+        assertEquals("Order payment", pendingTransaction.getDescription());
+
+        assertEquals(walletId, successTransaction.getWalletId());
+        assertEquals(BigDecimal.valueOf(60.00), successTransaction.getAmount());
+        assertEquals(TransactionType.PAYMENT, successTransaction.getType());
+        assertEquals(TransactionStatus.SUCCESS, successTransaction.getStatus());
+        assertEquals("Order payment", successTransaction.getDescription());
     }
 
     @Test
@@ -159,7 +167,7 @@ class WalletServicePaymentTest {
         assertNotNull(response);
         assertEquals(BigDecimal.ZERO, response.getBalance());
         verify(walletRepository).save(wallet);
-        verify(transactionRepository).save(any(Transaction.class));
+        verify(transactionRepository, times(2)).save(any(Transaction.class));
     }
 
     @Test
