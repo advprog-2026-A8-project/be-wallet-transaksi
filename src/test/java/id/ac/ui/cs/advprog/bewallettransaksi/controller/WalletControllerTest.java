@@ -368,7 +368,8 @@ class WalletControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paymentToken").exists())
                 .andExpect(jsonPath("$.redirectUrl").exists())
-                .andExpect(jsonPath("$.orderId").exists());
+                .andExpect(jsonPath("$.orderId").exists())
+                .andExpect(jsonPath("$.orderId").value(org.hamcrest.Matchers.startsWith("TOPUP-")));
     }
 
     @Test
