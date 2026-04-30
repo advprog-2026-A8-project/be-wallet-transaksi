@@ -33,7 +33,7 @@ class HttpOrderPaymentStatusPublisherTest {
 
     @Test
     void publishPaymentSettled_ShouldPostToOrderService() {
-        expectPostSuccess(SETTLED_PATH, "{\"orderId\":\"ORDER-123\",\"status\":\"SETTLED\"}");
+        expectPostSuccess(SETTLED_PATH, "{\"orderId\":\"ORDER-123\",\"status\":\"SUCCESS\"}");
 
         publisher.publishPaymentSettled("ORDER-123");
 
@@ -63,7 +63,7 @@ class HttpOrderPaymentStatusPublisherTest {
     void constructor_BaseUrlWithOuterWhitespace_ShouldBeTrimmed() {
         HttpOrderPaymentStatusPublisher publisherWithSpacedBaseUrl =
                 new HttpOrderPaymentStatusPublisher(restTemplate, "  " + BASE_URL + "  ");
-        expectPostSuccess(SETTLED_PATH, "{\"orderId\":\"ORDER-999\",\"status\":\"SETTLED\"}");
+        expectPostSuccess(SETTLED_PATH, "{\"orderId\":\"ORDER-999\",\"status\":\"SUCCESS\"}");
 
         publisherWithSpacedBaseUrl.publishPaymentSettled("ORDER-999");
 
