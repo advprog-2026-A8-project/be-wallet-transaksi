@@ -273,10 +273,18 @@ public class WalletController {
     }
 
     private String requiredCallbackOrderId(String orderId) {
-        if (orderId == null || orderId.isBlank()) {
-            throw new IllegalArgumentException("Order ID must not be blank");
+        return requiredNonBlankCallbackField(orderId, "Order ID must not be blank");
+    }
+
+    private String requiredNonBlankCallbackField(String value, String message) {
+        if (value == null) {
+            throw new IllegalArgumentException(message);
         }
-        return orderId.trim();
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException(message);
+        }
+        return trimmed;
     }
 
     private void requireAuthorization(String authorization) {
