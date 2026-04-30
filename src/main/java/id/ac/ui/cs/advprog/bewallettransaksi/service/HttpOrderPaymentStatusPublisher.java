@@ -23,16 +23,23 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
 
     @Override
     public void publishPaymentSettled(String orderId) {
-        postStatus(SETTLED_PATH, orderId);
+        postStatus(SETTLED_PATH, orderId, "SETTLED");
     }
 
     @Override
     public void publishPaymentFailed(String orderId) {
-        postStatus(FAILED_PATH, orderId);
+        postStatus(FAILED_PATH, orderId, "FAILED");
     }
 
-    private void postStatus(String path, String orderId) {
-        restTemplate.postForEntity(baseUrl + path, Map.of("orderId", normalizeOrderId(orderId)), Void.class);
+    private void postStatus(String path, String orderId, String status) {
+        restTemplate.postForEntity(
+                baseUrl + path,
+                Map.of(
+                        "orderId", normalizeOrderId(orderId),
+                        "status", status
+                ),
+                Void.class
+        );
     }
 
     private String normalizeOrderId(String rawOrderId) {
