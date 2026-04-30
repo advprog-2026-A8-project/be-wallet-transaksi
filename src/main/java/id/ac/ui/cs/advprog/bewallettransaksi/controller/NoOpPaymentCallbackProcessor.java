@@ -5,11 +5,14 @@ import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
 
     private final WalletService walletService;
+    private final Set<String> processedCallbackEvents = ConcurrentHashMap.newKeySet();
 
     public NoOpPaymentCallbackProcessor(WalletService walletService) {
         this.walletService = walletService;
@@ -30,6 +33,10 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
         }
         String orderId = normalizedOrderId.get();
         String status = normalizedStatus.get();
+        String eventKey = buildEventKey(orderId, status);
+        if (!processedCallbackEvents.add(eventKey)) {
+            return;
+        }
         if (MidtransTransactionStatus.isSettlement(status)) {
             walletService.handlePaymentSettlement(orderId);
             return;
@@ -37,6 +44,10 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
         if (MidtransTransactionStatus.isFailure(status)) {
             walletService.handlePaymentFailure(orderId);
         }
+    }
+
+    private String buildEventKey(String orderId, String status) {
+        return orderId + "|" + status;
     }
 
     private Optional<String> normalizeNonBlank(String value) {
