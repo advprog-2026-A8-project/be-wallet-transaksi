@@ -15,7 +15,7 @@ public class MidtransCallbackSignatureVerifier {
     private final String midtransServerKey;
 
     public MidtransCallbackSignatureVerifier(@Value("${midtrans.server-key:}") String midtransServerKey) {
-        this.midtransServerKey = midtransServerKey == null ? "" : midtransServerKey;
+        this.midtransServerKey = midtransServerKey == null ? "" : midtransServerKey.trim();
     }
 
     public boolean isValid(PaymentCallbackRequest payload, String signatureKey) {
@@ -32,7 +32,10 @@ public class MidtransCallbackSignatureVerifier {
     }
 
     private boolean isVerifiableInput(PaymentCallbackRequest payload, String normalizedSignature) {
-        return payload != null && normalizedSignature != null && !normalizedSignature.isBlank();
+        return payload != null
+                && normalizedSignature != null
+                && !normalizedSignature.isBlank()
+                && !midtransServerKey.isBlank();
     }
 
     private String normalizeSignature(String signature) {
