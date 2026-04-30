@@ -56,4 +56,17 @@ class HttpOrderPaymentStatusPublisherTest {
     void publishPaymentFailed_NullOrderId_ShouldThrowIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> publisher.publishPaymentFailed(null));
     }
+
+    @Test
+    void constructor_BaseUrlWithOuterWhitespace_ShouldBeTrimmed() {
+        HttpOrderPaymentStatusPublisher publisherWithSpacedBaseUrl =
+                new HttpOrderPaymentStatusPublisher(restTemplate, "  http://order-service  ");
+        mockServer.expect(requestTo("http://order-service/internal/orders/payment/settled"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        publisherWithSpacedBaseUrl.publishPaymentSettled("ORDER-999");
+
+        mockServer.verify();
+    }
 }
