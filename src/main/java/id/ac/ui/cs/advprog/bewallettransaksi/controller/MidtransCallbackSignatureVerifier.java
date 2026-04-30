@@ -21,6 +21,9 @@ public class MidtransCallbackSignatureVerifier {
         if (signatureKey == null || signatureKey.isBlank()) {
             return false;
         }
+        if (payload == null) {
+            return false;
+        }
         try {
             String expectedSignature = buildExpectedSignature(payload);
             return expectedSignature.equals(signatureKey);
