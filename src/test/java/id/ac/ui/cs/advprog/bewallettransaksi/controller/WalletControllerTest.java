@@ -120,6 +120,7 @@ class WalletControllerTest {
         stubInvalidSignature("invalid-signature");
         stubInvalidSignature("tampered-signature");
         stubInvalidSignature("tampered-status-signature");
+        stubInvalidSignature("some-signature");
     }
 
     private void stubInvalidSignature(String signature) {

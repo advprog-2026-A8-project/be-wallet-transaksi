@@ -18,8 +18,12 @@ public class MidtransCallbackSignatureVerifier {
     }
 
     public boolean isValid(PaymentCallbackRequest payload, String signatureKey) {
-        String expectedSignature = buildExpectedSignature(payload);
-        return expectedSignature.equals(signatureKey);
+        try {
+            String expectedSignature = buildExpectedSignature(payload);
+            return expectedSignature.equals(signatureKey);
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 
     private String buildExpectedSignature(PaymentCallbackRequest payload) {
