@@ -152,7 +152,20 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public void handlePaymentSettlement(String orderId) {
-        finalizePendingPayment(orderId, TransactionStatus.SUCCESS);
+        String normalizedOrderId = normalizeOrderId(orderId);
+        Transaction paymentTransaction = findPaymentByOrderId(normalizedOrderId)
+                .orElseThrow(() -> new IllegalStateException(PENDING_PAYMENT_NOT_FOUND_MESSAGE + normalizedOrderId));
+
+        if (paymentTransaction.getStatus() == TransactionStatus.SUCCESS) {
+            return;
+        }
+        if (paymentTransaction.getStatus() == TransactionStatus.PENDING) {
+            updateTransactionStatus(paymentTransaction, TransactionStatus.SUCCESS);
+            return;
+        }
+        throw new IllegalStateException(
+                "Cannot mark payment as settled from status: " + paymentTransaction.getStatus()
+        );
     }
 
     @Override
@@ -200,12 +213,6 @@ public class WalletServiceImpl implements WalletService {
     private void updateTransactionStatus(Transaction transaction, TransactionStatus status) {
         transaction.setStatus(status);
         transactionRepository.save(transaction);
-    }
-
-    private void finalizePendingPayment(String orderId, TransactionStatus finalStatus) {
-        String normalizedOrderId = normalizeOrderId(orderId);
-        Transaction pendingPayment = findPendingPaymentByOrderId(normalizedOrderId);
-        updateTransactionStatus(pendingPayment, finalStatus);
     }
 
     private void validateUserId(UUID userId) {
