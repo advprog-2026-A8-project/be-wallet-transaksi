@@ -31,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class WalletServicePaymentTest {
@@ -287,6 +288,7 @@ class WalletServicePaymentTest {
 
         assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-4"));
         verify(transactionRepository, never()).save(any(Transaction.class));
+        verifyNoInteractions(orderPaymentStatusPublisher);
     }
 
     @Test
