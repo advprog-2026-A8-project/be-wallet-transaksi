@@ -49,12 +49,16 @@ public class WalletServiceImpl implements WalletService {
                              OrderPaymentStatusPublisher orderPaymentStatusPublisher) {
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
-        this.strategyResolver = Objects.requireNonNull(
-                strategyResolver, "WalletMutationStrategyResolver must not be null"
-        );
-        this.orderPaymentStatusPublisher = Objects.requireNonNull(
-                orderPaymentStatusPublisher, "OrderPaymentStatusPublisher must not be null"
-        );
+        this.strategyResolver = requireResolver(strategyResolver);
+        this.orderPaymentStatusPublisher = requireOrderPublisher(orderPaymentStatusPublisher);
+    }
+
+    private WalletMutationStrategyResolver requireResolver(WalletMutationStrategyResolver resolver) {
+        return Objects.requireNonNull(resolver, "WalletMutationStrategyResolver must not be null");
+    }
+
+    private OrderPaymentStatusPublisher requireOrderPublisher(OrderPaymentStatusPublisher publisher) {
+        return Objects.requireNonNull(publisher, "OrderPaymentStatusPublisher must not be null");
     }
 
     @Override
