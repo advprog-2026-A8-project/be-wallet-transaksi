@@ -241,8 +241,7 @@ public class WalletController {
         if (payload == null) {
             throw new IllegalArgumentException("Callback payload must not be empty");
         }
-        requiredCallbackOrderId(payload.getOrderId());
-        requiredCallbackField(payload.getGrossAmount(), "gross_amount");
+        validateRequiredCallbackFields(payload);
     }
 
     private Map<String, String> callbackAcceptedResponse() {
@@ -268,6 +267,11 @@ public class WalletController {
 
     private String requiredCallbackOrderId(String orderId) {
         return requiredTrimmedValue(orderId, "Order ID must not be blank");
+    }
+
+    private void validateRequiredCallbackFields(PaymentCallbackRequest payload) {
+        requiredCallbackOrderId(payload.getOrderId());
+        requiredCallbackField(payload.getGrossAmount(), "gross_amount");
     }
 
     private String requiredTrimmedValue(String value, String message) {
