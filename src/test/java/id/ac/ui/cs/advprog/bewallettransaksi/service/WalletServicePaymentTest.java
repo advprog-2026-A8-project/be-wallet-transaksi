@@ -545,4 +545,31 @@ class WalletServicePaymentTest {
         verify(transactionRepository, never()).save(any(Transaction.class));
         verifyNoInteractions(orderPaymentStatusPublisher);
     }
+
+    @Test
+    void handlePaymentFailure_WhenLatestIsFailed_ShouldNotProcessOlderPendingDuplicate() {
+        Transaction olderPending = new Transaction();
+        olderPending.setTransactionId(UUID.randomUUID());
+        olderPending.setWalletId(walletId);
+        olderPending.setAmount(BigDecimal.valueOf(60.00));
+        olderPending.setType(TransactionType.PAYMENT);
+        olderPending.setStatus(TransactionStatus.PENDING);
+        olderPending.setDescription("ORDER-DUP-8");
+        olderPending.setCreatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
+
+        Transaction latestFailed = new Transaction();
+        latestFailed.setTransactionId(UUID.randomUUID());
+        latestFailed.setWalletId(walletId);
+        latestFailed.setAmount(BigDecimal.valueOf(60.00));
+        latestFailed.setType(TransactionType.PAYMENT);
+        latestFailed.setStatus(TransactionStatus.FAILED);
+        latestFailed.setDescription("ORDER-DUP-8");
+        latestFailed.setCreatedAt(LocalDateTime.of(2026, 4, 1, 12, 0));
+
+        when(transactionRepository.findAll()).thenReturn(List.of(olderPending, latestFailed));
+
+        assertDoesNotThrow(() -> walletService.handlePaymentFailure("ORDER-DUP-8"));
+        verify(transactionRepository, never()).save(any(Transaction.class));
+        verifyNoInteractions(orderPaymentStatusPublisher);
+    }
 }
