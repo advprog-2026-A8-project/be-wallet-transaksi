@@ -49,6 +49,19 @@ class PaymentCallbackProcessorTest {
     }
 
     @Test
+    void process_CaptureStatus_ShouldTriggerPaymentSettlementHandling() {
+        PaymentCallbackRequest request = new PaymentCallbackRequest();
+        request.setOrderId("ORDER-CAPTURE-1");
+        request.setStatusCode("200");
+        request.setGrossAmount("10000.00");
+        request.setTransactionStatus("capture");
+
+        processor.process(request);
+
+        verify(walletService).handlePaymentSettlement("ORDER-CAPTURE-1");
+    }
+
+    @Test
     void process_StatusWithWhitespace_ShouldStillTriggerSettlementHandling() {
         PaymentCallbackRequest request = new PaymentCallbackRequest();
         request.setOrderId("ORDER-3");
