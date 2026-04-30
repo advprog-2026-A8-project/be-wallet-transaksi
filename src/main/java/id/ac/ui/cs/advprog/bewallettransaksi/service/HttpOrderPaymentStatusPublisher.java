@@ -9,6 +9,9 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
     private static final String SETTLED_PATH = "/internal/orders/payment/settled";
     private static final String FAILED_PATH = "/internal/orders/payment/failed";
     private static final int MAX_ORDER_ID_LENGTH = 128;
+    private static final String ORDER_ID_BLANK_MESSAGE = "Order ID must not be blank";
+    private static final String ORDER_ID_TOO_LONG_MESSAGE = "Order ID exceeds maximum length";
+    private static final String BASE_URL_BLANK_MESSAGE = "Order service base URL must not be blank";
 
     private final RestTemplate restTemplate;
     private final String baseUrl;
@@ -34,18 +37,18 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
 
     private String normalizeOrderId(String rawOrderId) {
         if (rawOrderId == null || rawOrderId.isBlank()) {
-            throw new IllegalArgumentException("Order ID must not be blank");
+            throw new IllegalArgumentException(ORDER_ID_BLANK_MESSAGE);
         }
         String normalizedOrderId = rawOrderId.trim();
         if (normalizedOrderId.length() > MAX_ORDER_ID_LENGTH) {
-            throw new IllegalArgumentException("Order ID exceeds maximum length");
+            throw new IllegalArgumentException(ORDER_ID_TOO_LONG_MESSAGE);
         }
         return normalizedOrderId;
     }
 
     private String normalizeBaseUrl(String rawBaseUrl) {
         if (rawBaseUrl == null || rawBaseUrl.isBlank()) {
-            throw new IllegalArgumentException("Order service base URL must not be blank");
+            throw new IllegalArgumentException(BASE_URL_BLANK_MESSAGE);
         }
         String trimmedBaseUrl = rawBaseUrl.trim();
         return trimmedBaseUrl.endsWith("/")
