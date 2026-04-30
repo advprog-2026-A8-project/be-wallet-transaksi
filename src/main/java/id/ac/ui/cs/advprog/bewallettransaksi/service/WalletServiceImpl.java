@@ -36,6 +36,7 @@ public class WalletServiceImpl implements WalletService {
     private static final String TOP_UP_REQUEST_REQUIRED_MESSAGE = "Top-up request must not be null";
     private static final String STATUS_REQUIRED_MESSAGE = "Status must not be null";
     private static final String WALLET_ALREADY_EXISTS_MESSAGE = "Wallet already exists for user";
+    private static final String PENDING_PAYMENT_NOT_FOUND_MESSAGE = "Pending payment transaction not found for orderId: ";
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
@@ -158,7 +159,8 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public void handlePaymentFailure(String orderId) {
         String normalizedOrderId = normalizeOrderId(orderId);
-        Transaction paymentTransaction = findPaymentByOrderId(normalizedOrderId);
+        Transaction paymentTransaction = findPaymentByOrderId(normalizedOrderId)
+                .orElseThrow(() -> new IllegalStateException(PENDING_PAYMENT_NOT_FOUND_MESSAGE + normalizedOrderId));
 
         if (paymentTransaction.getStatus() == TransactionStatus.FAILED) {
             return;
@@ -183,23 +185,16 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private Transaction findPendingPaymentByOrderId(String orderId) {
-        return transactionRepository.findAll().stream()
+        return findPaymentByOrderId(orderId)
                 .filter(this::isPendingPaymentTransaction)
-                .filter(transaction -> orderId.equals(transaction.getDescription()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "Pending payment transaction not found for orderId: " + orderId
-                ));
+                .orElseThrow(() -> new IllegalStateException(PENDING_PAYMENT_NOT_FOUND_MESSAGE + orderId));
     }
 
-    private Transaction findPaymentByOrderId(String orderId) {
+    private java.util.Optional<Transaction> findPaymentByOrderId(String orderId) {
         return transactionRepository.findAll().stream()
                 .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
                 .filter(transaction -> orderId.equals(transaction.getDescription()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "Pending payment transaction not found for orderId: " + orderId
-                ));
+                .findFirst();
     }
 
     private void updateTransactionStatus(Transaction transaction, TransactionStatus status) {
