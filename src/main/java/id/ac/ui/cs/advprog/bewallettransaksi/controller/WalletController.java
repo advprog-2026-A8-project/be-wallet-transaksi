@@ -4,6 +4,7 @@ import java.util.UUID;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import java.math.BigDecimal;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -291,8 +292,17 @@ public class WalletController {
         String orderId = requiredCallbackOrderId(payload.getOrderId());
         String statusCode = requiredCallbackField(payload.getStatusCode(), CALLBACK_STATUS_CODE_KEY);
         String grossAmount = requiredCallbackField(payload.getGrossAmount(), CALLBACK_GROSS_AMOUNT_KEY);
+        requireNumericGrossAmount(grossAmount);
         String transactionStatus = requiredCallbackField(payload.getTransactionStatus(), CALLBACK_TRANSACTION_STATUS_KEY);
         return new NormalizedCallbackFields(orderId, statusCode, grossAmount, transactionStatus);
+    }
+
+    private void requireNumericGrossAmount(String grossAmount) {
+        try {
+            new BigDecimal(grossAmount);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("gross_amount must be a valid number");
+        }
     }
 
     private void applyNormalizedCallbackFields(PaymentCallbackRequest payload, NormalizedCallbackFields normalizedFields) {
