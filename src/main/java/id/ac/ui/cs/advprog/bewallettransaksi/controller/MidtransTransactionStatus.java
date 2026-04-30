@@ -19,7 +19,7 @@ public final class MidtransTransactionStatus {
     }
 
     public static boolean isSettlement(String status) {
-        return SETTLEMENT.equalsIgnoreCase(status);
+        return SETTLEMENT.equalsIgnoreCase(status) || "capture".equalsIgnoreCase(status);
     }
 
     public static boolean isFailure(String status) {
