@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentCallbackProcessorTest {
@@ -85,5 +86,26 @@ class PaymentCallbackProcessorTest {
         processor.process(request);
 
         verify(walletService, times(1)).handlePaymentSettlement("ORDER-DUP-1");
+    }
+
+    @Test
+    void process_SettlementThenDenySameOrder_ShouldIgnoreSecondTerminalCallback() {
+        PaymentCallbackRequest settlement = new PaymentCallbackRequest();
+        settlement.setOrderId("ORDER-TRANS-1");
+        settlement.setStatusCode("200");
+        settlement.setGrossAmount("10000.00");
+        settlement.setTransactionStatus("settlement");
+
+        PaymentCallbackRequest deny = new PaymentCallbackRequest();
+        deny.setOrderId("ORDER-TRANS-1");
+        deny.setStatusCode("202");
+        deny.setGrossAmount("10000.00");
+        deny.setTransactionStatus("deny");
+
+        processor.process(settlement);
+        processor.process(deny);
+
+        verify(walletService, times(1)).handlePaymentSettlement("ORDER-TRANS-1");
+        verify(walletService, never()).handlePaymentFailure("ORDER-TRANS-1");
     }
 }
