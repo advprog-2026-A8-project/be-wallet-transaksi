@@ -50,6 +50,7 @@ public class WalletController {
     private static final String STATUS_CODE_UNSUPPORTED_MESSAGE_PREFIX = "Unsupported callback status_code: ";
     private static final String SNAP_TOKEN_PREFIX = "snap-token-";
     private static final String SNAP_REDIRECT_BASE_URL = "https://app.sandbox.midtrans.com/snap/v2/vtweb/";
+    private static final String TOPUP_ORDER_PREFIX = "TOPUP-";
     private static final Set<String> SUPPORTED_CALLBACK_STATUS_CODES = Set.of("200", "201", "202", "407");
     private static final String JASTIPER_ROLE = "JASTIPER";
     private static final int MAX_CALLBACK_ORDER_ID_LENGTH = 128;
@@ -120,7 +121,7 @@ public class WalletController {
 
         return withIdempotencyKey(idempotencyKey, () -> {
             validateTopUpAccess(authorization, request.getUserId());
-            String orderId = UUID.randomUUID().toString();
+            String orderId = TOPUP_ORDER_PREFIX + UUID.randomUUID();
             return ResponseEntity.ok(Map.of(
                     "paymentToken", SNAP_TOKEN_PREFIX + orderId,
                     "redirectUrl", SNAP_REDIRECT_BASE_URL + orderId,
