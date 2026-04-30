@@ -140,8 +140,9 @@ public class WalletController {
             @RequestBody(required = false) PaymentCallbackRequest payload
     ) {
         requireHeader(signatureKey, SIGNATURE_HEADER);
-        NormalizedCallbackFields normalizedFields = validateAndNormalizeCallbackPayload(payload);
+        requireCallbackPayload(payload);
         validateCallbackSignature(payload, signatureKey);
+        NormalizedCallbackFields normalizedFields = normalizeRequiredCallbackFields(payload);
         validateCallbackStatus(normalizedFields.transactionStatus());
         applyNormalizedCallbackFields(payload, normalizedFields);
         paymentCallbackProcessor.process(payload);
@@ -252,11 +253,10 @@ public class WalletController {
                 || !walletRequestAccessPolicy.isValidReadJwt(authorization);
     }
 
-    private NormalizedCallbackFields validateAndNormalizeCallbackPayload(PaymentCallbackRequest payload) {
+    private void requireCallbackPayload(PaymentCallbackRequest payload) {
         if (payload == null) {
             throw new IllegalArgumentException("Callback payload must not be empty");
         }
-        return normalizeRequiredCallbackFields(payload);
     }
 
     private Map<String, String> callbackAcceptedResponse() {
