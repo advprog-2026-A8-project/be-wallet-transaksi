@@ -28,7 +28,14 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
     }
 
     private void postStatus(String path, String orderId) {
-        restTemplate.postForEntity(baseUrl + path, Map.of("orderId", orderId), Void.class);
+        restTemplate.postForEntity(baseUrl + path, Map.of("orderId", normalizeOrderId(orderId)), Void.class);
+    }
+
+    private String normalizeOrderId(String rawOrderId) {
+        if (rawOrderId == null || rawOrderId.isBlank()) {
+            throw new IllegalArgumentException("Order ID must not be blank");
+        }
+        return rawOrderId.trim();
     }
 
     private String normalizeBaseUrl(String rawBaseUrl) {
