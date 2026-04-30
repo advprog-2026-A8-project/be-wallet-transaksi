@@ -204,7 +204,7 @@ public class WalletServiceImpl implements WalletService {
 
     private java.util.Optional<Transaction> findPaymentByOrderId(String orderId) {
         List<Transaction> matchingPayments = findMatchingPaymentTransactions(orderId);
-        return findPendingPayment(matchingPayments).or(() -> matchingPayments.stream().findFirst());
+        return findPendingPayment(matchingPayments).or(() -> findMostRecentPayment(matchingPayments));
     }
 
     private List<Transaction> findMatchingPaymentTransactions(String orderId) {
@@ -218,6 +218,10 @@ public class WalletServiceImpl implements WalletService {
         return matchingPayments.stream()
                 .filter(transaction -> transaction.getStatus() == TransactionStatus.PENDING)
                 .max(TRANSACTION_CREATED_AT_NEWEST);
+    }
+
+    private java.util.Optional<Transaction> findMostRecentPayment(List<Transaction> matchingPayments) {
+        return matchingPayments.stream().max(TRANSACTION_CREATED_AT_NEWEST);
     }
 
     private void transitionPaymentCallbackStatus(
