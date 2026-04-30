@@ -36,7 +36,7 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
         }
         String orderId = normalizedOrderId.get();
         String status = normalizedStatus.get();
-        if (shouldIgnoreDueToTerminalConflict(orderId, status)) {
+        if (shouldIgnoreTerminalEvent(orderId, status)) {
             return;
         }
         String eventKey = buildEventKey(orderId, status);
@@ -52,7 +52,7 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
         }
     }
 
-    private boolean shouldIgnoreDueToTerminalConflict(String orderId, String status) {
+    private boolean shouldIgnoreTerminalEvent(String orderId, String status) {
         if (!isTerminalStatus(status)) {
             return false;
         }
