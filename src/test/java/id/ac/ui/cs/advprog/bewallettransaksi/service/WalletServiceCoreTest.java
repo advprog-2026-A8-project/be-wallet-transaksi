@@ -252,4 +252,20 @@ class WalletServiceCoreTest {
                 () -> new WalletServiceImpl(walletRepository, transactionRepository, strategyResolver, null)
         );
     }
+
+    @Test
+    void constructor_NullWalletRepository_ShouldThrowNullPointerException() {
+        assertThrows(
+                NullPointerException.class,
+                () -> new WalletServiceImpl(null, transactionRepository, strategyResolver, orderPaymentStatusPublisher)
+        );
+    }
+
+    @Test
+    void constructor_NullTransactionRepository_ShouldThrowNullPointerException() {
+        assertThrows(
+                NullPointerException.class,
+                () -> new WalletServiceImpl(walletRepository, null, strategyResolver, orderPaymentStatusPublisher)
+        );
+    }
 }
