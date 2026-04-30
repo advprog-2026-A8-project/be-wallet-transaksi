@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.bewallettransaksi.dto.PaymentCallbackRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -23,7 +24,7 @@ public class MidtransCallbackSignatureVerifier {
         }
         try {
             String expectedSignature = buildExpectedSignature(payload);
-            return expectedSignature.equals(signatureKey);
+            return expectedSignature.equals(normalizeSignature(signatureKey));
         } catch (IllegalArgumentException ex) {
             return false;
         }
@@ -31,6 +32,10 @@ public class MidtransCallbackSignatureVerifier {
 
     private boolean isVerifiableInput(PaymentCallbackRequest payload, String signatureKey) {
         return payload != null && signatureKey != null && !signatureKey.isBlank();
+    }
+
+    private String normalizeSignature(String signature) {
+        return signature.trim().toLowerCase(Locale.ROOT);
     }
 
     private String buildExpectedSignature(PaymentCallbackRequest payload) {
