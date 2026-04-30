@@ -224,14 +224,18 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private void publishOrderPaymentStatusUpdate(String orderId, TransactionStatus targetStatus) {
-        try {
-            switch (targetStatus) {
-                case SUCCESS -> orderPaymentStatusPublisher.publishPaymentSettled(orderId);
-                case FAILED -> orderPaymentStatusPublisher.publishPaymentFailed(orderId);
-                default -> {
-                    // Ignore non-terminal states for order payment publication.
-                }
+        switch (targetStatus) {
+            case SUCCESS -> runSafely(() -> orderPaymentStatusPublisher.publishPaymentSettled(orderId));
+            case FAILED -> runSafely(() -> orderPaymentStatusPublisher.publishPaymentFailed(orderId));
+            default -> {
+                // Ignore non-terminal states for order payment publication.
             }
+        }
+    }
+
+    private void runSafely(Runnable action) {
+        try {
+            action.run();
         } catch (RuntimeException ex) {
             // Keep wallet transaction state authoritative even if downstream publication fails.
         }
