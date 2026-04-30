@@ -926,6 +926,17 @@ class WalletControllerTest {
     }
 
     @Test
+    void paymentCallback_TamperedStatusCodeWithInvalidSignature_ShouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "tampered-status-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"order_id\":\"ORDER-1\",\"status_code\":\"500\",\"gross_amount\":\"10000.00\","
+                                + "\"transaction_status\":\"settlement\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Invalid callback signature"));
+    }
+
+    @Test
     void paymentCallback_UnsupportedTransactionStatus_ShouldReturnBadRequest() throws Exception {
         String payload =
                 "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
