@@ -6,6 +6,8 @@ import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.InvalidAmountException;
+import id.ac.ui.cs.advprog.bewallettransaksi.model.Transaction;
+import id.ac.ui.cs.advprog.bewallettransaksi.model.Wallet;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.TransactionRepository;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.WalletRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -15,9 +17,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -139,5 +143,49 @@ class WalletServiceIntegrationFlowTest {
                 .findFirst()
                 .orElseThrow();
         assertEquals(TransactionStatus.SUCCESS, paymentTransaction.getStatus());
+    }
+
+    @Test
+    void handlePaymentSettlement_WhenLatestDuplicateIsSuccess_ShouldNotProcessOlderPending() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String orderId = "ORDER-INTEG-1";
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+
+        Transaction olderPending = new Transaction();
+        olderPending.setWalletId(wallet.getWalletId());
+        olderPending.setAmount(new BigDecimal("100.00"));
+        olderPending.setType(TransactionType.PAYMENT);
+        olderPending.setStatus(TransactionStatus.PENDING);
+        olderPending.setDescription(orderId);
+        olderPending.setCreatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
+        olderPending.setUpdatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
+        transactionRepository.save(olderPending);
+
+        Transaction latestSuccess = new Transaction();
+        latestSuccess.setWalletId(wallet.getWalletId());
+        latestSuccess.setAmount(new BigDecimal("100.00"));
+        latestSuccess.setType(TransactionType.PAYMENT);
+        latestSuccess.setStatus(TransactionStatus.SUCCESS);
+        latestSuccess.setDescription(orderId);
+        latestSuccess.setCreatedAt(LocalDateTime.of(2026, 4, 1, 12, 0));
+        latestSuccess.setUpdatedAt(LocalDateTime.of(2026, 4, 1, 12, 0));
+        transactionRepository.save(latestSuccess);
+
+        assertDoesNotThrow(() -> walletService.handlePaymentSettlement(orderId));
+
+        List<Transaction> persisted = transactionRepository.findAll().stream()
+                .filter(transaction -> orderId.equals(transaction.getDescription()))
+                .toList();
+        long pendingCount = persisted.stream()
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.PENDING)
+                .count();
+        long successCount = persisted.stream()
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS)
+                .count();
+        assertEquals(1, pendingCount);
+        assertEquals(1, successCount);
     }
 }
