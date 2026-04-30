@@ -18,6 +18,9 @@ public class MidtransCallbackSignatureVerifier {
     }
 
     public boolean isValid(PaymentCallbackRequest payload, String signatureKey) {
+        if (signatureKey == null || signatureKey.isBlank()) {
+            return false;
+        }
         try {
             String expectedSignature = buildExpectedSignature(payload);
             return expectedSignature.equals(signatureKey);
