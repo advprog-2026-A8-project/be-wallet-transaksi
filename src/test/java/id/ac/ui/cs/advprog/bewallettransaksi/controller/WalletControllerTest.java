@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -417,6 +418,24 @@ class WalletControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Duplicate idempotency key"));
+    }
+
+    @Test
+    void initiateTopUp_WhenInstructionGenerationFails_ShouldReleaseIdempotencyKey() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50000.00));
+        doThrow(new RuntimeException("id generator failed"))
+                .when(walletRequestAccessPolicy).isForbiddenTopUpRole("Bearer force-initiate-fail");
+
+        mockMvc.perform(post("/wallet/topup/initiate")
+                        .header(AUTH_HEADER, "Bearer force-initiate-fail")
+                        .header(IDEMPOTENCY_HEADER, "idem-initiate-fail")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+
+        verify(idempotencyKeyGuard, times(1)).release("idem-initiate-fail");
     }
 
     @Test
