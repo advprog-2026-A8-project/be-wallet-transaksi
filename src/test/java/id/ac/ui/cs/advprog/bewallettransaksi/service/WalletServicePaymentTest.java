@@ -371,4 +371,33 @@ class WalletServicePaymentTest {
         assertEquals(TransactionStatus.SUCCESS, transactionCaptor.getValue().getStatus());
         verify(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-DUP-1");
     }
+
+    @Test
+    void handlePaymentFailure_DuplicateOrderId_ShouldPrioritizePendingTransaction() {
+        Transaction failedPayment = new Transaction();
+        failedPayment.setTransactionId(UUID.randomUUID());
+        failedPayment.setWalletId(walletId);
+        failedPayment.setAmount(BigDecimal.valueOf(60.00));
+        failedPayment.setType(TransactionType.PAYMENT);
+        failedPayment.setStatus(TransactionStatus.FAILED);
+        failedPayment.setDescription("ORDER-DUP-2");
+
+        Transaction pendingPayment = new Transaction();
+        pendingPayment.setTransactionId(UUID.randomUUID());
+        pendingPayment.setWalletId(walletId);
+        pendingPayment.setAmount(BigDecimal.valueOf(60.00));
+        pendingPayment.setType(TransactionType.PAYMENT);
+        pendingPayment.setStatus(TransactionStatus.PENDING);
+        pendingPayment.setDescription("ORDER-DUP-2");
+
+        when(transactionRepository.findAll()).thenReturn(List.of(failedPayment, pendingPayment));
+
+        assertDoesNotThrow(() -> walletService.handlePaymentFailure("ORDER-DUP-2"));
+
+        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(transactionCaptor.capture());
+        assertEquals(pendingPayment.getTransactionId(), transactionCaptor.getValue().getTransactionId());
+        assertEquals(TransactionStatus.FAILED, transactionCaptor.getValue().getStatus());
+        verify(orderPaymentStatusPublisher).publishPaymentFailed("ORDER-DUP-2");
+    }
 }
