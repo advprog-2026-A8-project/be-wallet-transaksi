@@ -241,6 +241,7 @@ public class WalletController {
         if (payload == null) {
             throw new IllegalArgumentException("Callback payload must not be empty");
         }
+        requiredCallbackOrderId(payload.getOrderId());
     }
 
     private Map<String, String> callbackAcceptedResponse() {
@@ -269,6 +270,13 @@ public class WalletController {
             throw new IllegalArgumentException("Missing required callback field: " + key);
         }
         return text.toLowerCase();
+    }
+
+    private String requiredCallbackOrderId(String orderId) {
+        if (orderId == null || orderId.isBlank()) {
+            throw new IllegalArgumentException("Order ID must not be blank");
+        }
+        return orderId.trim();
     }
 
     private void requireAuthorization(String authorization) {
