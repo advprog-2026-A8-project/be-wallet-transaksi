@@ -1006,6 +1006,22 @@ class WalletControllerTest {
         verify(paymentCallbackProcessor, never()).process(any());
     }
 
+    @Test
+    void paymentCallback_BlankStatusCode_ShouldReturnBadRequestAndNotInvokeProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-9\",\"status_code\":\"   \",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing required callback field: status_code"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
         WalletMutationRequest request = new WalletMutationRequest();
         request.setUserId(userId);
