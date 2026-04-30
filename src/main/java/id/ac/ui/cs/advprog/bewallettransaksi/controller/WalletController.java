@@ -111,6 +111,24 @@ public class WalletController {
         return ResponseEntity.ok(walletService.topUp(request));
     }
 
+    @PostMapping("/topup/initiate")
+    public ResponseEntity<Map<String, String>> initiateTopUp(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @Valid @RequestBody TopUpRequest request
+    ) {
+        validateMutationOwnerAccess(authorization, request.getUserId());
+        if (walletRequestAccessPolicy.isForbiddenTopUpRole(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+
+        String orderId = UUID.randomUUID().toString();
+        return ResponseEntity.ok(Map.of(
+                "paymentToken", "mock-token-" + orderId,
+                "redirectUrl", "https://app.sandbox.midtrans.com/snap/v2/vtweb/" + orderId,
+                "orderId", orderId
+        ));
+    }
+
     @PostMapping("/pay")
     public ResponseEntity<WalletResponse> pay(
             @RequestHeader(value = "Authorization", required = false) String authorization,
