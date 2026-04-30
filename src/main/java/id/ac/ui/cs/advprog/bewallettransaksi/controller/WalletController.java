@@ -242,6 +242,7 @@ public class WalletController {
             throw new IllegalArgumentException("Callback payload must not be empty");
         }
         requiredCallbackOrderId(payload.getOrderId());
+        requiredCallbackField(payload.getGrossAmount(), "gross_amount");
     }
 
     private Map<String, String> callbackAcceptedResponse() {
