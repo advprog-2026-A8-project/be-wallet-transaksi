@@ -142,4 +142,24 @@ class PaymentCallbackProcessorTest {
         verify(walletService, times(1)).handlePaymentSettlement("ORDER-TRANS-2");
         verify(walletService, never()).handlePaymentFailure("ORDER-TRANS-2");
     }
+
+    @Test
+    void process_DuplicateSettlementWithDifferentStatusCase_ShouldTriggerWalletServiceOnlyOnce() {
+        PaymentCallbackRequest first = new PaymentCallbackRequest();
+        first.setOrderId("ORDER-DUP-CASE-1");
+        first.setStatusCode("200");
+        first.setGrossAmount("10000.00");
+        first.setTransactionStatus("settlement");
+
+        PaymentCallbackRequest second = new PaymentCallbackRequest();
+        second.setOrderId("ORDER-DUP-CASE-1");
+        second.setStatusCode("200");
+        second.setGrossAmount("10000.00");
+        second.setTransactionStatus("SETTLEMENT");
+
+        processor.process(first);
+        processor.process(second);
+
+        verify(walletService, times(1)).handlePaymentSettlement("ORDER-DUP-CASE-1");
+    }
 }
