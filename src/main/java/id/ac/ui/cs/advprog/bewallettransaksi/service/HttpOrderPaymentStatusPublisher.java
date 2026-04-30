@@ -8,6 +8,7 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
 
     private static final String SETTLED_PATH = "/internal/orders/payment/settled";
     private static final String FAILED_PATH = "/internal/orders/payment/failed";
+    private static final int MAX_ORDER_ID_LENGTH = 128;
 
     private final RestTemplate restTemplate;
     private final String baseUrl;
@@ -35,7 +36,11 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
         if (rawOrderId == null || rawOrderId.isBlank()) {
             throw new IllegalArgumentException("Order ID must not be blank");
         }
-        return rawOrderId.trim();
+        String normalizedOrderId = rawOrderId.trim();
+        if (normalizedOrderId.length() > MAX_ORDER_ID_LENGTH) {
+            throw new IllegalArgumentException("Order ID exceeds maximum length");
+        }
+        return normalizedOrderId;
     }
 
     private String normalizeBaseUrl(String rawBaseUrl) {
