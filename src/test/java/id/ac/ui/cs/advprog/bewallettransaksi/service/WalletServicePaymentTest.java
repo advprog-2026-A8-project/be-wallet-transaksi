@@ -460,4 +460,31 @@ class WalletServicePaymentTest {
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(timestampedPending.getTransactionId(), transactionCaptor.getValue().getTransactionId());
     }
+
+    @Test
+    void handlePaymentSettlement_NoPendingButHasSuccessDuplicateOrderId_ShouldBeNoOp() {
+        Transaction failedPayment = new Transaction();
+        failedPayment.setTransactionId(UUID.randomUUID());
+        failedPayment.setWalletId(walletId);
+        failedPayment.setAmount(BigDecimal.valueOf(60.00));
+        failedPayment.setType(TransactionType.PAYMENT);
+        failedPayment.setStatus(TransactionStatus.FAILED);
+        failedPayment.setDescription("ORDER-DUP-5");
+        failedPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
+
+        Transaction successPayment = new Transaction();
+        successPayment.setTransactionId(UUID.randomUUID());
+        successPayment.setWalletId(walletId);
+        successPayment.setAmount(BigDecimal.valueOf(60.00));
+        successPayment.setType(TransactionType.PAYMENT);
+        successPayment.setStatus(TransactionStatus.SUCCESS);
+        successPayment.setDescription("ORDER-DUP-5");
+        successPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 11, 0));
+
+        when(transactionRepository.findAll()).thenReturn(List.of(failedPayment, successPayment));
+
+        assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-DUP-5"));
+        verify(transactionRepository, never()).save(any(Transaction.class));
+        verifyNoInteractions(orderPaymentStatusPublisher);
+    }
 }
