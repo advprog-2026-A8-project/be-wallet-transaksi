@@ -47,10 +47,18 @@ public class WalletServiceImpl implements WalletService {
                              TransactionRepository transactionRepository,
                              WalletMutationStrategyResolver strategyResolver,
                              OrderPaymentStatusPublisher orderPaymentStatusPublisher) {
-        this.walletRepository = walletRepository;
-        this.transactionRepository = transactionRepository;
+        this.walletRepository = requireWalletRepository(walletRepository);
+        this.transactionRepository = requireTransactionRepository(transactionRepository);
         this.strategyResolver = requireResolver(strategyResolver);
         this.orderPaymentStatusPublisher = requireOrderPublisher(orderPaymentStatusPublisher);
+    }
+
+    private WalletRepository requireWalletRepository(WalletRepository repository) {
+        return Objects.requireNonNull(repository, "WalletRepository must not be null");
+    }
+
+    private TransactionRepository requireTransactionRepository(TransactionRepository repository) {
+        return Objects.requireNonNull(repository, "TransactionRepository must not be null");
     }
 
     private WalletMutationStrategyResolver requireResolver(WalletMutationStrategyResolver resolver) {
