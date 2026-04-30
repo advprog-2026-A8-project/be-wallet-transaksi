@@ -1073,6 +1073,22 @@ class WalletControllerTest {
     }
 
     @Test
+    void paymentCallback_UnsupportedStatusCode_ShouldReturnBadRequestAndNotInvokeProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-12\",\"status_code\":\"500\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Unsupported callback status_code: 500"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
+    @Test
     void paymentCallback_ShouldPassNormalizedFieldsToProcessor() throws Exception {
         String payload =
                 "{\"order_id\":\"  ORDER-123  \",\"status_code\":\" 200 \",\"gross_amount\":\" 10000.00 \","
