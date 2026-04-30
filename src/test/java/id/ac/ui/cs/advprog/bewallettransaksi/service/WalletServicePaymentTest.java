@@ -19,6 +19,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -399,5 +400,35 @@ class WalletServicePaymentTest {
         assertEquals(pendingPayment.getTransactionId(), transactionCaptor.getValue().getTransactionId());
         assertEquals(TransactionStatus.FAILED, transactionCaptor.getValue().getStatus());
         verify(orderPaymentStatusPublisher).publishPaymentFailed("ORDER-DUP-2");
+    }
+
+    @Test
+    void handlePaymentSettlement_MultiplePendingSameOrderId_ShouldPrioritizeMostRecentPendingTransaction() {
+        Transaction olderPendingPayment = new Transaction();
+        olderPendingPayment.setTransactionId(UUID.randomUUID());
+        olderPendingPayment.setWalletId(walletId);
+        olderPendingPayment.setAmount(BigDecimal.valueOf(60.00));
+        olderPendingPayment.setType(TransactionType.PAYMENT);
+        olderPendingPayment.setStatus(TransactionStatus.PENDING);
+        olderPendingPayment.setDescription("ORDER-DUP-3");
+        olderPendingPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
+
+        Transaction newerPendingPayment = new Transaction();
+        newerPendingPayment.setTransactionId(UUID.randomUUID());
+        newerPendingPayment.setWalletId(walletId);
+        newerPendingPayment.setAmount(BigDecimal.valueOf(60.00));
+        newerPendingPayment.setType(TransactionType.PAYMENT);
+        newerPendingPayment.setStatus(TransactionStatus.PENDING);
+        newerPendingPayment.setDescription("ORDER-DUP-3");
+        newerPendingPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 11, 0));
+
+        when(transactionRepository.findAll()).thenReturn(List.of(olderPendingPayment, newerPendingPayment));
+
+        assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-DUP-3"));
+
+        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(transactionCaptor.capture());
+        assertEquals(newerPendingPayment.getTransactionId(), transactionCaptor.getValue().getTransactionId());
+        assertEquals(TransactionStatus.SUCCESS, transactionCaptor.getValue().getStatus());
     }
 }
