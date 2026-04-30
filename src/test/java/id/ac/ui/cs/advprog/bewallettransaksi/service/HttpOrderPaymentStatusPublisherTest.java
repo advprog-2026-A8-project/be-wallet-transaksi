@@ -4,6 +4,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -44,5 +45,15 @@ class HttpOrderPaymentStatusPublisherTest {
         publisher.publishPaymentFailed("ORDER-123");
 
         mockServer.verify();
+    }
+
+    @Test
+    void publishPaymentSettled_BlankOrderId_ShouldThrowIllegalArgumentException() {
+        Assertions.assertThrows(IllegalArgumentException.class, () -> publisher.publishPaymentSettled("   "));
+    }
+
+    @Test
+    void publishPaymentFailed_NullOrderId_ShouldThrowIllegalArgumentException() {
+        Assertions.assertThrows(IllegalArgumentException.class, () -> publisher.publishPaymentFailed(null));
     }
 }
