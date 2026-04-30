@@ -32,6 +32,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
 class WalletServicePaymentTest {
@@ -321,5 +322,24 @@ class WalletServicePaymentTest {
 
         assertThrows(IllegalStateException.class, () -> walletService.handlePaymentFailure("ORDER-6"));
         verify(transactionRepository, never()).save(any(Transaction.class));
+    }
+
+    @Test
+    void handlePaymentSettlement_OrderPublisherFailure_ShouldNotFailWalletTransition() {
+        Transaction pendingPayment = new Transaction();
+        pendingPayment.setTransactionId(UUID.randomUUID());
+        pendingPayment.setWalletId(walletId);
+        pendingPayment.setAmount(BigDecimal.valueOf(60.00));
+        pendingPayment.setType(TransactionType.PAYMENT);
+        pendingPayment.setStatus(TransactionStatus.PENDING);
+        pendingPayment.setDescription("ORDER-PUB-FAIL-1");
+
+        when(transactionRepository.findAll()).thenReturn(List.of(pendingPayment));
+        doThrow(new RuntimeException("publisher down"))
+                .when(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-PUB-FAIL-1");
+
+        assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-PUB-FAIL-1"));
+        verify(transactionRepository).save(any(Transaction.class));
+        verify(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-PUB-FAIL-1");
     }
 }
