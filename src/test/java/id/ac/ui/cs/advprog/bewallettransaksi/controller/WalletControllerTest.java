@@ -46,6 +46,7 @@ class WalletControllerTest {
     private static final String JWT_SECRET = "DefaultSecretKeyUntukDevelopmentLokalYangSangatPanjangSekali123!@#";
     private static final String AUTH_HEADER = "Authorization";
     private static final String READ_JWT_HEADER_VALUE = "Bearer valid-read-jwt";
+    private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
 
     @Autowired
     private MockMvc mockMvc;
@@ -362,7 +363,7 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/topup/initiate")
                         .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
-                        .header("Idempotency-Key", "idem-initiate-topup-1")
+                        .header(IDEMPOTENCY_HEADER, "idem-initiate-topup-1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -379,7 +380,7 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/topup/initiate")
                         .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
-                        .header("Idempotency-Key", "idem-initiate-topup-2")
+                        .header(IDEMPOTENCY_HEADER, "idem-initiate-topup-2")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
