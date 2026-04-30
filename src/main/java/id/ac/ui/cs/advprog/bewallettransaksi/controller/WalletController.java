@@ -38,6 +38,11 @@ public class WalletController {
     private static final String CALLBACK_ACCEPTED_MESSAGE = "Callback accepted";
     private static final String INVALID_CALLBACK_SIGNATURE_MESSAGE = "Invalid callback signature";
     private static final String DUPLICATE_IDEMPOTENCY_MESSAGE = "Duplicate idempotency key";
+    private static final String CALLBACK_TRANSACTION_STATUS_KEY = "transaction_status";
+    private static final String CALLBACK_STATUS_CODE_KEY = "status_code";
+    private static final String CALLBACK_GROSS_AMOUNT_KEY = "gross_amount";
+    private static final String ORDER_ID_BLANK_MESSAGE = "Order ID must not be blank";
+    private static final String ORDER_ID_TOO_LONG_MESSAGE = "Order ID must be at most 128 characters";
     private static final String JASTIPER_ROLE = "JASTIPER";
     private static final int MAX_CALLBACK_ORDER_ID_LENGTH = 128;
 
@@ -259,7 +264,7 @@ public class WalletController {
     }
 
     private void validateCallbackStatus(PaymentCallbackRequest payload) {
-        String transactionStatus = requiredCallbackField(payload.getTransactionStatus(), "transaction_status");
+        String transactionStatus = requiredCallbackField(payload.getTransactionStatus(), CALLBACK_TRANSACTION_STATUS_KEY);
         if (!MidtransTransactionStatus.isSupported(transactionStatus)) {
             throw new IllegalArgumentException("Unsupported callback status: " + transactionStatus);
         }
@@ -270,17 +275,17 @@ public class WalletController {
     }
 
     private String requiredCallbackOrderId(String orderId) {
-        String normalizedOrderId = requiredTrimmedValue(orderId, "Order ID must not be blank");
+        String normalizedOrderId = requiredTrimmedValue(orderId, ORDER_ID_BLANK_MESSAGE);
         if (normalizedOrderId.length() > MAX_CALLBACK_ORDER_ID_LENGTH) {
-            throw new IllegalArgumentException("Order ID must be at most 128 characters");
+            throw new IllegalArgumentException(ORDER_ID_TOO_LONG_MESSAGE);
         }
         return normalizedOrderId;
     }
 
     private NormalizedCallbackFields normalizeRequiredCallbackFields(PaymentCallbackRequest payload) {
         String orderId = requiredCallbackOrderId(payload.getOrderId());
-        String statusCode = requiredCallbackField(payload.getStatusCode(), "status_code");
-        String grossAmount = requiredCallbackField(payload.getGrossAmount(), "gross_amount");
+        String statusCode = requiredCallbackField(payload.getStatusCode(), CALLBACK_STATUS_CODE_KEY);
+        String grossAmount = requiredCallbackField(payload.getGrossAmount(), CALLBACK_GROSS_AMOUNT_KEY);
         return new NormalizedCallbackFields(orderId, statusCode, grossAmount);
     }
 
