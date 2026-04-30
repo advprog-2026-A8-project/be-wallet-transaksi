@@ -152,37 +152,21 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public void handlePaymentSettlement(String orderId) {
-        String normalizedOrderId = normalizeOrderId(orderId);
-        Transaction paymentTransaction = findPaymentByOrderId(normalizedOrderId)
-                .orElseThrow(() -> new IllegalStateException(PENDING_PAYMENT_NOT_FOUND_MESSAGE + normalizedOrderId));
-
-        if (paymentTransaction.getStatus() == TransactionStatus.SUCCESS) {
-            return;
-        }
-        if (paymentTransaction.getStatus() == TransactionStatus.PENDING) {
-            updateTransactionStatus(paymentTransaction, TransactionStatus.SUCCESS);
-            return;
-        }
-        throw new IllegalStateException(
-                "Cannot mark payment as settled from status: " + paymentTransaction.getStatus()
+        transitionPaymentCallbackStatus(
+                orderId,
+                TransactionStatus.SUCCESS,
+                "Cannot mark payment as settled from status: "
         );
     }
 
     @Override
     @Transactional
     public void handlePaymentFailure(String orderId) {
-        String normalizedOrderId = normalizeOrderId(orderId);
-        Transaction paymentTransaction = findPaymentByOrderId(normalizedOrderId)
-                .orElseThrow(() -> new IllegalStateException(PENDING_PAYMENT_NOT_FOUND_MESSAGE + normalizedOrderId));
-
-        if (paymentTransaction.getStatus() == TransactionStatus.FAILED) {
-            return;
-        }
-        if (paymentTransaction.getStatus() == TransactionStatus.PENDING) {
-            updateTransactionStatus(paymentTransaction, TransactionStatus.FAILED);
-            return;
-        }
-        throw new IllegalStateException("Cannot mark payment as failed from status: " + paymentTransaction.getStatus());
+        transitionPaymentCallbackStatus(
+                orderId,
+                TransactionStatus.FAILED,
+                "Cannot mark payment as failed from status: "
+        );
     }
 
     private String normalizeOrderId(String orderId) {
@@ -208,6 +192,25 @@ public class WalletServiceImpl implements WalletService {
                 .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
                 .filter(transaction -> orderId.equals(transaction.getDescription()))
                 .findFirst();
+    }
+
+    private void transitionPaymentCallbackStatus(
+            String orderId,
+            TransactionStatus targetStatus,
+            String invalidTransitionPrefix
+    ) {
+        String normalizedOrderId = normalizeOrderId(orderId);
+        Transaction paymentTransaction = findPaymentByOrderId(normalizedOrderId)
+                .orElseThrow(() -> new IllegalStateException(PENDING_PAYMENT_NOT_FOUND_MESSAGE + normalizedOrderId));
+
+        if (paymentTransaction.getStatus() == targetStatus) {
+            return;
+        }
+        if (paymentTransaction.getStatus() == TransactionStatus.PENDING) {
+            updateTransactionStatus(paymentTransaction, targetStatus);
+            return;
+        }
+        throw new IllegalStateException(invalidTransitionPrefix + paymentTransaction.getStatus());
     }
 
     private void updateTransactionStatus(Transaction transaction, TransactionStatus status) {
