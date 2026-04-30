@@ -43,6 +43,9 @@ public class WalletServiceImpl implements WalletService {
             Comparator.comparing(
                     Transaction::getCreatedAt,
                     Comparator.nullsFirst(LocalDateTime::compareTo)
+            ).thenComparing(
+                    Transaction::getTransactionId,
+                    Comparator.nullsFirst(UUID::compareTo)
             );
 
     private final WalletRepository walletRepository;
