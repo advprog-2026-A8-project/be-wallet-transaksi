@@ -25,6 +25,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -241,5 +242,29 @@ class WalletServicePaymentTest {
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(TransactionStatus.FAILED, transactionCaptor.getValue().getStatus());
+    }
+
+    @Test
+    void handlePaymentFailure_OrderIdNotFound_ShouldThrowIllegalStateException() {
+        when(transactionRepository.findAll()).thenReturn(List.of());
+
+        assertThrows(IllegalStateException.class, () -> walletService.handlePaymentFailure("ORDER-NOT-FOUND"));
+        verify(transactionRepository, never()).save(any(Transaction.class));
+    }
+
+    @Test
+    void handlePaymentFailure_AlreadyFailedTransaction_ShouldBeNoOp() {
+        Transaction failedPayment = new Transaction();
+        failedPayment.setTransactionId(UUID.randomUUID());
+        failedPayment.setWalletId(walletId);
+        failedPayment.setAmount(BigDecimal.valueOf(60.00));
+        failedPayment.setType(TransactionType.PAYMENT);
+        failedPayment.setStatus(TransactionStatus.FAILED);
+        failedPayment.setDescription("ORDER-3");
+
+        when(transactionRepository.findAll()).thenReturn(List.of(failedPayment));
+
+        assertDoesNotThrow(() -> walletService.handlePaymentFailure("ORDER-3"));
+        verify(transactionRepository, never()).save(any(Transaction.class));
     }
 }
