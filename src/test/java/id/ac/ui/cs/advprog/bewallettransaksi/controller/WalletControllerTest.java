@@ -1022,6 +1022,23 @@ class WalletControllerTest {
         verify(paymentCallbackProcessor, never()).process(any());
     }
 
+    @Test
+    void paymentCallback_OverlongOrderId_ShouldReturnBadRequestAndNotInvokeProcessor() throws Exception {
+        String longOrderId = "O".repeat(129);
+        String payload =
+                "{\"order_id\":\"" + longOrderId + "\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Order ID must be at most 128 characters"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
         WalletMutationRequest request = new WalletMutationRequest();
         request.setUserId(userId);
