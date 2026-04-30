@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -32,7 +33,7 @@ class HttpOrderPaymentStatusPublisherTest {
 
     @Test
     void publishPaymentSettled_ShouldPostToOrderService() {
-        expectPostSuccess(SETTLED_PATH);
+        expectPostSuccess(SETTLED_PATH, "{\"orderId\":\"ORDER-123\",\"status\":\"SETTLED\"}");
 
         publisher.publishPaymentSettled("ORDER-123");
 
@@ -41,7 +42,7 @@ class HttpOrderPaymentStatusPublisherTest {
 
     @Test
     void publishPaymentFailed_ShouldPostToOrderService() {
-        expectPostSuccess(FAILED_PATH);
+        expectPostSuccess(FAILED_PATH, "{\"orderId\":\"ORDER-123\",\"status\":\"FAILED\"}");
 
         publisher.publishPaymentFailed("ORDER-123");
 
@@ -62,7 +63,7 @@ class HttpOrderPaymentStatusPublisherTest {
     void constructor_BaseUrlWithOuterWhitespace_ShouldBeTrimmed() {
         HttpOrderPaymentStatusPublisher publisherWithSpacedBaseUrl =
                 new HttpOrderPaymentStatusPublisher(restTemplate, "  " + BASE_URL + "  ");
-        expectPostSuccess(SETTLED_PATH);
+        expectPostSuccess(SETTLED_PATH, "{\"orderId\":\"ORDER-999\",\"status\":\"SETTLED\"}");
 
         publisherWithSpacedBaseUrl.publishPaymentSettled("ORDER-999");
 
@@ -75,9 +76,10 @@ class HttpOrderPaymentStatusPublisherTest {
         assertThrows(IllegalArgumentException.class, () -> publisher.publishPaymentSettled(tooLongOrderId));
     }
 
-    private void expectPostSuccess(String path) {
+    private void expectPostSuccess(String path, String expectedJsonBody) {
         mockServer.expect(requestTo(BASE_URL + path))
                 .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json(expectedJsonBody))
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
     }
 }
