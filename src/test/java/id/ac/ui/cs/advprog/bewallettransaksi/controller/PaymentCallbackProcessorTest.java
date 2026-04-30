@@ -121,4 +121,25 @@ class PaymentCallbackProcessorTest {
         verify(walletService, times(1)).handlePaymentSettlement("ORDER-TRANS-1");
         verify(walletService, never()).handlePaymentFailure("ORDER-TRANS-1");
     }
+
+    @Test
+    void process_SettlementThenPendingSameOrder_ShouldIgnorePendingFollowUpCallback() {
+        PaymentCallbackRequest settlement = new PaymentCallbackRequest();
+        settlement.setOrderId("ORDER-TRANS-2");
+        settlement.setStatusCode("200");
+        settlement.setGrossAmount("10000.00");
+        settlement.setTransactionStatus("settlement");
+
+        PaymentCallbackRequest pending = new PaymentCallbackRequest();
+        pending.setOrderId("ORDER-TRANS-2");
+        pending.setStatusCode("201");
+        pending.setGrossAmount("10000.00");
+        pending.setTransactionStatus("pending");
+
+        processor.process(settlement);
+        processor.process(pending);
+
+        verify(walletService, times(1)).handlePaymentSettlement("ORDER-TRANS-2");
+        verify(walletService, never()).handlePaymentFailure("ORDER-TRANS-2");
+    }
 }
