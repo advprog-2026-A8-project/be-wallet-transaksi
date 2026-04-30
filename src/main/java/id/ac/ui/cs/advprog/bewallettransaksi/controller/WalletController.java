@@ -39,6 +39,7 @@ public class WalletController {
     private static final String INVALID_CALLBACK_SIGNATURE_MESSAGE = "Invalid callback signature";
     private static final String DUPLICATE_IDEMPOTENCY_MESSAGE = "Duplicate idempotency key";
     private static final String JASTIPER_ROLE = "JASTIPER";
+    private static final int MAX_CALLBACK_ORDER_ID_LENGTH = 128;
 
     private final WalletService walletService;
     private final WalletRequestAccessPolicy walletRequestAccessPolicy;
@@ -269,7 +270,11 @@ public class WalletController {
     }
 
     private String requiredCallbackOrderId(String orderId) {
-        return requiredTrimmedValue(orderId, "Order ID must not be blank");
+        String normalizedOrderId = requiredTrimmedValue(orderId, "Order ID must not be blank");
+        if (normalizedOrderId.length() > MAX_CALLBACK_ORDER_ID_LENGTH) {
+            throw new IllegalArgumentException("Order ID must be at most 128 characters");
+        }
+        return normalizedOrderId;
     }
 
     private NormalizedCallbackFields normalizeRequiredCallbackFields(PaymentCallbackRequest payload) {
