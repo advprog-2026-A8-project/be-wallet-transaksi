@@ -47,26 +47,17 @@ public class WalletServiceImpl implements WalletService {
                              TransactionRepository transactionRepository,
                              WalletMutationStrategyResolver strategyResolver,
                              OrderPaymentStatusPublisher orderPaymentStatusPublisher) {
-        this.walletRepository = requireWalletRepository(walletRepository);
-        this.transactionRepository = requireTransactionRepository(transactionRepository);
-        this.strategyResolver = requireResolver(strategyResolver);
-        this.orderPaymentStatusPublisher = requireOrderPublisher(orderPaymentStatusPublisher);
+        this.walletRepository = requireNonNullDependency(walletRepository, "WalletRepository");
+        this.transactionRepository = requireNonNullDependency(transactionRepository, "TransactionRepository");
+        this.strategyResolver = requireNonNullDependency(strategyResolver, "WalletMutationStrategyResolver");
+        this.orderPaymentStatusPublisher = requireNonNullDependency(
+                orderPaymentStatusPublisher,
+                "OrderPaymentStatusPublisher"
+        );
     }
 
-    private WalletRepository requireWalletRepository(WalletRepository repository) {
-        return Objects.requireNonNull(repository, "WalletRepository must not be null");
-    }
-
-    private TransactionRepository requireTransactionRepository(TransactionRepository repository) {
-        return Objects.requireNonNull(repository, "TransactionRepository must not be null");
-    }
-
-    private WalletMutationStrategyResolver requireResolver(WalletMutationStrategyResolver resolver) {
-        return Objects.requireNonNull(resolver, "WalletMutationStrategyResolver must not be null");
-    }
-
-    private OrderPaymentStatusPublisher requireOrderPublisher(OrderPaymentStatusPublisher publisher) {
-        return Objects.requireNonNull(publisher, "OrderPaymentStatusPublisher must not be null");
+    private <T> T requireNonNullDependency(T dependency, String dependencyName) {
+        return Objects.requireNonNull(dependency, dependencyName + " must not be null");
     }
 
     @Override
