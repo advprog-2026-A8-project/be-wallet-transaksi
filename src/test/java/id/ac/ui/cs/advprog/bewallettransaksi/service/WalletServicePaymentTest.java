@@ -19,6 +19,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -202,5 +203,24 @@ class WalletServicePaymentTest {
         verify(walletRepository, never()).findByUserIdForUpdate(any());
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void handlePaymentSettlement_ShouldPersistSuccessForMatchingPendingPayment() {
+        Transaction pendingPayment = new Transaction();
+        pendingPayment.setTransactionId(UUID.randomUUID());
+        pendingPayment.setWalletId(walletId);
+        pendingPayment.setAmount(BigDecimal.valueOf(60.00));
+        pendingPayment.setType(TransactionType.PAYMENT);
+        pendingPayment.setStatus(TransactionStatus.PENDING);
+        pendingPayment.setDescription("ORDER-1");
+
+        when(transactionRepository.findAll()).thenReturn(List.of(pendingPayment));
+
+        walletService.handlePaymentSettlement("ORDER-1");
+
+        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(transactionCaptor.capture());
+        assertEquals(TransactionStatus.SUCCESS, transactionCaptor.getValue().getStatus());
     }
 }
