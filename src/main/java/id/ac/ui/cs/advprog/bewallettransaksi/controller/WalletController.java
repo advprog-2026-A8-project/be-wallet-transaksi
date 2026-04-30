@@ -52,7 +52,12 @@ public class WalletController {
     private final MidtransCallbackSignatureVerifier callbackSignatureVerifier;
     private final PaymentCallbackProcessor paymentCallbackProcessor;
 
-    private record NormalizedCallbackFields(String orderId, String statusCode, String grossAmount) {
+    private record NormalizedCallbackFields(
+            String orderId,
+            String statusCode,
+            String grossAmount,
+            String transactionStatus
+    ) {
     }
 
     public WalletController(
@@ -135,9 +140,10 @@ public class WalletController {
             @RequestBody(required = false) PaymentCallbackRequest payload
     ) {
         requireHeader(signatureKey, SIGNATURE_HEADER);
-        validateCallbackPayload(payload);
+        NormalizedCallbackFields normalizedFields = validateAndNormalizeCallbackPayload(payload);
         validateCallbackSignature(payload, signatureKey);
-        validateCallbackStatus(payload);
+        validateCallbackStatus(normalizedFields.transactionStatus());
+        applyNormalizedCallbackFields(payload, normalizedFields);
         paymentCallbackProcessor.process(payload);
         return ResponseEntity.ok(callbackAcceptedResponse());
     }
@@ -246,11 +252,11 @@ public class WalletController {
                 || !walletRequestAccessPolicy.isValidReadJwt(authorization);
     }
 
-    private void validateCallbackPayload(PaymentCallbackRequest payload) {
+    private NormalizedCallbackFields validateAndNormalizeCallbackPayload(PaymentCallbackRequest payload) {
         if (payload == null) {
             throw new IllegalArgumentException("Callback payload must not be empty");
         }
-        normalizeRequiredCallbackFields(payload);
+        return normalizeRequiredCallbackFields(payload);
     }
 
     private Map<String, String> callbackAcceptedResponse() {
@@ -263,8 +269,7 @@ public class WalletController {
         }
     }
 
-    private void validateCallbackStatus(PaymentCallbackRequest payload) {
-        String transactionStatus = requiredCallbackField(payload.getTransactionStatus(), CALLBACK_TRANSACTION_STATUS_KEY);
+    private void validateCallbackStatus(String transactionStatus) {
         if (!MidtransTransactionStatus.isSupported(transactionStatus)) {
             throw new IllegalArgumentException("Unsupported callback status: " + transactionStatus);
         }
@@ -286,7 +291,15 @@ public class WalletController {
         String orderId = requiredCallbackOrderId(payload.getOrderId());
         String statusCode = requiredCallbackField(payload.getStatusCode(), CALLBACK_STATUS_CODE_KEY);
         String grossAmount = requiredCallbackField(payload.getGrossAmount(), CALLBACK_GROSS_AMOUNT_KEY);
-        return new NormalizedCallbackFields(orderId, statusCode, grossAmount);
+        String transactionStatus = requiredCallbackField(payload.getTransactionStatus(), CALLBACK_TRANSACTION_STATUS_KEY);
+        return new NormalizedCallbackFields(orderId, statusCode, grossAmount, transactionStatus);
+    }
+
+    private void applyNormalizedCallbackFields(PaymentCallbackRequest payload, NormalizedCallbackFields normalizedFields) {
+        payload.setOrderId(normalizedFields.orderId());
+        payload.setStatusCode(normalizedFields.statusCode());
+        payload.setGrossAmount(normalizedFields.grossAmount());
+        payload.setTransactionStatus(normalizedFields.transactionStatus());
     }
 
     private String requiredTrimmedValue(String value, String message) {
