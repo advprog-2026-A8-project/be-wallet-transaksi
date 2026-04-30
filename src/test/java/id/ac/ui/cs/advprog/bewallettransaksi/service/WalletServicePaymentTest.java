@@ -41,6 +41,9 @@ class WalletServicePaymentTest {
     @Mock
     private TransactionRepository transactionRepository;
 
+    @Mock
+    private OrderPaymentStatusPublisher orderPaymentStatusPublisher;
+
     @Spy
     private WalletMutationStrategyResolver strategyResolver = new WalletMutationStrategyResolver();
 
@@ -223,6 +226,7 @@ class WalletServicePaymentTest {
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(TransactionStatus.SUCCESS, transactionCaptor.getValue().getStatus());
+        verify(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-1");
     }
 
     @Test
@@ -242,6 +246,7 @@ class WalletServicePaymentTest {
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(TransactionStatus.FAILED, transactionCaptor.getValue().getStatus());
+        verify(orderPaymentStatusPublisher).publishPaymentFailed("ORDER-2");
     }
 
     @Test
