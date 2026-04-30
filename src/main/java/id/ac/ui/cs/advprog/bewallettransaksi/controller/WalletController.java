@@ -263,21 +263,14 @@ public class WalletController {
     }
 
     private String requiredCallbackField(String value, String key) {
-        if (value == null) {
-            throw new IllegalArgumentException("Missing required callback field: " + key);
-        }
-        String text = value.trim();
-        if (text.isEmpty()) {
-            throw new IllegalArgumentException("Missing required callback field: " + key);
-        }
-        return text.toLowerCase();
+        return requiredTrimmedValue(value, "Missing required callback field: " + key).toLowerCase();
     }
 
     private String requiredCallbackOrderId(String orderId) {
-        return requiredNonBlankCallbackField(orderId, "Order ID must not be blank");
+        return requiredTrimmedValue(orderId, "Order ID must not be blank");
     }
 
-    private String requiredNonBlankCallbackField(String value, String message) {
+    private String requiredTrimmedValue(String value, String message) {
         if (value == null) {
             throw new IllegalArgumentException(message);
         }
