@@ -45,6 +45,7 @@ public class WalletController {
     private static final String ORDER_ID_BLANK_MESSAGE = "Order ID must not be blank";
     private static final String ORDER_ID_TOO_LONG_MESSAGE = "Order ID must be at most 128 characters";
     private static final String GROSS_AMOUNT_INVALID_NUMBER_MESSAGE = "gross_amount must be a valid number";
+    private static final String STATUS_CODE_INVALID_NUMBER_MESSAGE = "status_code must be numeric";
     private static final String JASTIPER_ROLE = "JASTIPER";
     private static final int MAX_CALLBACK_ORDER_ID_LENGTH = 128;
 
@@ -292,6 +293,7 @@ public class WalletController {
     private NormalizedCallbackFields normalizeRequiredCallbackFields(PaymentCallbackRequest payload) {
         String orderId = requiredCallbackOrderId(payload.getOrderId());
         String statusCode = requiredCallbackField(payload.getStatusCode(), CALLBACK_STATUS_CODE_KEY);
+        requireNumericStatusCode(statusCode);
         String grossAmount = requiredCallbackField(payload.getGrossAmount(), CALLBACK_GROSS_AMOUNT_KEY);
         requireNumericGrossAmount(grossAmount);
         String transactionStatus = requiredCallbackField(payload.getTransactionStatus(), CALLBACK_TRANSACTION_STATUS_KEY);
@@ -303,6 +305,14 @@ public class WalletController {
             new BigDecimal(grossAmount);
         } catch (NumberFormatException ex) {
             throw new IllegalArgumentException(GROSS_AMOUNT_INVALID_NUMBER_MESSAGE);
+        }
+    }
+
+    private void requireNumericStatusCode(String statusCode) {
+        for (int i = 0; i < statusCode.length(); i++) {
+            if (!Character.isDigit(statusCode.charAt(i))) {
+                throw new IllegalArgumentException(STATUS_CODE_INVALID_NUMBER_MESSAGE);
+            }
         }
     }
 
