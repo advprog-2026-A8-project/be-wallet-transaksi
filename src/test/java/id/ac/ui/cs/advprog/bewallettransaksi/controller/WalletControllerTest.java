@@ -119,6 +119,8 @@ class WalletControllerTest {
         when(callbackSignatureVerifier.isValid(any(), anyString())).thenReturn(true);
         when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("invalid-signature"))).thenReturn(false);
         when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("tampered-signature"))).thenReturn(false);
+        when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("tampered-status-signature")))
+                .thenReturn(false);
     }
 
     @Test
