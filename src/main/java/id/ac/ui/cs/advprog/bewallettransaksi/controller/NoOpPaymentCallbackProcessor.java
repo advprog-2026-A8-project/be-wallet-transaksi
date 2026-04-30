@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
+    private static final String EVENT_KEY_DELIMITER = "|";
 
     private final WalletService walletService;
     private final Set<String> processedCallbackEvents = ConcurrentHashMap.newKeySet();
@@ -47,7 +48,7 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
     }
 
     private String buildEventKey(String orderId, String status) {
-        return orderId + "|" + status;
+        return orderId + EVENT_KEY_DELIMITER + status;
     }
 
     private Optional<String> normalizeNonBlank(String value) {
