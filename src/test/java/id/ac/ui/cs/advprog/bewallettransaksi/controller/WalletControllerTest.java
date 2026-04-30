@@ -404,6 +404,22 @@ class WalletControllerTest {
     }
 
     @Test
+    void initiateTopUp_DuplicateIdempotencyKey_ShouldReturnConflict() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50000.00));
+        when(idempotencyKeyGuard.register("idem-initiate-dup")).thenReturn(false);
+
+        mockMvc.perform(post("/wallet/topup/initiate")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header(IDEMPOTENCY_HEADER, "idem-initiate-dup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Duplicate idempotency key"));
+    }
+
+    @Test
     void getTransactionHistory_Success() throws Exception {
         TransactionResponse latest = TransactionResponse.builder()
                 .transactionId(UUID.randomUUID())
