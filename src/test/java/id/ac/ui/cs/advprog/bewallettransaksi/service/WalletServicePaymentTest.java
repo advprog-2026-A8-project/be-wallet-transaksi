@@ -487,4 +487,35 @@ class WalletServicePaymentTest {
         verify(transactionRepository, never()).save(any(Transaction.class));
         verifyNoInteractions(orderPaymentStatusPublisher);
     }
+
+    @Test
+    void handlePaymentSettlement_PendingWithSameCreatedAt_ShouldUseTransactionIdTieBreaker() {
+        LocalDateTime sameCreatedAt = LocalDateTime.of(2026, 4, 1, 12, 0);
+
+        Transaction lowerIdPending = new Transaction();
+        lowerIdPending.setTransactionId(UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        lowerIdPending.setWalletId(walletId);
+        lowerIdPending.setAmount(BigDecimal.valueOf(60.00));
+        lowerIdPending.setType(TransactionType.PAYMENT);
+        lowerIdPending.setStatus(TransactionStatus.PENDING);
+        lowerIdPending.setDescription("ORDER-DUP-6");
+        lowerIdPending.setCreatedAt(sameCreatedAt);
+
+        Transaction higherIdPending = new Transaction();
+        higherIdPending.setTransactionId(UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        higherIdPending.setWalletId(walletId);
+        higherIdPending.setAmount(BigDecimal.valueOf(60.00));
+        higherIdPending.setType(TransactionType.PAYMENT);
+        higherIdPending.setStatus(TransactionStatus.PENDING);
+        higherIdPending.setDescription("ORDER-DUP-6");
+        higherIdPending.setCreatedAt(sameCreatedAt);
+
+        when(transactionRepository.findAll()).thenReturn(List.of(lowerIdPending, higherIdPending));
+
+        assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-DUP-6"));
+
+        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(transactionCaptor.capture());
+        assertEquals(higherIdPending.getTransactionId(), transactionCaptor.getValue().getTransactionId());
+    }
 }
