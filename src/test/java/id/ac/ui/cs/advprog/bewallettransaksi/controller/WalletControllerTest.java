@@ -1041,6 +1041,22 @@ class WalletControllerTest {
     }
 
     @Test
+    void paymentCallback_NonNumericGrossAmount_ShouldReturnBadRequestAndNotInvokeProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-10\",\"status_code\":\"200\",\"gross_amount\":\"abc\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("gross_amount must be a valid number"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
+    @Test
     void paymentCallback_ShouldPassNormalizedFieldsToProcessor() throws Exception {
         String payload =
                 "{\"order_id\":\"  ORDER-123  \",\"status_code\":\" 200 \",\"gross_amount\":\" 10000.00 \","
