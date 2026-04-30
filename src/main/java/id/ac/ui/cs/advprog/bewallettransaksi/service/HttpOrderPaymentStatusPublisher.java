@@ -8,6 +8,8 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
 
     private static final String SETTLED_PATH = "/internal/orders/payment/settled";
     private static final String FAILED_PATH = "/internal/orders/payment/failed";
+    private static final String SETTLED_STATUS = "SETTLED";
+    private static final String FAILED_STATUS = "FAILED";
     private static final int MAX_ORDER_ID_LENGTH = 128;
     private static final String ORDER_ID_BLANK_MESSAGE = "Order ID must not be blank";
     private static final String ORDER_ID_TOO_LONG_MESSAGE = "Order ID exceeds maximum length";
@@ -23,12 +25,12 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
 
     @Override
     public void publishPaymentSettled(String orderId) {
-        postStatus(SETTLED_PATH, orderId, "SETTLED");
+        postStatus(SETTLED_PATH, orderId, SETTLED_STATUS);
     }
 
     @Override
     public void publishPaymentFailed(String orderId) {
-        postStatus(FAILED_PATH, orderId, "FAILED");
+        postStatus(FAILED_PATH, orderId, FAILED_STATUS);
     }
 
     private void postStatus(String path, String orderId, String status) {
