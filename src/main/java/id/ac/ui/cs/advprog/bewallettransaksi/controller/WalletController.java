@@ -117,7 +117,7 @@ public class WalletController {
 
         String orderId = UUID.randomUUID().toString();
         return ResponseEntity.ok(Map.of(
-                "paymentToken", "mock-token-" + orderId,
+                "paymentToken", "snap-token-" + orderId,
                 "redirectUrl", "https://app.sandbox.midtrans.com/snap/v2/vtweb/" + orderId,
                 "orderId", orderId
         ));
