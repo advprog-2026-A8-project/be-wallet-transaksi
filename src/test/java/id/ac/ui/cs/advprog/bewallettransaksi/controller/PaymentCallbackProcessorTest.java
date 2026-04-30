@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentCallbackProcessorTest {
@@ -70,5 +71,19 @@ class PaymentCallbackProcessorTest {
         processor.process(request);
 
         verifyNoInteractions(walletService);
+    }
+
+    @Test
+    void process_DuplicateSettlementCallback_ShouldTriggerWalletServiceOnlyOnce() {
+        PaymentCallbackRequest request = new PaymentCallbackRequest();
+        request.setOrderId("ORDER-DUP-1");
+        request.setStatusCode("200");
+        request.setGrossAmount("10000.00");
+        request.setTransactionStatus("settlement");
+
+        processor.process(request);
+        processor.process(request);
+
+        verify(walletService, times(1)).handlePaymentSettlement("ORDER-DUP-1");
     }
 }
