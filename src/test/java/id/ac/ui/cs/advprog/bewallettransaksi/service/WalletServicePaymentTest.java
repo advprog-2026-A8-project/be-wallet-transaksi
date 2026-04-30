@@ -518,4 +518,31 @@ class WalletServicePaymentTest {
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(higherIdPending.getTransactionId(), transactionCaptor.getValue().getTransactionId());
     }
+
+    @Test
+    void handlePaymentSettlement_WhenLatestIsSuccess_ShouldNotProcessOlderPendingDuplicate() {
+        Transaction olderPending = new Transaction();
+        olderPending.setTransactionId(UUID.randomUUID());
+        olderPending.setWalletId(walletId);
+        olderPending.setAmount(BigDecimal.valueOf(60.00));
+        olderPending.setType(TransactionType.PAYMENT);
+        olderPending.setStatus(TransactionStatus.PENDING);
+        olderPending.setDescription("ORDER-DUP-7");
+        olderPending.setCreatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
+
+        Transaction latestSuccess = new Transaction();
+        latestSuccess.setTransactionId(UUID.randomUUID());
+        latestSuccess.setWalletId(walletId);
+        latestSuccess.setAmount(BigDecimal.valueOf(60.00));
+        latestSuccess.setType(TransactionType.PAYMENT);
+        latestSuccess.setStatus(TransactionStatus.SUCCESS);
+        latestSuccess.setDescription("ORDER-DUP-7");
+        latestSuccess.setCreatedAt(LocalDateTime.of(2026, 4, 1, 12, 0));
+
+        when(transactionRepository.findAll()).thenReturn(List.of(olderPending, latestSuccess));
+
+        assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-DUP-7"));
+        verify(transactionRepository, never()).save(any(Transaction.class));
+        verifyNoInteractions(orderPaymentStatusPublisher);
+    }
 }

@@ -39,14 +39,18 @@ public class WalletServiceImpl implements WalletService {
     private static final String STATUS_REQUIRED_MESSAGE = "Status must not be null";
     private static final String WALLET_ALREADY_EXISTS_MESSAGE = "Wallet already exists for user";
     private static final String PENDING_PAYMENT_NOT_FOUND_MESSAGE = "Pending payment transaction not found for orderId: ";
-    private static final Comparator<Transaction> TRANSACTION_CREATED_AT_NEWEST =
+    private static final Comparator<Transaction> TRANSACTION_CREATED_AT_ORDER =
             Comparator.comparing(
                     Transaction::getCreatedAt,
                     Comparator.nullsFirst(LocalDateTime::compareTo)
-            ).thenComparing(
+            );
+    private static final Comparator<Transaction> TRANSACTION_ID_ORDER =
+            Comparator.comparing(
                     Transaction::getTransactionId,
                     Comparator.nullsFirst(UUID::compareTo)
             );
+    private static final Comparator<Transaction> TRANSACTION_CREATED_AT_NEWEST =
+            TRANSACTION_CREATED_AT_ORDER.thenComparing(TRANSACTION_ID_ORDER);
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
