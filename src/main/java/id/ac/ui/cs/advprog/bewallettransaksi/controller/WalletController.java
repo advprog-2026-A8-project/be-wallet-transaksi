@@ -121,12 +121,8 @@ public class WalletController {
 
         return withIdempotencyKey(idempotencyKey, () -> {
             validateTopUpAccess(authorization, request.getUserId());
-            String orderId = TOPUP_ORDER_PREFIX + UUID.randomUUID();
-            return ResponseEntity.ok(Map.of(
-                    "paymentToken", SNAP_TOKEN_PREFIX + orderId,
-                    "redirectUrl", SNAP_REDIRECT_BASE_URL + orderId,
-                    "orderId", orderId
-            ));
+            String orderId = generateTopUpOrderId();
+            return ResponseEntity.ok(buildTopUpInitiatePayload(orderId));
         });
     }
 
@@ -426,6 +422,18 @@ public class WalletController {
 
     private void validateReadRoleAllowed(String authorization) {
         validateSupportedRole(authorization);
+    }
+
+    private String generateTopUpOrderId() {
+        return TOPUP_ORDER_PREFIX + UUID.randomUUID();
+    }
+
+    private Map<String, String> buildTopUpInitiatePayload(String orderId) {
+        return Map.of(
+                "paymentToken", SNAP_TOKEN_PREFIX + orderId,
+                "redirectUrl", SNAP_REDIRECT_BASE_URL + orderId,
+                "orderId", orderId
+        );
     }
 
     private void validateTopUpAccess(String authorization, UUID userId) {
