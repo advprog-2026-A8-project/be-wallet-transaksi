@@ -913,17 +913,22 @@ class WalletControllerTest {
 
     @Test
     void paymentCallback_UnsupportedTransactionStatus_ShouldReturnBadRequest() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"mystery\"}";
         mockMvc.perform(post("/wallet/payments/callback")
                         .header("X-Signature-Key", "valid-signature")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\",\"transaction_status\":\"mystery\"}"))
+                        .content(payload))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Unsupported callback status: mystery"));
     }
 
     @Test
     void paymentCallback_ValidPayload_ShouldDelegateToProcessor() throws Exception {
-        String payload = "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\",\"transaction_status\":\"settlement\"}";
+        String payload =
+                "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\"}";
 
         mockMvc.perform(post("/wallet/payments/callback")
                         .header("X-Signature-Key", "valid-signature")
