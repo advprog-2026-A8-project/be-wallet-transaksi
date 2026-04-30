@@ -46,6 +46,9 @@ public class WalletController {
     private final MidtransCallbackSignatureVerifier callbackSignatureVerifier;
     private final PaymentCallbackProcessor paymentCallbackProcessor;
 
+    private record NormalizedCallbackFields(String orderId, String statusCode, String grossAmount) {
+    }
+
     public WalletController(
             WalletService walletService,
             WalletRequestAccessPolicy walletRequestAccessPolicy,
@@ -241,7 +244,7 @@ public class WalletController {
         if (payload == null) {
             throw new IllegalArgumentException("Callback payload must not be empty");
         }
-        validateRequiredCallbackFields(payload);
+        normalizeRequiredCallbackFields(payload);
     }
 
     private Map<String, String> callbackAcceptedResponse() {
@@ -269,10 +272,11 @@ public class WalletController {
         return requiredTrimmedValue(orderId, "Order ID must not be blank");
     }
 
-    private void validateRequiredCallbackFields(PaymentCallbackRequest payload) {
-        requiredCallbackOrderId(payload.getOrderId());
-        requiredCallbackField(payload.getStatusCode(), "status_code");
-        requiredCallbackField(payload.getGrossAmount(), "gross_amount");
+    private NormalizedCallbackFields normalizeRequiredCallbackFields(PaymentCallbackRequest payload) {
+        String orderId = requiredCallbackOrderId(payload.getOrderId());
+        String statusCode = requiredCallbackField(payload.getStatusCode(), "status_code");
+        String grossAmount = requiredCallbackField(payload.getGrossAmount(), "gross_amount");
+        return new NormalizedCallbackFields(orderId, statusCode, grossAmount);
     }
 
     private String requiredTrimmedValue(String value, String message) {
