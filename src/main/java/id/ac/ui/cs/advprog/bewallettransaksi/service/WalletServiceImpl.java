@@ -221,12 +221,12 @@ public class WalletServiceImpl implements WalletService {
         if (orderPaymentStatusPublisher == null) {
             return;
         }
-        if (targetStatus == TransactionStatus.SUCCESS) {
-            orderPaymentStatusPublisher.publishPaymentSettled(orderId);
-            return;
-        }
-        if (targetStatus == TransactionStatus.FAILED) {
-            orderPaymentStatusPublisher.publishPaymentFailed(orderId);
+        switch (targetStatus) {
+            case SUCCESS -> orderPaymentStatusPublisher.publishPaymentSettled(orderId);
+            case FAILED -> orderPaymentStatusPublisher.publishPaymentFailed(orderId);
+            default -> {
+                // Ignore non-terminal states for order payment publication.
+            }
         }
     }
 
