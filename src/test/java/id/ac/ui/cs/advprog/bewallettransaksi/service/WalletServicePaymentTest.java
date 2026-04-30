@@ -267,4 +267,20 @@ class WalletServicePaymentTest {
         assertDoesNotThrow(() -> walletService.handlePaymentFailure("ORDER-3"));
         verify(transactionRepository, never()).save(any(Transaction.class));
     }
+
+    @Test
+    void handlePaymentSettlement_AlreadySuccessfulTransaction_ShouldBeNoOp() {
+        Transaction successPayment = new Transaction();
+        successPayment.setTransactionId(UUID.randomUUID());
+        successPayment.setWalletId(walletId);
+        successPayment.setAmount(BigDecimal.valueOf(60.00));
+        successPayment.setType(TransactionType.PAYMENT);
+        successPayment.setStatus(TransactionStatus.SUCCESS);
+        successPayment.setDescription("ORDER-4");
+
+        when(transactionRepository.findAll()).thenReturn(List.of(successPayment));
+
+        assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-4"));
+        verify(transactionRepository, never()).save(any(Transaction.class));
+    }
 }
