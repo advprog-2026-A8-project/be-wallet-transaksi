@@ -271,6 +271,7 @@ public class WalletController {
 
     private void validateRequiredCallbackFields(PaymentCallbackRequest payload) {
         requiredCallbackOrderId(payload.getOrderId());
+        requiredCallbackField(payload.getStatusCode(), "status_code");
         requiredCallbackField(payload.getGrossAmount(), "gross_amount");
     }
 
