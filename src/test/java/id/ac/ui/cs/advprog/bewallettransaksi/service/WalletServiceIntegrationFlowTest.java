@@ -188,4 +188,48 @@ class WalletServiceIntegrationFlowTest {
         assertEquals(1, pendingCount);
         assertEquals(1, successCount);
     }
+
+    @Test
+    void handlePaymentFailure_WhenLatestDuplicateIsFailed_ShouldNotProcessOlderPending() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String orderId = "ORDER-INTEG-2";
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+
+        Transaction olderPending = new Transaction();
+        olderPending.setWalletId(wallet.getWalletId());
+        olderPending.setAmount(new BigDecimal("100.00"));
+        olderPending.setType(TransactionType.PAYMENT);
+        olderPending.setStatus(TransactionStatus.PENDING);
+        olderPending.setDescription(orderId);
+        olderPending.setCreatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
+        olderPending.setUpdatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
+        transactionRepository.save(olderPending);
+
+        Transaction latestFailed = new Transaction();
+        latestFailed.setWalletId(wallet.getWalletId());
+        latestFailed.setAmount(new BigDecimal("100.00"));
+        latestFailed.setType(TransactionType.PAYMENT);
+        latestFailed.setStatus(TransactionStatus.FAILED);
+        latestFailed.setDescription(orderId);
+        latestFailed.setCreatedAt(LocalDateTime.of(2026, 4, 1, 12, 0));
+        latestFailed.setUpdatedAt(LocalDateTime.of(2026, 4, 1, 12, 0));
+        transactionRepository.save(latestFailed);
+
+        assertDoesNotThrow(() -> walletService.handlePaymentFailure(orderId));
+
+        List<Transaction> persisted = transactionRepository.findAll().stream()
+                .filter(transaction -> orderId.equals(transaction.getDescription()))
+                .toList();
+        long pendingCount = persisted.stream()
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.PENDING)
+                .count();
+        long failedCount = persisted.stream()
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.FAILED)
+                .count();
+        assertEquals(1, pendingCount);
+        assertEquals(1, failedCount);
+    }
 }
