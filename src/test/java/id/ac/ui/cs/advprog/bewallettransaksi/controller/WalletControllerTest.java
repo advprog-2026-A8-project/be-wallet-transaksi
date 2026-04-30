@@ -31,6 +31,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -968,6 +969,8 @@ class WalletControllerTest {
                         .content(payload))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Order ID must not be blank"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
     }
 
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
