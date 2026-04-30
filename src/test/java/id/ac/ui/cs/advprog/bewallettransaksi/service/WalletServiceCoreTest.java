@@ -45,6 +45,9 @@ class WalletServiceCoreTest {
     @Mock
     private TransactionRepository transactionRepository;
 
+    @Mock
+    private OrderPaymentStatusPublisher orderPaymentStatusPublisher;
+
     @Spy
     private WalletMutationStrategyResolver strategyResolver = new WalletMutationStrategyResolver();
 
@@ -239,6 +242,14 @@ class WalletServiceCoreTest {
                 Arguments.of(new BigDecimal("1.001")),
                 Arguments.of(new BigDecimal("1.000")),
                 Arguments.of(new BigDecimal("100000000000000000.00"))
+        );
+    }
+
+    @Test
+    void constructor_NullOrderPaymentStatusPublisher_ShouldThrowNullPointerException() {
+        assertThrows(
+                NullPointerException.class,
+                () -> new WalletServiceImpl(walletRepository, transactionRepository, strategyResolver, null)
         );
     }
 }
