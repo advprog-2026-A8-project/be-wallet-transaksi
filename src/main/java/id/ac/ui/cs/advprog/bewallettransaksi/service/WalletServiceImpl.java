@@ -211,7 +211,13 @@ public class WalletServiceImpl implements WalletService {
 
     private java.util.Optional<Transaction> findPaymentByOrderId(String orderId) {
         List<Transaction> matchingPayments = findMatchingPaymentTransactions(orderId);
-        return findPendingPayment(matchingPayments).or(() -> findLatestPaymentByCreatedAt(matchingPayments));
+        java.util.Optional<Transaction> newestPending = findPendingPayment(matchingPayments);
+        java.util.Optional<Transaction> latestNonPending = findLatestNonPendingPaymentByCreatedAt(matchingPayments);
+
+        if (shouldPreferLatestNonPending(newestPending, latestNonPending)) {
+            return latestNonPending;
+        }
+        return newestPending.or(() -> findLatestPaymentByCreatedAt(matchingPayments));
     }
 
     private List<Transaction> findMatchingPaymentTransactions(String orderId) {
@@ -229,6 +235,27 @@ public class WalletServiceImpl implements WalletService {
 
     private java.util.Optional<Transaction> findLatestPaymentByCreatedAt(List<Transaction> matchingPayments) {
         return matchingPayments.stream().max(TRANSACTION_CREATED_AT_NEWEST);
+    }
+
+    private java.util.Optional<Transaction> findLatestNonPendingPaymentByCreatedAt(List<Transaction> matchingPayments) {
+        return matchingPayments.stream()
+                .filter(transaction -> transaction.getStatus() != TransactionStatus.PENDING)
+                .max(TRANSACTION_CREATED_AT_NEWEST);
+    }
+
+    private boolean shouldPreferLatestNonPending(
+            java.util.Optional<Transaction> newestPending,
+            java.util.Optional<Transaction> latestNonPending
+    ) {
+        if (newestPending.isEmpty() || latestNonPending.isEmpty()) {
+            return false;
+        }
+        LocalDateTime pendingCreatedAt = newestPending.get().getCreatedAt();
+        LocalDateTime nonPendingCreatedAt = latestNonPending.get().getCreatedAt();
+        if (nonPendingCreatedAt == null) {
+            return false;
+        }
+        return pendingCreatedAt == null || nonPendingCreatedAt.isAfter(pendingCreatedAt);
     }
 
     private void transitionPaymentCallbackStatus(
