@@ -362,6 +362,7 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/topup/initiate")
                         .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-initiate-topup-1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -378,6 +379,7 @@ class WalletControllerTest {
 
         mockMvc.perform(post("/wallet/topup/initiate")
                         .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-initiate-topup-2")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())

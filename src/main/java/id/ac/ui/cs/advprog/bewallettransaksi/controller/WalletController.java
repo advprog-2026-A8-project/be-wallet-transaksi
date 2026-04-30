@@ -113,16 +113,20 @@ public class WalletController {
     @PostMapping("/topup/initiate")
     public ResponseEntity<Map<String, String>> initiateTopUp(
             @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = IDEMPOTENCY_HEADER, required = false) String idempotencyKey,
             @Valid @RequestBody TopUpRequest request
     ) {
         validateTopUpAccess(authorization, request.getUserId());
+        validateIdempotencyKey(idempotencyKey);
 
-        String orderId = UUID.randomUUID().toString();
-        return ResponseEntity.ok(Map.of(
-                "paymentToken", SNAP_TOKEN_PREFIX + orderId,
-                "redirectUrl", SNAP_REDIRECT_BASE_URL + orderId,
-                "orderId", orderId
-        ));
+        return withIdempotencyKey(idempotencyKey, () -> {
+            String orderId = UUID.randomUUID().toString();
+            return ResponseEntity.ok(Map.of(
+                    "paymentToken", SNAP_TOKEN_PREFIX + orderId,
+                    "redirectUrl", SNAP_REDIRECT_BASE_URL + orderId,
+                    "orderId", orderId
+            ));
+        });
     }
 
     @PostMapping("/pay")
