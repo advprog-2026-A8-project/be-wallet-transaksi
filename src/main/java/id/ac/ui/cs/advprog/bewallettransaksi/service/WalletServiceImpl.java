@@ -247,16 +247,10 @@ public class WalletServiceImpl implements WalletService {
             java.util.Optional<Transaction> newestPending,
             java.util.Optional<Transaction> latestNonPending
     ) {
-        LocalDateTime pendingCreatedAt = newestPending.map(Transaction::getCreatedAt).orElse(null);
-        LocalDateTime nonPendingCreatedAt = latestNonPending.map(Transaction::getCreatedAt).orElse(null);
-        return isNewerThan(nonPendingCreatedAt, pendingCreatedAt);
-    }
-
-    private boolean isNewerThan(LocalDateTime candidate, LocalDateTime baseline) {
-        if (candidate == null) {
+        if (newestPending.isEmpty() || latestNonPending.isEmpty()) {
             return false;
         }
-        return baseline == null || candidate.isAfter(baseline);
+        return TRANSACTION_CREATED_AT_NEWEST.compare(latestNonPending.get(), newestPending.get()) > 0;
     }
 
     private void transitionPaymentCallbackStatus(

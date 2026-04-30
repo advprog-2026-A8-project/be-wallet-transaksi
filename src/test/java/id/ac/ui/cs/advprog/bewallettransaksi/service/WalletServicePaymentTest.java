@@ -353,6 +353,7 @@ class WalletServicePaymentTest {
         successPayment.setType(TransactionType.PAYMENT);
         successPayment.setStatus(TransactionStatus.SUCCESS);
         successPayment.setDescription("ORDER-DUP-1");
+        successPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
 
         Transaction pendingPayment = new Transaction();
         pendingPayment.setTransactionId(UUID.randomUUID());
@@ -361,6 +362,7 @@ class WalletServicePaymentTest {
         pendingPayment.setType(TransactionType.PAYMENT);
         pendingPayment.setStatus(TransactionStatus.PENDING);
         pendingPayment.setDescription("ORDER-DUP-1");
+        pendingPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 11, 0));
 
         when(transactionRepository.findAll()).thenReturn(List.of(successPayment, pendingPayment));
 
@@ -382,6 +384,7 @@ class WalletServicePaymentTest {
         failedPayment.setType(TransactionType.PAYMENT);
         failedPayment.setStatus(TransactionStatus.FAILED);
         failedPayment.setDescription("ORDER-DUP-2");
+        failedPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
 
         Transaction pendingPayment = new Transaction();
         pendingPayment.setTransactionId(UUID.randomUUID());
@@ -390,6 +393,7 @@ class WalletServicePaymentTest {
         pendingPayment.setType(TransactionType.PAYMENT);
         pendingPayment.setStatus(TransactionStatus.PENDING);
         pendingPayment.setDescription("ORDER-DUP-2");
+        pendingPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 11, 0));
 
         when(transactionRepository.findAll()).thenReturn(List.of(failedPayment, pendingPayment));
 

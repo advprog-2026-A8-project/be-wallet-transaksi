@@ -40,6 +40,9 @@ class WalletServiceRefundTest {
     @Mock
     private TransactionRepository transactionRepository;
 
+    @Mock
+    private OrderPaymentStatusPublisher orderPaymentStatusPublisher;
+
     @Spy
     private WalletMutationStrategyResolver strategyResolver = new WalletMutationStrategyResolver();
 

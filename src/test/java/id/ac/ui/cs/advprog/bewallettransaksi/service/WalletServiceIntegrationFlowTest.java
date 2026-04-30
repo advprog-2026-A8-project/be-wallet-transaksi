@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.locks.LockSupport;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -163,6 +164,7 @@ class WalletServiceIntegrationFlowTest {
         olderPending.setCreatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
         olderPending.setUpdatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
         transactionRepository.save(olderPending);
+        pauseForDistinctPersistTimestamp();
 
         Transaction latestSuccess = new Transaction();
         latestSuccess.setWalletId(wallet.getWalletId());
@@ -207,6 +209,7 @@ class WalletServiceIntegrationFlowTest {
         olderPending.setCreatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
         olderPending.setUpdatedAt(LocalDateTime.of(2026, 4, 1, 10, 0));
         transactionRepository.save(olderPending);
+        pauseForDistinctPersistTimestamp();
 
         Transaction latestFailed = new Transaction();
         latestFailed.setWalletId(wallet.getWalletId());
@@ -231,5 +234,9 @@ class WalletServiceIntegrationFlowTest {
                 .count();
         assertEquals(1, pendingCount);
         assertEquals(1, failedCount);
+    }
+
+    private void pauseForDistinctPersistTimestamp() {
+        LockSupport.parkNanos(5_000_000L);
     }
 }
