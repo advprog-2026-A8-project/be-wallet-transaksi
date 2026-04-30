@@ -1,6 +1,8 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -210,7 +212,10 @@ public class WalletServiceImpl implements WalletService {
     private java.util.Optional<Transaction> findPendingPayment(List<Transaction> matchingPayments) {
         return matchingPayments.stream()
                 .filter(transaction -> transaction.getStatus() == TransactionStatus.PENDING)
-                .findFirst();
+                .max(Comparator.comparing(
+                        Transaction::getCreatedAt,
+                        Comparator.nullsLast(LocalDateTime::compareTo)
+                ));
     }
 
     private void transitionPaymentCallbackStatus(
