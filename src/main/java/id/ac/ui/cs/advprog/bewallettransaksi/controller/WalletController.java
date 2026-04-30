@@ -309,11 +309,18 @@ public class WalletController {
     }
 
     private void requireNumericStatusCode(String statusCode) {
-        for (int i = 0; i < statusCode.length(); i++) {
-            if (!Character.isDigit(statusCode.charAt(i))) {
-                throw new IllegalArgumentException(STATUS_CODE_INVALID_NUMBER_MESSAGE);
+        if (!isDigitsOnly(statusCode)) {
+            throw new IllegalArgumentException(STATUS_CODE_INVALID_NUMBER_MESSAGE);
+        }
+    }
+
+    private boolean isDigitsOnly(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            if (!Character.isDigit(value.charAt(i))) {
+                return false;
             }
         }
+        return true;
     }
 
     private void applyNormalizedCallbackFields(PaymentCallbackRequest payload, NormalizedCallbackFields normalizedFields) {
