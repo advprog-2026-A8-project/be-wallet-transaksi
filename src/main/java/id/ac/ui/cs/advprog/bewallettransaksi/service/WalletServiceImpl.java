@@ -159,8 +159,9 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public void handlePaymentFailure(String orderId) {
-        normalizeOrderId(orderId);
-        // Placeholder: callback failure persistence/mapping is implemented incrementally in next TDD cycles.
+        String normalizedOrderId = normalizeOrderId(orderId);
+        Transaction pendingPayment = findPendingPaymentByOrderId(normalizedOrderId);
+        updateTransactionStatus(pendingPayment, TransactionStatus.FAILED);
     }
 
     private String normalizeOrderId(String orderId) {
