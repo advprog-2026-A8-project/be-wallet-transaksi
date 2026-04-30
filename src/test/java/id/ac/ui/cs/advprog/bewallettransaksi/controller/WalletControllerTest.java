@@ -940,6 +940,20 @@ class WalletControllerTest {
         verify(paymentCallbackProcessor, times(1)).process(any());
     }
 
+    @Test
+    void paymentCallback_BlankOrderId_ShouldReturnBadRequest() throws Exception {
+        String payload =
+                "{\"order_id\":\"   \",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Order ID must not be blank"));
+    }
+
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
         WalletMutationRequest request = new WalletMutationRequest();
         request.setUserId(userId);
