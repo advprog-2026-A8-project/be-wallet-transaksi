@@ -941,6 +941,22 @@ class WalletControllerTest {
     }
 
     @Test
+    void paymentCallback_TransactionStatusWithWhitespace_ShouldBeAccepted() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\" settlement \"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Callback accepted"));
+
+        verify(paymentCallbackProcessor, times(1)).process(any());
+    }
+
+    @Test
     void paymentCallback_BlankOrderId_ShouldReturnBadRequest() throws Exception {
         String payload =
                 "{\"order_id\":\"   \",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
