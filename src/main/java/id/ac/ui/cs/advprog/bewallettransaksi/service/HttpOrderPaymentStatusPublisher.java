@@ -42,6 +42,9 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
         if (rawBaseUrl == null || rawBaseUrl.isBlank()) {
             throw new IllegalArgumentException("Order service base URL must not be blank");
         }
-        return rawBaseUrl.endsWith("/") ? rawBaseUrl.substring(0, rawBaseUrl.length() - 1) : rawBaseUrl;
+        String trimmedBaseUrl = rawBaseUrl.trim();
+        return trimmedBaseUrl.endsWith("/")
+                ? trimmedBaseUrl.substring(0, trimmedBaseUrl.length() - 1)
+                : trimmedBaseUrl;
     }
 }
