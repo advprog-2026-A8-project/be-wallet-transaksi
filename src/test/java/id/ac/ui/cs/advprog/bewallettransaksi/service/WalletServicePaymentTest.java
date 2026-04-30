@@ -223,4 +223,23 @@ class WalletServicePaymentTest {
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(TransactionStatus.SUCCESS, transactionCaptor.getValue().getStatus());
     }
+
+    @Test
+    void handlePaymentFailure_ShouldPersistFailedForMatchingPendingPayment() {
+        Transaction pendingPayment = new Transaction();
+        pendingPayment.setTransactionId(UUID.randomUUID());
+        pendingPayment.setWalletId(walletId);
+        pendingPayment.setAmount(BigDecimal.valueOf(60.00));
+        pendingPayment.setType(TransactionType.PAYMENT);
+        pendingPayment.setStatus(TransactionStatus.PENDING);
+        pendingPayment.setDescription("ORDER-2");
+
+        when(transactionRepository.findAll()).thenReturn(List.of(pendingPayment));
+
+        walletService.handlePaymentFailure("ORDER-2");
+
+        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(transactionCaptor.capture());
+        assertEquals(TransactionStatus.FAILED, transactionCaptor.getValue().getStatus());
+    }
 }
