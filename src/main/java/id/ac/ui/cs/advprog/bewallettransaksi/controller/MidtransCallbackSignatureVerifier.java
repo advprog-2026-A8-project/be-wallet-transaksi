@@ -18,10 +18,7 @@ public class MidtransCallbackSignatureVerifier {
     }
 
     public boolean isValid(PaymentCallbackRequest payload, String signatureKey) {
-        if (signatureKey == null || signatureKey.isBlank()) {
-            return false;
-        }
-        if (payload == null) {
+        if (!isVerifiableInput(payload, signatureKey)) {
             return false;
         }
         try {
@@ -30,6 +27,10 @@ public class MidtransCallbackSignatureVerifier {
         } catch (IllegalArgumentException ex) {
             return false;
         }
+    }
+
+    private boolean isVerifiableInput(PaymentCallbackRequest payload, String signatureKey) {
+        return payload != null && signatureKey != null && !signatureKey.isBlank();
     }
 
     private String buildExpectedSignature(PaymentCallbackRequest payload) {
