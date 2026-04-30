@@ -204,7 +204,7 @@ public class WalletServiceImpl implements WalletService {
 
     private java.util.Optional<Transaction> findPaymentByOrderId(String orderId) {
         List<Transaction> matchingPayments = findMatchingPaymentTransactions(orderId);
-        return findPendingPayment(matchingPayments).or(() -> findMostRecentPayment(matchingPayments));
+        return findPendingPayment(matchingPayments).or(() -> findLatestPaymentByCreatedAt(matchingPayments));
     }
 
     private List<Transaction> findMatchingPaymentTransactions(String orderId) {
@@ -220,7 +220,7 @@ public class WalletServiceImpl implements WalletService {
                 .max(TRANSACTION_CREATED_AT_NEWEST);
     }
 
-    private java.util.Optional<Transaction> findMostRecentPayment(List<Transaction> matchingPayments) {
+    private java.util.Optional<Transaction> findLatestPaymentByCreatedAt(List<Transaction> matchingPayments) {
         return matchingPayments.stream().max(TRANSACTION_CREATED_AT_NEWEST);
     }
 
