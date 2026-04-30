@@ -24,13 +24,18 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
         if (normalizedStatus.isEmpty()) {
             return;
         }
+        Optional<String> normalizedOrderId = normalizeOrderId(payload.getOrderId());
+        if (normalizedOrderId.isEmpty()) {
+            return;
+        }
+        String orderId = normalizedOrderId.get();
         String status = normalizedStatus.get();
         if (MidtransTransactionStatus.isSettlement(status)) {
-            walletService.handlePaymentSettlement(payload.getOrderId());
+            walletService.handlePaymentSettlement(orderId);
             return;
         }
         if (MidtransTransactionStatus.isFailure(status)) {
-            walletService.handlePaymentFailure(payload.getOrderId());
+            walletService.handlePaymentFailure(orderId);
         }
     }
 
@@ -39,6 +44,17 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
             return Optional.empty();
         }
         String normalized = status.trim();
+        if (normalized.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(normalized);
+    }
+
+    private Optional<String> normalizeOrderId(String orderId) {
+        if (orderId == null) {
+            return Optional.empty();
+        }
+        String normalized = orderId.trim();
         if (normalized.isEmpty()) {
             return Optional.empty();
         }
