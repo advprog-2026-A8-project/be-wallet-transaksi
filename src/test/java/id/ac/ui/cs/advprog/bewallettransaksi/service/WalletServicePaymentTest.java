@@ -431,4 +431,33 @@ class WalletServicePaymentTest {
         assertEquals(newerPendingPayment.getTransactionId(), transactionCaptor.getValue().getTransactionId());
         assertEquals(TransactionStatus.SUCCESS, transactionCaptor.getValue().getStatus());
     }
+
+    @Test
+    void handlePaymentSettlement_PendingWithNullCreatedAt_ShouldNotOutrankTimestampedPending() {
+        Transaction pendingWithNullCreatedAt = new Transaction();
+        pendingWithNullCreatedAt.setTransactionId(UUID.randomUUID());
+        pendingWithNullCreatedAt.setWalletId(walletId);
+        pendingWithNullCreatedAt.setAmount(BigDecimal.valueOf(60.00));
+        pendingWithNullCreatedAt.setType(TransactionType.PAYMENT);
+        pendingWithNullCreatedAt.setStatus(TransactionStatus.PENDING);
+        pendingWithNullCreatedAt.setDescription("ORDER-DUP-4");
+        pendingWithNullCreatedAt.setCreatedAt(null);
+
+        Transaction timestampedPending = new Transaction();
+        timestampedPending.setTransactionId(UUID.randomUUID());
+        timestampedPending.setWalletId(walletId);
+        timestampedPending.setAmount(BigDecimal.valueOf(60.00));
+        timestampedPending.setType(TransactionType.PAYMENT);
+        timestampedPending.setStatus(TransactionStatus.PENDING);
+        timestampedPending.setDescription("ORDER-DUP-4");
+        timestampedPending.setCreatedAt(LocalDateTime.of(2026, 4, 1, 11, 0));
+
+        when(transactionRepository.findAll()).thenReturn(List.of(pendingWithNullCreatedAt, timestampedPending));
+
+        assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-DUP-4"));
+
+        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(transactionCaptor.capture());
+        assertEquals(timestampedPending.getTransactionId(), transactionCaptor.getValue().getTransactionId());
+    }
 }
