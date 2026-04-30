@@ -91,7 +91,12 @@ public class WalletServiceImpl implements WalletService {
         validateMutationInput(userId, amount, description);
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         validateSufficientBalanceOrRecordFailure(wallet, amount, TransactionType.PAYMENT, description);
-        processPaymentMutation(wallet, amount, description);
+        processMutation(
+                wallet,
+                amount,
+                TransactionType.PAYMENT,
+                description
+        );
         return toResponse(wallet);
     }
 
@@ -146,19 +151,43 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public void handlePaymentSettlement(String orderId) {
-        if (orderId == null || orderId.isBlank()) {
-            throw new IllegalArgumentException("Order ID must not be blank");
-        }
-        // Placeholder: callback business persistence/mapping is implemented incrementally in next TDD cycles.
+        String normalizedOrderId = normalizeOrderId(orderId);
+        Transaction pendingPayment = findPendingPaymentByOrderId(normalizedOrderId);
+        updateTransactionStatus(pendingPayment, TransactionStatus.SUCCESS);
     }
 
     @Override
     @Transactional
     public void handlePaymentFailure(String orderId) {
+        normalizeOrderId(orderId);
+        // Placeholder: callback failure persistence/mapping is implemented incrementally in next TDD cycles.
+    }
+
+    private String normalizeOrderId(String orderId) {
         if (orderId == null || orderId.isBlank()) {
             throw new IllegalArgumentException("Order ID must not be blank");
         }
-        // Placeholder: callback failure persistence/mapping is implemented incrementally in next TDD cycles.
+        return orderId.trim();
+    }
+
+    private boolean isPendingPaymentTransaction(Transaction transaction) {
+        return transaction.getType() == TransactionType.PAYMENT
+                && transaction.getStatus() == TransactionStatus.PENDING;
+    }
+
+    private Transaction findPendingPaymentByOrderId(String orderId) {
+        return transactionRepository.findAll().stream()
+                .filter(this::isPendingPaymentTransaction)
+                .filter(transaction -> orderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Pending payment transaction not found for orderId: " + orderId
+                ));
+    }
+
+    private void updateTransactionStatus(Transaction transaction, TransactionStatus status) {
+        transaction.setStatus(status);
+        transactionRepository.save(transaction);
     }
 
     private void validateUserId(UUID userId) {
@@ -246,14 +275,6 @@ public class WalletServiceImpl implements WalletService {
         BigDecimal updatedBalance = applyMutation(wallet.getBalance(), amount, type);
         validateUpdatedBalance(updatedBalance);
         Transaction transaction = createTransaction(wallet.getWalletId(), amount, type, description);
-        updateWalletBalance(wallet, updatedBalance);
-        finalizeTransaction(transaction);
-    }
-
-    private void processPaymentMutation(Wallet wallet, BigDecimal amount, String description) {
-        BigDecimal updatedBalance = applyMutation(wallet.getBalance(), amount, TransactionType.PAYMENT);
-        validateUpdatedBalance(updatedBalance);
-        Transaction transaction = createTransaction(wallet.getWalletId(), amount, TransactionType.PAYMENT, description);
         updateWalletBalance(wallet, updatedBalance);
         finalizeTransaction(transaction);
     }
