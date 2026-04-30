@@ -157,7 +157,17 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public void handlePaymentFailure(String orderId) {
-        finalizePendingPayment(orderId, TransactionStatus.FAILED);
+        String normalizedOrderId = normalizeOrderId(orderId);
+        Transaction paymentTransaction = findPaymentByOrderId(normalizedOrderId);
+
+        if (paymentTransaction.getStatus() == TransactionStatus.FAILED) {
+            return;
+        }
+        if (paymentTransaction.getStatus() == TransactionStatus.PENDING) {
+            updateTransactionStatus(paymentTransaction, TransactionStatus.FAILED);
+            return;
+        }
+        throw new IllegalStateException("Cannot mark payment as failed from status: " + paymentTransaction.getStatus());
     }
 
     private String normalizeOrderId(String orderId) {
@@ -175,6 +185,16 @@ public class WalletServiceImpl implements WalletService {
     private Transaction findPendingPaymentByOrderId(String orderId) {
         return transactionRepository.findAll().stream()
                 .filter(this::isPendingPaymentTransaction)
+                .filter(transaction -> orderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Pending payment transaction not found for orderId: " + orderId
+                ));
+    }
+
+    private Transaction findPaymentByOrderId(String orderId) {
+        return transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
                 .filter(transaction -> orderId.equals(transaction.getDescription()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
