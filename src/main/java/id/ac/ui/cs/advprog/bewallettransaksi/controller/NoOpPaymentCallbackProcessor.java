@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -14,6 +15,7 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
 
     private final WalletService walletService;
     private final Set<String> processedCallbackEvents = ConcurrentHashMap.newKeySet();
+    private final Map<String, String> terminalStatusByOrderId = new ConcurrentHashMap<>();
 
     public NoOpPaymentCallbackProcessor(WalletService walletService) {
         this.walletService = walletService;
@@ -34,6 +36,9 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
         }
         String orderId = normalizedOrderId.get();
         String status = normalizedStatus.get();
+        if (shouldIgnoreDueToTerminalConflict(orderId, status)) {
+            return;
+        }
         String eventKey = buildEventKey(orderId, status);
         if (!processedCallbackEvents.add(eventKey)) {
             return;
@@ -45,6 +50,18 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
         if (MidtransTransactionStatus.isFailure(status)) {
             walletService.handlePaymentFailure(orderId);
         }
+    }
+
+    private boolean shouldIgnoreDueToTerminalConflict(String orderId, String status) {
+        if (!isTerminalStatus(status)) {
+            return false;
+        }
+        String existingStatus = terminalStatusByOrderId.putIfAbsent(orderId, status);
+        return existingStatus != null && !existingStatus.equals(status);
+    }
+
+    private boolean isTerminalStatus(String status) {
+        return MidtransTransactionStatus.isSettlement(status) || MidtransTransactionStatus.isFailure(status);
     }
 
     private String buildEventKey(String orderId, String status) {
