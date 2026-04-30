@@ -151,17 +151,13 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public void handlePaymentSettlement(String orderId) {
-        String normalizedOrderId = normalizeOrderId(orderId);
-        Transaction pendingPayment = findPendingPaymentByOrderId(normalizedOrderId);
-        updateTransactionStatus(pendingPayment, TransactionStatus.SUCCESS);
+        finalizePendingPayment(orderId, TransactionStatus.SUCCESS);
     }
 
     @Override
     @Transactional
     public void handlePaymentFailure(String orderId) {
-        String normalizedOrderId = normalizeOrderId(orderId);
-        Transaction pendingPayment = findPendingPaymentByOrderId(normalizedOrderId);
-        updateTransactionStatus(pendingPayment, TransactionStatus.FAILED);
+        finalizePendingPayment(orderId, TransactionStatus.FAILED);
     }
 
     private String normalizeOrderId(String orderId) {
@@ -189,6 +185,12 @@ public class WalletServiceImpl implements WalletService {
     private void updateTransactionStatus(Transaction transaction, TransactionStatus status) {
         transaction.setStatus(status);
         transactionRepository.save(transaction);
+    }
+
+    private void finalizePendingPayment(String orderId, TransactionStatus finalStatus) {
+        String normalizedOrderId = normalizeOrderId(orderId);
+        Transaction pendingPayment = findPendingPaymentByOrderId(normalizedOrderId);
+        updateTransactionStatus(pendingPayment, finalStatus);
     }
 
     private void validateUserId(UUID userId) {
