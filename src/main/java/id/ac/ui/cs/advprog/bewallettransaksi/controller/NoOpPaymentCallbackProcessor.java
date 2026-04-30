@@ -4,6 +4,8 @@ import id.ac.ui.cs.advprog.bewallettransaksi.dto.PaymentCallbackRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Component
 public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
 
@@ -15,13 +17,14 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
 
     @Override
     public void process(PaymentCallbackRequest payload) {
-        if (payload == null || payload.getTransactionStatus() == null) {
+        if (payload == null) {
             return;
         }
-        String status = payload.getTransactionStatus().trim();
-        if (status.isEmpty()) {
+        Optional<String> normalizedStatus = normalizeStatus(payload.getTransactionStatus());
+        if (normalizedStatus.isEmpty()) {
             return;
         }
+        String status = normalizedStatus.get();
         if (MidtransTransactionStatus.isSettlement(status)) {
             walletService.handlePaymentSettlement(payload.getOrderId());
             return;
@@ -29,5 +32,16 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
         if (MidtransTransactionStatus.isFailure(status)) {
             walletService.handlePaymentFailure(payload.getOrderId());
         }
+    }
+
+    private Optional<String> normalizeStatus(String status) {
+        if (status == null) {
+            return Optional.empty();
+        }
+        String normalized = status.trim();
+        if (normalized.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(normalized);
     }
 }
