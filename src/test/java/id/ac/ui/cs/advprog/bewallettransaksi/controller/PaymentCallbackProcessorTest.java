@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentCallbackProcessorTest {
@@ -56,5 +57,18 @@ class PaymentCallbackProcessorTest {
         processor.process(request);
 
         verify(walletService).handlePaymentSettlement("ORDER-3");
+    }
+
+    @Test
+    void process_BlankOrderId_ShouldNotTriggerWalletService() {
+        PaymentCallbackRequest request = new PaymentCallbackRequest();
+        request.setOrderId("   ");
+        request.setStatusCode("200");
+        request.setGrossAmount("10000.00");
+        request.setTransactionStatus("settlement");
+
+        processor.process(request);
+
+        verifyNoInteractions(walletService);
     }
 }
