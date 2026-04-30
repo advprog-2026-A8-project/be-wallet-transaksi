@@ -52,7 +52,9 @@ public class WalletServiceImpl implements WalletService {
         this.strategyResolver = Objects.requireNonNull(
                 strategyResolver, "WalletMutationStrategyResolver must not be null"
         );
-        this.orderPaymentStatusPublisher = orderPaymentStatusPublisher;
+        this.orderPaymentStatusPublisher = Objects.requireNonNull(
+                orderPaymentStatusPublisher, "OrderPaymentStatusPublisher must not be null"
+        );
     }
 
     @Override
@@ -218,9 +220,6 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private void publishOrderPaymentStatusUpdate(String orderId, TransactionStatus targetStatus) {
-        if (orderPaymentStatusPublisher == null) {
-            return;
-        }
         switch (targetStatus) {
             case SUCCESS -> orderPaymentStatusPublisher.publishPaymentSettled(orderId);
             case FAILED -> orderPaymentStatusPublisher.publishPaymentFailed(orderId);
