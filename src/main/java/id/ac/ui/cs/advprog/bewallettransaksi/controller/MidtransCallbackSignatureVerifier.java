@@ -35,7 +35,11 @@ public class MidtransCallbackSignatureVerifier {
         return payload != null
                 && normalizedSignature != null
                 && !normalizedSignature.isBlank()
-                && !midtransServerKey.isBlank();
+                && hasServerKey();
+    }
+
+    private boolean hasServerKey() {
+        return !midtransServerKey.isBlank();
     }
 
     private String normalizeSignature(String signature) {
