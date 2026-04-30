@@ -34,6 +34,17 @@ class MidtransCallbackSignatureVerifierTest {
         assertTrue(verifier.isValid(payload, uppercaseSignature));
     }
 
+    @Test
+    void isValid_WhitespaceOnlySignature_ShouldReturnFalse() {
+        MidtransCallbackSignatureVerifier verifier = new MidtransCallbackSignatureVerifier("server-key");
+        PaymentCallbackRequest payload = new PaymentCallbackRequest();
+        payload.setOrderId("ORDER-HEX-2");
+        payload.setStatusCode("200");
+        payload.setGrossAmount("10000.00");
+
+        assertFalse(verifier.isValid(payload, "   "));
+    }
+
     private String sha512Hex(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-512");
