@@ -19,19 +19,20 @@ public class MidtransCallbackSignatureVerifier {
     }
 
     public boolean isValid(PaymentCallbackRequest payload, String signatureKey) {
-        if (!isVerifiableInput(payload, signatureKey)) {
+        String normalizedSignature = normalizeSignature(signatureKey);
+        if (!isVerifiableInput(payload, normalizedSignature)) {
             return false;
         }
         try {
             String expectedSignature = buildExpectedSignature(payload);
-            return expectedSignature.equals(normalizeSignature(signatureKey));
+            return expectedSignature.equals(normalizedSignature);
         } catch (IllegalArgumentException ex) {
             return false;
         }
     }
 
-    private boolean isVerifiableInput(PaymentCallbackRequest payload, String signatureKey) {
-        return payload != null && signatureKey != null && !signatureKey.isBlank();
+    private boolean isVerifiableInput(PaymentCallbackRequest payload, String normalizedSignature) {
+        return payload != null && normalizedSignature != null && !normalizedSignature.isBlank();
     }
 
     private String normalizeSignature(String signature) {
