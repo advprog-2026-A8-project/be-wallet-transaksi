@@ -914,6 +914,20 @@ class WalletControllerTest {
     }
 
     @Test
+    void paymentCallback_TamperedGrossAmountWithInvalidSignature_ShouldReturnUnauthorized() throws Exception {
+        when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("tampered-signature")))
+                .thenReturn(false);
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "tampered-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"99999.00\","
+                                + "\"transaction_status\":\"settlement\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Invalid callback signature"));
+    }
+
+    @Test
     void paymentCallback_UnsupportedTransactionStatus_ShouldReturnBadRequest() throws Exception {
         String payload =
                 "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
