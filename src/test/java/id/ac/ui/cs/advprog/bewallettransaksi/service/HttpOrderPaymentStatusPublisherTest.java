@@ -1,10 +1,10 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -49,11 +49,11 @@ class HttpOrderPaymentStatusPublisherTest {
 
     @Test
     void publishPaymentSettled_BlankOrderId_ShouldThrowIllegalArgumentException() {
-        Assertions.assertThrows(IllegalArgumentException.class, () -> publisher.publishPaymentSettled("   "));
+        assertThrows(IllegalArgumentException.class, () -> publisher.publishPaymentSettled("   "));
     }
 
     @Test
     void publishPaymentFailed_NullOrderId_ShouldThrowIllegalArgumentException() {
-        Assertions.assertThrows(IllegalArgumentException.class, () -> publisher.publishPaymentFailed(null));
+        assertThrows(IllegalArgumentException.class, () -> publisher.publishPaymentFailed(null));
     }
 }
