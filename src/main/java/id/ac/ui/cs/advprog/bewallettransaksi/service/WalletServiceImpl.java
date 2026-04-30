@@ -41,15 +41,18 @@ public class WalletServiceImpl implements WalletService {
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
     private final WalletMutationStrategyResolver strategyResolver;
+    private final OrderPaymentStatusPublisher orderPaymentStatusPublisher;
 
     public WalletServiceImpl(WalletRepository walletRepository,
                              TransactionRepository transactionRepository,
-                             WalletMutationStrategyResolver strategyResolver) {
+                             WalletMutationStrategyResolver strategyResolver,
+                             OrderPaymentStatusPublisher orderPaymentStatusPublisher) {
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
         this.strategyResolver = Objects.requireNonNull(
                 strategyResolver, "WalletMutationStrategyResolver must not be null"
         );
+        this.orderPaymentStatusPublisher = orderPaymentStatusPublisher;
     }
 
     @Override
@@ -208,9 +211,23 @@ public class WalletServiceImpl implements WalletService {
         }
         if (paymentTransaction.getStatus() == TransactionStatus.PENDING) {
             updateTransactionStatus(paymentTransaction, targetStatus);
+            publishOrderPaymentStatusUpdate(normalizedOrderId, targetStatus);
             return;
         }
         throw new IllegalStateException(invalidTransitionPrefix + paymentTransaction.getStatus());
+    }
+
+    private void publishOrderPaymentStatusUpdate(String orderId, TransactionStatus targetStatus) {
+        if (orderPaymentStatusPublisher == null) {
+            return;
+        }
+        if (targetStatus == TransactionStatus.SUCCESS) {
+            orderPaymentStatusPublisher.publishPaymentSettled(orderId);
+            return;
+        }
+        if (targetStatus == TransactionStatus.FAILED) {
+            orderPaymentStatusPublisher.publishPaymentFailed(orderId);
+        }
     }
 
     private void updateTransactionStatus(Transaction transaction, TransactionStatus status) {
