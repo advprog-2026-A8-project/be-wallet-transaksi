@@ -196,18 +196,21 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private java.util.Optional<Transaction> findPaymentByOrderId(String orderId) {
-        List<Transaction> matchingPayments = transactionRepository.findAll().stream()
+        List<Transaction> matchingPayments = findMatchingPaymentTransactions(orderId);
+        return findPendingPayment(matchingPayments).or(() -> matchingPayments.stream().findFirst());
+    }
+
+    private List<Transaction> findMatchingPaymentTransactions(String orderId) {
+        return transactionRepository.findAll().stream()
                 .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
                 .filter(transaction -> orderId.equals(transaction.getDescription()))
                 .toList();
+    }
 
-        java.util.Optional<Transaction> pendingPayment = matchingPayments.stream()
+    private java.util.Optional<Transaction> findPendingPayment(List<Transaction> matchingPayments) {
+        return matchingPayments.stream()
                 .filter(transaction -> transaction.getStatus() == TransactionStatus.PENDING)
                 .findFirst();
-        if (pendingPayment.isPresent()) {
-            return pendingPayment;
-        }
-        return matchingPayments.stream().findFirst();
     }
 
     private void transitionPaymentCallbackStatus(
