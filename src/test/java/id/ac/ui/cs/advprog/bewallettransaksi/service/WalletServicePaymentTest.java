@@ -299,4 +299,20 @@ class WalletServicePaymentTest {
         assertThrows(IllegalStateException.class, () -> walletService.handlePaymentSettlement("ORDER-5"));
         verify(transactionRepository, never()).save(any(Transaction.class));
     }
+
+    @Test
+    void handlePaymentFailure_FromSuccessStatus_ShouldThrowIllegalStateException() {
+        Transaction successPayment = new Transaction();
+        successPayment.setTransactionId(UUID.randomUUID());
+        successPayment.setWalletId(walletId);
+        successPayment.setAmount(BigDecimal.valueOf(60.00));
+        successPayment.setType(TransactionType.PAYMENT);
+        successPayment.setStatus(TransactionStatus.SUCCESS);
+        successPayment.setDescription("ORDER-6");
+
+        when(transactionRepository.findAll()).thenReturn(List.of(successPayment));
+
+        assertThrows(IllegalStateException.class, () -> walletService.handlePaymentFailure("ORDER-6"));
+        verify(transactionRepository, never()).save(any(Transaction.class));
+    }
 }
