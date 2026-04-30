@@ -19,6 +19,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -363,11 +364,7 @@ class WalletControllerTest {
         request.setUserId(userId);
         request.setAmount(BigDecimal.valueOf(50000.00));
 
-        mockMvc.perform(post("/wallet/topup/initiate")
-                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
-                        .header(IDEMPOTENCY_HEADER, "idem-initiate-topup-1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-topup-1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paymentToken").exists())
                 .andExpect(jsonPath("$.redirectUrl").exists())
@@ -380,11 +377,7 @@ class WalletControllerTest {
         request.setUserId(userId);
         request.setAmount(BigDecimal.valueOf(50000.00));
 
-        mockMvc.perform(post("/wallet/topup/initiate")
-                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
-                        .header(IDEMPOTENCY_HEADER, "idem-initiate-topup-2")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-topup-2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paymentToken").value(org.hamcrest.Matchers.not(
                         org.hamcrest.Matchers.startsWith("mock-token-")
@@ -397,10 +390,7 @@ class WalletControllerTest {
         request.setUserId(userId);
         request.setAmount(BigDecimal.valueOf(50000.00));
 
-        mockMvc.perform(post("/wallet/topup/initiate")
-                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, null))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Missing required header: Idempotency-Key"));
     }
@@ -412,11 +402,7 @@ class WalletControllerTest {
         request.setAmount(BigDecimal.valueOf(50000.00));
         when(idempotencyKeyGuard.register("idem-initiate-dup")).thenReturn(false);
 
-        mockMvc.perform(post("/wallet/topup/initiate")
-                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
-                        .header(IDEMPOTENCY_HEADER, "idem-initiate-dup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-dup"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Duplicate idempotency key"));
     }
@@ -429,11 +415,8 @@ class WalletControllerTest {
         doThrow(new RuntimeException("id generator failed"))
                 .when(walletRequestAccessPolicy).isForbiddenTopUpRole(READ_JWT_HEADER_VALUE);
 
-        assertThrows(Exception.class, () -> mockMvc.perform(post("/wallet/topup/initiate")
-                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
-                        .header(IDEMPOTENCY_HEADER, "idem-initiate-fail")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        assertThrows(Exception.class, () -> mockMvc.perform(
+                        performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-fail"))
                 .andReturn());
 
         verify(idempotencyKeyGuard, times(1)).release("idem-initiate-fail");
@@ -1247,6 +1230,21 @@ class WalletControllerTest {
         request.setUserId(requestUserId);
         request.setAmount(amount);
         return request;
+    }
+
+    private MockHttpServletRequestBuilder performInitiateTopUpRequest(
+            TopUpRequest request,
+            String authorization,
+            String idempotencyKey
+    ) throws Exception {
+        MockHttpServletRequestBuilder builder = post("/wallet/topup/initiate")
+                .header(AUTH_HEADER, authorization)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request));
+        if (idempotencyKey != null) {
+            builder.header(IDEMPOTENCY_HEADER, idempotencyKey);
+        }
+        return builder;
     }
 
     private String generateJwtToken(String subject, String role) {
