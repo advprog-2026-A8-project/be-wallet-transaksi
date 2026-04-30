@@ -116,10 +116,10 @@ public class WalletController {
             @RequestHeader(value = IDEMPOTENCY_HEADER, required = false) String idempotencyKey,
             @Valid @RequestBody TopUpRequest request
     ) {
-        validateTopUpAccess(authorization, request.getUserId());
         validateIdempotencyKey(idempotencyKey);
 
         return withIdempotencyKey(idempotencyKey, () -> {
+            validateTopUpAccess(authorization, request.getUserId());
             String orderId = UUID.randomUUID().toString();
             return ResponseEntity.ok(Map.of(
                     "paymentToken", SNAP_TOKEN_PREFIX + orderId,

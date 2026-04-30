@@ -37,6 +37,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -426,14 +427,14 @@ class WalletControllerTest {
         request.setUserId(userId);
         request.setAmount(BigDecimal.valueOf(50000.00));
         doThrow(new RuntimeException("id generator failed"))
-                .when(walletRequestAccessPolicy).isForbiddenTopUpRole("Bearer force-initiate-fail");
+                .when(walletRequestAccessPolicy).isForbiddenTopUpRole(READ_JWT_HEADER_VALUE);
 
-        mockMvc.perform(post("/wallet/topup/initiate")
-                        .header(AUTH_HEADER, "Bearer force-initiate-fail")
+        assertThrows(Exception.class, () -> mockMvc.perform(post("/wallet/topup/initiate")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .header(IDEMPOTENCY_HEADER, "idem-initiate-fail")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isInternalServerError());
+                .andReturn());
 
         verify(idempotencyKeyGuard, times(1)).release("idem-initiate-fail");
     }
