@@ -387,6 +387,20 @@ class WalletControllerTest {
     }
 
     @Test
+    void initiateTopUp_MissingIdempotencyKey_ShouldReturnBadRequest() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50000.00));
+
+        mockMvc.perform(post("/wallet/topup/initiate")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing required header: Idempotency-Key"));
+    }
+
+    @Test
     void getTransactionHistory_Success() throws Exception {
         TransactionResponse latest = TransactionResponse.builder()
                 .transactionId(UUID.randomUUID())
