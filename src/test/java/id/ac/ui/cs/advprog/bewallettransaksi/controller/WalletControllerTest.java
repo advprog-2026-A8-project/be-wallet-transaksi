@@ -117,10 +117,13 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isJwtBearerToken("Bearer invalid.jwt.token")).thenReturn(true);
         when(idempotencyKeyGuard.register(anyString())).thenReturn(true);
         when(callbackSignatureVerifier.isValid(any(), anyString())).thenReturn(true);
-        when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("invalid-signature"))).thenReturn(false);
-        when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("tampered-signature"))).thenReturn(false);
-        when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("tampered-status-signature")))
-                .thenReturn(false);
+        stubInvalidSignature("invalid-signature");
+        stubInvalidSignature("tampered-signature");
+        stubInvalidSignature("tampered-status-signature");
+    }
+
+    private void stubInvalidSignature(String signature) {
+        when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq(signature))).thenReturn(false);
     }
 
     @Test
