@@ -47,6 +47,7 @@ public class WalletController {
     private static final String ORDER_ID_TOO_LONG_MESSAGE = "Order ID must be at most 128 characters";
     private static final String GROSS_AMOUNT_INVALID_NUMBER_MESSAGE = "gross_amount must be a valid number";
     private static final String STATUS_CODE_INVALID_NUMBER_MESSAGE = "status_code must be numeric";
+    private static final String STATUS_CODE_UNSUPPORTED_MESSAGE_PREFIX = "Unsupported callback status_code: ";
     private static final Set<String> SUPPORTED_CALLBACK_STATUS_CODES = Set.of("200", "201", "202", "407");
     private static final String JASTIPER_ROLE = "JASTIPER";
     private static final int MAX_CALLBACK_ORDER_ID_LENGTH = 128;
@@ -315,7 +316,7 @@ public class WalletController {
             throw new IllegalArgumentException(STATUS_CODE_INVALID_NUMBER_MESSAGE);
         }
         if (!SUPPORTED_CALLBACK_STATUS_CODES.contains(statusCode)) {
-            throw new IllegalArgumentException("Unsupported callback status_code: " + statusCode);
+            throw new IllegalArgumentException(STATUS_CODE_UNSUPPORTED_MESSAGE_PREFIX + statusCode);
         }
     }
 
