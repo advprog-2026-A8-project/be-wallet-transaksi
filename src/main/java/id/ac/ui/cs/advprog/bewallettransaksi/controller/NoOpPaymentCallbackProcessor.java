@@ -18,7 +18,10 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
         if (payload == null || payload.getTransactionStatus() == null) {
             return;
         }
-        String status = payload.getTransactionStatus();
+        String status = payload.getTransactionStatus().trim();
+        if (status.isEmpty()) {
+            return;
+        }
         if (MidtransTransactionStatus.isSettlement(status)) {
             walletService.handlePaymentSettlement(payload.getOrderId());
             return;
