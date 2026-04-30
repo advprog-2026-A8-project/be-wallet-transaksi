@@ -17,6 +17,7 @@ class HttpOrderPaymentStatusPublisherTest {
     private static final String BASE_URL = "http://order-service";
     private static final String SETTLED_PATH = "/internal/orders/payment/settled";
     private static final String FAILED_PATH = "/internal/orders/payment/failed";
+    private static final int MAX_ORDER_ID_LENGTH = 128;
 
     private RestTemplate restTemplate;
     private MockRestServiceServer mockServer;
@@ -66,6 +67,12 @@ class HttpOrderPaymentStatusPublisherTest {
         publisherWithSpacedBaseUrl.publishPaymentSettled("ORDER-999");
 
         mockServer.verify();
+    }
+
+    @Test
+    void publishPaymentSettled_OrderIdTooLong_ShouldThrowIllegalArgumentException() {
+        String tooLongOrderId = "O".repeat(MAX_ORDER_ID_LENGTH + 1);
+        assertThrows(IllegalArgumentException.class, () -> publisher.publishPaymentSettled(tooLongOrderId));
     }
 
     private void expectPostSuccess(String path) {
