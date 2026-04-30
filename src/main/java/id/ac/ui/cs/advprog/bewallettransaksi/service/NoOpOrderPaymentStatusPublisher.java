@@ -1,8 +1,5 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
-import org.springframework.stereotype.Component;
-
-@Component
 public class NoOpOrderPaymentStatusPublisher implements OrderPaymentStatusPublisher {
     @Override
     public void publishPaymentSettled(String orderId) {
