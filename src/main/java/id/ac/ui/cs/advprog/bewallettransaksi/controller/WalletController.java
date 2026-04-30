@@ -44,6 +44,7 @@ public class WalletController {
     private static final String CALLBACK_GROSS_AMOUNT_KEY = "gross_amount";
     private static final String ORDER_ID_BLANK_MESSAGE = "Order ID must not be blank";
     private static final String ORDER_ID_TOO_LONG_MESSAGE = "Order ID must be at most 128 characters";
+    private static final String GROSS_AMOUNT_INVALID_NUMBER_MESSAGE = "gross_amount must be a valid number";
     private static final String JASTIPER_ROLE = "JASTIPER";
     private static final int MAX_CALLBACK_ORDER_ID_LENGTH = 128;
 
@@ -301,7 +302,7 @@ public class WalletController {
         try {
             new BigDecimal(grossAmount);
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("gross_amount must be a valid number");
+            throw new IllegalArgumentException(GROSS_AMOUNT_INVALID_NUMBER_MESSAGE);
         }
     }
 
