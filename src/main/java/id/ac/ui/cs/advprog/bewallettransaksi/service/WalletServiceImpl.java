@@ -42,7 +42,7 @@ public class WalletServiceImpl implements WalletService {
     private static final Comparator<Transaction> TRANSACTION_CREATED_AT_ASC =
             Comparator.comparing(
                     Transaction::getCreatedAt,
-                    Comparator.nullsLast(LocalDateTime::compareTo)
+                    Comparator.nullsFirst(LocalDateTime::compareTo)
             );
 
     private final WalletRepository walletRepository;
