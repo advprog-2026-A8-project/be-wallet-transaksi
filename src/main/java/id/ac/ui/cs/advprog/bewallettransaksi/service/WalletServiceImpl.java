@@ -39,6 +39,11 @@ public class WalletServiceImpl implements WalletService {
     private static final String STATUS_REQUIRED_MESSAGE = "Status must not be null";
     private static final String WALLET_ALREADY_EXISTS_MESSAGE = "Wallet already exists for user";
     private static final String PENDING_PAYMENT_NOT_FOUND_MESSAGE = "Pending payment transaction not found for orderId: ";
+    private static final Comparator<Transaction> TRANSACTION_CREATED_AT_ASC =
+            Comparator.comparing(
+                    Transaction::getCreatedAt,
+                    Comparator.nullsLast(LocalDateTime::compareTo)
+            );
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
@@ -212,10 +217,7 @@ public class WalletServiceImpl implements WalletService {
     private java.util.Optional<Transaction> findPendingPayment(List<Transaction> matchingPayments) {
         return matchingPayments.stream()
                 .filter(transaction -> transaction.getStatus() == TransactionStatus.PENDING)
-                .max(Comparator.comparing(
-                        Transaction::getCreatedAt,
-                        Comparator.nullsLast(LocalDateTime::compareTo)
-                ));
+                .max(TRANSACTION_CREATED_AT_ASC);
     }
 
     private void transitionPaymentCallbackStatus(
