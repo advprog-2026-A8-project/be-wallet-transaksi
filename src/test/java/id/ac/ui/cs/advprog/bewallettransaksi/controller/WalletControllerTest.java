@@ -118,6 +118,7 @@ class WalletControllerTest {
         when(idempotencyKeyGuard.register(anyString())).thenReturn(true);
         when(callbackSignatureVerifier.isValid(any(), anyString())).thenReturn(true);
         when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("invalid-signature"))).thenReturn(false);
+        when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("tampered-signature"))).thenReturn(false);
     }
 
     @Test
@@ -915,9 +916,6 @@ class WalletControllerTest {
 
     @Test
     void paymentCallback_TamperedGrossAmountWithInvalidSignature_ShouldReturnUnauthorized() throws Exception {
-        when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("tampered-signature")))
-                .thenReturn(false);
-
         mockMvc.perform(post("/wallet/payments/callback")
                         .header("X-Signature-Key", "tampered-signature")
                         .contentType(MediaType.APPLICATION_JSON)
