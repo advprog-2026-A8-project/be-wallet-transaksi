@@ -1,7 +1,5 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletMutationRequest;
@@ -19,8 +17,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
