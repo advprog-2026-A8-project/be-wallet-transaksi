@@ -6,8 +6,8 @@ import org.springframework.web.client.RestTemplate;
 
 public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublisher {
 
-    private static final String SETTLED_PATH = "/internal/orders/payment/settled";
-    private static final String FAILED_PATH = "/internal/orders/payment/failed";
+    private static final String DEFAULT_SETTLED_PATH = "/internal/orders/payment/settled";
+    private static final String DEFAULT_FAILED_PATH = "/internal/orders/payment/failed";
     private static final String SUCCESS_STATUS = "SUCCESS";
     private static final String FAILED_STATUS = "FAILED";
     private static final int MAX_ORDER_ID_LENGTH = 128;
@@ -17,20 +17,33 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
 
     private final RestTemplate restTemplate;
     private final String baseUrl;
+    private final String settledPath;
+    private final String failedPath;
 
     public HttpOrderPaymentStatusPublisher(RestTemplate restTemplate, String baseUrl) {
+        this(restTemplate, baseUrl, DEFAULT_SETTLED_PATH, DEFAULT_FAILED_PATH);
+    }
+
+    HttpOrderPaymentStatusPublisher(
+            RestTemplate restTemplate,
+            String baseUrl,
+            String settledPath,
+            String failedPath
+    ) {
         this.restTemplate = restTemplate;
         this.baseUrl = normalizeBaseUrl(baseUrl);
+        this.settledPath = normalizePath(settledPath, DEFAULT_SETTLED_PATH);
+        this.failedPath = normalizePath(failedPath, DEFAULT_FAILED_PATH);
     }
 
     @Override
     public void publishPaymentSettled(String orderId) {
-        postStatus(SETTLED_PATH, orderId, SUCCESS_STATUS);
+        postStatus(settledPath, orderId, SUCCESS_STATUS);
     }
 
     @Override
     public void publishPaymentFailed(String orderId) {
-        postStatus(FAILED_PATH, orderId, FAILED_STATUS);
+        postStatus(failedPath, orderId, FAILED_STATUS);
     }
 
     private void postStatus(String path, String orderId, String status) {
@@ -63,5 +76,13 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
         return trimmedBaseUrl.endsWith("/")
                 ? trimmedBaseUrl.substring(0, trimmedBaseUrl.length() - 1)
                 : trimmedBaseUrl;
+    }
+
+    private String normalizePath(String rawPath, String defaultPath) {
+        if (rawPath == null || rawPath.isBlank()) {
+            return defaultPath;
+        }
+        String normalizedPath = rawPath.trim();
+        return normalizedPath.startsWith("/") ? normalizedPath : "/" + normalizedPath;
     }
 }

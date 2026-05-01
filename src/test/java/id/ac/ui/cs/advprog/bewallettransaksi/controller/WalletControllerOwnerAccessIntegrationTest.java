@@ -1,7 +1,6 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
@@ -581,12 +580,6 @@ class WalletControllerOwnerAccessIntegrationTest {
     }
 
     private String generateJwtToken(String subject, String role) {
-        return Jwts.builder()
-                .setSubject(subject)
-                .claim("role", role)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 86_400_000L))
-                .signWith(Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
-                .compact();
+        return TestJwtTokenFactory.generateHmac256Token(JWT_SECRET, subject, role);
     }
 }

@@ -4,9 +4,14 @@ import id.ac.ui.cs.advprog.bewallettransaksi.dto.PaymentCallbackRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.stream.Stream;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -22,43 +27,30 @@ class PaymentCallbackProcessorTest {
     @InjectMocks
     private NoOpPaymentCallbackProcessor processor;
 
-    @Test
-    void process_SettlementStatus_ShouldTriggerPaymentSettlementHandling() {
+    @ParameterizedTest
+    @MethodSource("paymentStatusScenarios")
+    void process_StatusMapping_ShouldTriggerExpectedWalletHandling(
+            String orderId,
+            String statusCode,
+            String grossAmount,
+            String transactionStatus,
+            boolean settlementExpected,
+            boolean failureExpected
+    ) {
         PaymentCallbackRequest request = new PaymentCallbackRequest();
-        request.setOrderId("ORDER-1");
-        request.setStatusCode("200");
-        request.setGrossAmount("10000.00");
-        request.setTransactionStatus("settlement");
+        request.setOrderId(orderId);
+        request.setStatusCode(statusCode);
+        request.setGrossAmount(grossAmount);
+        request.setTransactionStatus(transactionStatus);
 
         processor.process(request);
 
-        verify(walletService).handlePaymentSettlement("ORDER-1");
-    }
-
-    @Test
-    void process_DenyStatus_ShouldTriggerPaymentFailureHandling() {
-        PaymentCallbackRequest request = new PaymentCallbackRequest();
-        request.setOrderId("ORDER-2");
-        request.setStatusCode("202");
-        request.setGrossAmount("10000.00");
-        request.setTransactionStatus("deny");
-
-        processor.process(request);
-
-        verify(walletService).handlePaymentFailure("ORDER-2");
-    }
-
-    @Test
-    void process_CaptureStatus_ShouldTriggerPaymentSettlementHandling() {
-        PaymentCallbackRequest request = new PaymentCallbackRequest();
-        request.setOrderId("ORDER-CAPTURE-1");
-        request.setStatusCode("200");
-        request.setGrossAmount("10000.00");
-        request.setTransactionStatus("capture");
-
-        processor.process(request);
-
-        verify(walletService).handlePaymentSettlement("ORDER-CAPTURE-1");
+        if (settlementExpected) {
+            verify(walletService).handlePaymentSettlement(orderId);
+        }
+        if (failureExpected) {
+            verify(walletService).handlePaymentFailure(orderId);
+        }
     }
 
     @Test
@@ -161,5 +153,13 @@ class PaymentCallbackProcessorTest {
         processor.process(second);
 
         verify(walletService, times(1)).handlePaymentSettlement("ORDER-DUP-CASE-1");
+    }
+
+    private static Stream<Arguments> paymentStatusScenarios() {
+        return Stream.of(
+                Arguments.of("ORDER-1", "200", "10000.00", "settlement", true, false),
+                Arguments.of("ORDER-2", "202", "10000.00", "deny", false, true),
+                Arguments.of("ORDER-CAPTURE-1", "200", "10000.00", "capture", true, false)
+        );
     }
 }

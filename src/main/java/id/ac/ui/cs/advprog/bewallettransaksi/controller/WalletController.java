@@ -1,11 +1,11 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
-import java.util.UUID;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Supplier;
-import java.math.BigDecimal;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,19 +13,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.PaymentCallbackRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
-import id.ac.ui.cs.advprog.bewallettransaksi.dto.PaymentCallbackRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletMutationRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
-import id.ac.ui.cs.advprog.bewallettransaksi.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.ConflictException;
+import id.ac.ui.cs.advprog.bewallettransaksi.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
 import jakarta.validation.Valid;
@@ -85,7 +85,7 @@ public class WalletController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<WalletResponse> getWallet(
-            @PathVariable UUID userId,
+            @PathVariable("userId") UUID userId,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         validateReadAccess(authorization, userId);
@@ -95,7 +95,7 @@ public class WalletController {
     @PostMapping
     public ResponseEntity<WalletResponse> createWallet(
             @RequestHeader(value = "Authorization", required = false) String authorization,
-            @RequestParam UUID userId
+            @RequestParam("userId") UUID userId
     ) {
         validateMutationOwnerAccess(authorization, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -189,8 +189,8 @@ public class WalletController {
     @GetMapping("/{userId}/transactions")
     public ResponseEntity<List<TransactionResponse>> getTransactionHistory(
             @RequestHeader(value = "Authorization", required = false) String authorization,
-            @PathVariable UUID userId,
-            @RequestParam(required = false) TransactionStatus status
+            @PathVariable("userId") UUID userId,
+            @RequestParam(value = "status", required = false) TransactionStatus status
     ) {
         validateReadAccess(authorization, userId);
         if (status != null) {
@@ -320,10 +320,14 @@ public class WalletController {
 
     private void requireNumericGrossAmount(String grossAmount) {
         try {
-            new BigDecimal(grossAmount);
+            parseNumericGrossAmount(grossAmount);
         } catch (NumberFormatException ex) {
             throw new IllegalArgumentException(GROSS_AMOUNT_INVALID_NUMBER_MESSAGE);
         }
+    }
+
+    private BigDecimal parseNumericGrossAmount(String grossAmount) {
+        return new BigDecimal(grossAmount);
     }
 
     private void requireNumericStatusCode(String statusCode) {
@@ -392,7 +396,7 @@ public class WalletController {
 
     private void validateOwnerAccess(String authorization, UUID userId) {
         if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, userId)
-                || walletRequestAccessPolicy.isOwnerMismatchToken(authorization)) {
+                || walletRequestAccessPolicy.isOwnerMismatchToken()) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
     }

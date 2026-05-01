@@ -1,16 +1,10 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
-import org.junit.jupiter.api.Test;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 class WalletRequestAccessPolicyTest {
 
@@ -35,7 +29,7 @@ class WalletRequestAccessPolicyTest {
     void isOwnerMismatchToken_ShouldRejectLegacySentinelToken() {
         WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> java.util.Optional.empty());
 
-        assertFalse(policy.isOwnerMismatchToken("Bearer valid-non-admin-other-user"));
+        assertFalse(policy.isOwnerMismatchToken());
     }
 
     @Test
@@ -83,13 +77,7 @@ class WalletRequestAccessPolicyTest {
     }
 
     private String generateJwtToken(String subject, String role) {
-        return Jwts.builder()
-                .setSubject(subject)
-                .claim("role", role)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 86_400_000L))
-                .signWith(Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
-                .compact();
+        return TestJwtTokenFactory.generateHmac256Token(JWT_SECRET, subject, role);
     }
 }
 

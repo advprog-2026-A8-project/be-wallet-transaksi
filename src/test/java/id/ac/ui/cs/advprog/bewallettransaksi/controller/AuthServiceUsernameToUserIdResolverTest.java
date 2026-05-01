@@ -7,8 +7,10 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
@@ -105,10 +107,11 @@ class AuthServiceUsernameToUserIdResolverTest {
     @Test
     void resolve_WhenAuthServiceIsSlow_ShouldFailFastAndReturnEmpty() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        CountDownLatch slowResponseGate = new CountDownLatch(1);
         server.createContext("/internal/users/by-username", exchange -> {
             try {
-                Thread.sleep(3000);
-            } catch (InterruptedException ignored) {
+                slowResponseGate.await(3, TimeUnit.SECONDS);
+            } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
             }
             String response = "{\"userId\":\"44444444-4444-4444-4444-444444444444\"}";

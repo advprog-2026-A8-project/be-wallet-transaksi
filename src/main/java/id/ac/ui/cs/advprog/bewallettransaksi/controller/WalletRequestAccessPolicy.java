@@ -1,14 +1,15 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 
 @Component
 public class WalletRequestAccessPolicy {
@@ -29,7 +30,7 @@ public class WalletRequestAccessPolicy {
         this.usernameToUserIdResolver = usernameToUserIdResolver;
     }
 
-    public boolean isOwnerMismatchToken(String authorization) {
+    public boolean isOwnerMismatchToken() {
         return false;
     }
 
