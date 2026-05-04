@@ -41,6 +41,7 @@ public class WalletServiceImpl implements WalletService {
     private static final String PENDING_PAYMENT_NOT_FOUND_MESSAGE = "Pending payment transaction not found for orderId: ";
     private static final String PENDING_TOPUP_NOT_FOUND_MESSAGE = "Pending topup transaction not found for orderId: ";
     private static final String WALLET_NOT_FOUND_FOR_TOPUP_CALLBACK_MESSAGE = "Wallet not found for topup callback";
+    private static final String TOPUP_ORDER_PREFIX = "TOPUP-";
     private static final Comparator<Transaction> TRANSACTION_CREATED_AT_ORDER =
             Comparator.comparing(
                     Transaction::getCreatedAt,
@@ -286,11 +287,15 @@ public class WalletServiceImpl implements WalletService {
 
     private java.util.Optional<Transaction> findCallbackTransactionByOrderId(String normalizedOrderId) {
         java.util.Optional<Transaction> pendingTopUp = findPendingTopUpByOrderId(normalizedOrderId);
-        if (pendingTopUp.isPresent()) {
+        if (isTopUpOrderId(normalizedOrderId) && pendingTopUp.isPresent()) {
             return pendingTopUp;
         }
         return findPaymentByOrderId(normalizedOrderId)
                 .or(() -> findTopUpByOrderId(normalizedOrderId));
+    }
+
+    private boolean isTopUpOrderId(String orderId) {
+        return orderId != null && orderId.startsWith(TOPUP_ORDER_PREFIX);
     }
 
     private java.util.Optional<Transaction> findPendingTopUpByOrderId(String normalizedOrderId) {
