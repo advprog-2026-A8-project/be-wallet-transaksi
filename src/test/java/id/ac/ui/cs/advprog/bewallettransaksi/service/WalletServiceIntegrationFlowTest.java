@@ -559,6 +559,15 @@ class WalletServiceIntegrationFlowTest {
     }
 
     @Test
+    void handlePaymentFailure_NullOrderId_ShouldThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> walletService.handlePaymentFailure(null)
+        );
+        assertTrue(exception.getMessage().contains("Order ID must not be blank"));
+    }
+
+    @Test
     void handlePaymentSettlement_PendingTopUp_ShouldMarkSuccessAndCreditWalletBalance() {
         UUID userId = UUID.randomUUID();
         WalletResponse walletResponse = walletService.createWallet(userId);
