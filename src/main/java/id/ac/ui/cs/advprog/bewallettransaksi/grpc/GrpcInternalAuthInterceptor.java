@@ -8,6 +8,7 @@ import io.grpc.Status;
 
 public class GrpcInternalAuthInterceptor implements ServerInterceptor {
 
+    private static final String INVALID_TOKEN_MESSAGE = "Invalid internal service token";
     private static final Metadata.Key<String> SERVICE_TOKEN_HEADER =
             Metadata.Key.of("x-service-token", Metadata.ASCII_STRING_MARSHALLER);
 
@@ -24,11 +25,17 @@ public class GrpcInternalAuthInterceptor implements ServerInterceptor {
             ServerCallHandler<ReqT, RespT> next
     ) {
         String actualToken = headers.get(SERVICE_TOKEN_HEADER);
-        if (expectedToken == null || expectedToken.isBlank() || !expectedToken.equals(actualToken)) {
-            call.close(Status.UNAUTHENTICATED.withDescription("Invalid internal service token"), new Metadata());
+        if (!isAuthorized(actualToken)) {
+            call.close(Status.UNAUTHENTICATED.withDescription(INVALID_TOKEN_MESSAGE), new Metadata());
             return new ServerCall.Listener<>() {
             };
         }
         return next.startCall(call, headers);
+    }
+
+    private boolean isAuthorized(String actualToken) {
+        return expectedToken != null
+                && !expectedToken.isBlank()
+                && expectedToken.equals(actualToken);
     }
 }
