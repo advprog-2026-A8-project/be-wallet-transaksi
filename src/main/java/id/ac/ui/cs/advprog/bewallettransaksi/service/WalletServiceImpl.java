@@ -274,7 +274,8 @@ public class WalletServiceImpl implements WalletService {
         if (callbackTransaction.getStatus() == targetStatus) {
             return;
         }
-        if (isOutOfOrderTopUpFailure(callbackTransaction, targetStatus)) {
+        if (isOutOfOrderTopUpFailure(callbackTransaction, targetStatus)
+                || isOutOfOrderTopUpSettlement(callbackTransaction, targetStatus)) {
             return;
         }
         if (callbackTransaction.getStatus() == TransactionStatus.PENDING) {
@@ -315,6 +316,12 @@ public class WalletServiceImpl implements WalletService {
         return callbackTransaction.getType() == TransactionType.TOPUP
                 && callbackTransaction.getStatus() == TransactionStatus.SUCCESS
                 && targetStatus == TransactionStatus.FAILED;
+    }
+
+    private boolean isOutOfOrderTopUpSettlement(Transaction callbackTransaction, TransactionStatus targetStatus) {
+        return callbackTransaction.getType() == TransactionType.TOPUP
+                && callbackTransaction.getStatus() == TransactionStatus.FAILED
+                && targetStatus == TransactionStatus.SUCCESS;
     }
 
     private void transitionPendingTopUp(
