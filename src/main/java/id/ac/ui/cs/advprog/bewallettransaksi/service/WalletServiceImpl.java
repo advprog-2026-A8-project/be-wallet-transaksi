@@ -289,6 +289,10 @@ public class WalletServiceImpl implements WalletService {
         if (isTopUpOrderId(normalizedOrderId)) {
             return findPendingTopUpByOrderId(normalizedOrderId);
         }
+        return findNonTopUpCallbackTransactionByOrderId(normalizedOrderId);
+    }
+
+    private java.util.Optional<Transaction> findNonTopUpCallbackTransactionByOrderId(String normalizedOrderId) {
         return findPaymentByOrderId(normalizedOrderId);
     }
 
