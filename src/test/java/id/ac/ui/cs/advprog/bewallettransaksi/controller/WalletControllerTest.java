@@ -34,6 +34,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -422,11 +423,23 @@ class WalletControllerTest {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
         request.setAmount(BigDecimal.valueOf(50000.00));
+
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-dup"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentToken").exists())
+                .andExpect(jsonPath("$.redirectUrl").exists())
+                .andExpect(jsonPath("$.orderId").exists());
+
+        clearInvocations(walletService);
         when(idempotencyKeyGuard.register("idem-initiate-dup")).thenReturn(false);
 
         mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-dup"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("Duplicate idempotency key"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentToken").exists())
+                .andExpect(jsonPath("$.redirectUrl").exists())
+                .andExpect(jsonPath("$.orderId").exists());
+
+        verify(walletService, never()).initiateTopUp(any(TopUpRequest.class));
     }
 
     @Test
