@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.springframework.http.HttpStatus;
@@ -57,6 +58,7 @@ public class WalletController {
     private final IdempotencyKeyGuard idempotencyKeyGuard;
     private final MidtransCallbackSignatureVerifier callbackSignatureVerifier;
     private final PaymentCallbackProcessor paymentCallbackProcessor;
+    private final Map<String, Map<String, String>> cachedTopUpInitiateResponses = new ConcurrentHashMap<>();
 
     private record NormalizedCallbackFields(
             String orderId,
@@ -115,10 +117,16 @@ public class WalletController {
             @Valid @RequestBody TopUpRequest request
     ) {
         validateIdempotencyKey(idempotencyKey);
+        Map<String, String> cachedResponse = cachedTopUpInitiateResponses.get(idempotencyKey);
+        if (cachedResponse != null) {
+            return ResponseEntity.ok(cachedResponse);
+        }
 
         return withIdempotencyKey(idempotencyKey, () -> {
             validateTopUpAccess(authorization, request.getUserId());
-            return ResponseEntity.ok(walletService.initiateTopUp(request));
+            Map<String, String> response = walletService.initiateTopUp(request);
+            cachedTopUpInitiateResponses.putIfAbsent(idempotencyKey, response);
+            return ResponseEntity.ok(cachedTopUpInitiateResponses.get(idempotencyKey));
         });
     }
 
