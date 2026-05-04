@@ -39,6 +39,7 @@ public class WalletServiceImpl implements WalletService {
     private static final String STATUS_REQUIRED_MESSAGE = "Status must not be null";
     private static final String WALLET_ALREADY_EXISTS_MESSAGE = "Wallet already exists for user";
     private static final String PENDING_PAYMENT_NOT_FOUND_MESSAGE = "Pending payment transaction not found for orderId: ";
+    private static final String PENDING_TOPUP_NOT_FOUND_MESSAGE = "Pending topup transaction not found for orderId: ";
     private static final Comparator<Transaction> TRANSACTION_CREATED_AT_ORDER =
             Comparator.comparing(
                     Transaction::getCreatedAt,
@@ -220,6 +221,13 @@ public class WalletServiceImpl implements WalletService {
         return newestPending.or(() -> findLatestPaymentByCreatedAt(matchingPayments));
     }
 
+    private java.util.Optional<Transaction> findTopUpByOrderId(String orderId) {
+        return transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> orderId.equals(transaction.getDescription()))
+                .max(TRANSACTION_CREATED_AT_NEWEST);
+    }
+
     private List<Transaction> findMatchingPaymentTransactions(String orderId) {
         return transactionRepository.findAll().stream()
                 .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
@@ -259,18 +267,48 @@ public class WalletServiceImpl implements WalletService {
             String invalidTransitionPrefix
     ) {
         String normalizedOrderId = normalizeOrderId(orderId);
-        Transaction paymentTransaction = findPaymentByOrderId(normalizedOrderId)
+        Transaction callbackTransaction = findPaymentByOrderId(normalizedOrderId)
+                .or(() -> findTopUpByOrderId(normalizedOrderId))
                 .orElseThrow(() -> new IllegalStateException(PENDING_PAYMENT_NOT_FOUND_MESSAGE + normalizedOrderId));
 
-        if (paymentTransaction.getStatus() == targetStatus) {
+        if (callbackTransaction.getStatus() == targetStatus) {
             return;
         }
-        if (paymentTransaction.getStatus() == TransactionStatus.PENDING) {
-            updateTransactionStatus(paymentTransaction, targetStatus);
-            publishOrderPaymentStatusUpdate(normalizedOrderId, targetStatus);
+        if (callbackTransaction.getStatus() == TransactionStatus.PENDING) {
+            applyPendingCallbackTransition(callbackTransaction, targetStatus, normalizedOrderId);
             return;
         }
-        throw new IllegalStateException(invalidTransitionPrefix + paymentTransaction.getStatus());
+        throw new IllegalStateException(invalidTransitionPrefix + callbackTransaction.getStatus());
+    }
+
+    private void applyPendingCallbackTransition(
+            Transaction callbackTransaction,
+            TransactionStatus targetStatus,
+            String normalizedOrderId
+    ) {
+        if (callbackTransaction.getType() == TransactionType.TOPUP) {
+            transitionPendingTopUp(callbackTransaction, targetStatus, normalizedOrderId);
+            return;
+        }
+        updateTransactionStatus(callbackTransaction, targetStatus);
+        publishOrderPaymentStatusUpdate(normalizedOrderId, targetStatus);
+    }
+
+    private void transitionPendingTopUp(
+            Transaction topUpTransaction,
+            TransactionStatus targetStatus,
+            String normalizedOrderId
+    ) {
+        if (topUpTransaction.getStatus() != TransactionStatus.PENDING) {
+            throw new IllegalStateException(PENDING_TOPUP_NOT_FOUND_MESSAGE + normalizedOrderId);
+        }
+        if (targetStatus == TransactionStatus.SUCCESS) {
+            Wallet wallet = walletRepository.findById(topUpTransaction.getWalletId())
+                    .orElseThrow(() -> new IllegalStateException("Wallet not found for topup callback"));
+            wallet.setBalance(wallet.getBalance().add(topUpTransaction.getAmount()));
+            walletRepository.save(wallet);
+        }
+        updateTransactionStatus(topUpTransaction, targetStatus);
     }
 
     private void publishOrderPaymentStatusUpdate(String orderId, TransactionStatus targetStatus) {
