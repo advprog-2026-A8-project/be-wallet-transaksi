@@ -236,6 +236,39 @@ class WalletServiceIntegrationFlowTest {
         assertEquals(1, failedCount);
     }
 
+    @Test
+    void handlePaymentSettlement_PendingTopUp_ShouldMarkSuccessAndCreditWalletBalance() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String topUpOrderId = "TOPUP-SETTLE-001";
+        BigDecimal topUpAmount = new BigDecimal("125000.00");
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+
+        Transaction pendingTopUp = new Transaction();
+        pendingTopUp.setWalletId(wallet.getWalletId());
+        pendingTopUp.setAmount(topUpAmount);
+        pendingTopUp.setType(TransactionType.TOPUP);
+        pendingTopUp.setStatus(TransactionStatus.PENDING);
+        pendingTopUp.setDescription(topUpOrderId);
+        pendingTopUp.setCreatedAt(LocalDateTime.of(2026, 5, 1, 10, 0));
+        pendingTopUp.setUpdatedAt(LocalDateTime.of(2026, 5, 1, 10, 0));
+        transactionRepository.save(pendingTopUp);
+
+        walletService.handlePaymentSettlement(topUpOrderId);
+
+        Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
+        assertEquals(new BigDecimal("125000.00"), persistedWallet.getBalance());
+
+        Transaction persistedTopUp = transactionRepository.findAll().stream()
+                .filter(transaction -> topUpOrderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(TransactionType.TOPUP, persistedTopUp.getType());
+        assertEquals(TransactionStatus.SUCCESS, persistedTopUp.getStatus());
+    }
+
     private void pauseForDistinctPersistTimestamp() {
         LockSupport.parkNanos(5_000_000L);
     }
