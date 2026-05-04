@@ -197,6 +197,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional(noRollbackFor = IllegalStateException.class)
     public WalletResponse deductBalanceForOrder(UUID userId, String orderId, BigDecimal amount, String idempotencyKey) {
         validateMutationInput(userId, amount, orderId);
+        validateRequired(idempotencyKey, "Idempotency key must not be null");
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         if (hasSuccessfulPaymentForOrder(orderId)) {
             return toResponse(wallet);
@@ -210,6 +211,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse refundBalanceForOrder(UUID userId, String orderId, BigDecimal amount, String idempotencyKey) {
         validateMutationInput(userId, amount, orderId);
+        validateRequired(idempotencyKey, "Idempotency key must not be null");
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         requireSuccessfulPaymentForOrder(orderId);
         if (hasSuccessfulRefundForOrder(orderId)) {
@@ -315,15 +317,16 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private List<Transaction> findMatchingPaymentTransactions(String orderId) {
-        return transactionRepository.findAll().stream()
-                .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
-                .filter(transaction -> orderId.equals(transaction.getDescription()))
-                .toList();
+        return findTransactionsByTypeAndOrderId(TransactionType.PAYMENT, orderId);
     }
 
     private List<Transaction> findMatchingTopUpTransactions(String orderId) {
+        return findTransactionsByTypeAndOrderId(TransactionType.TOPUP, orderId);
+    }
+
+    private List<Transaction> findTransactionsByTypeAndOrderId(TransactionType type, String orderId) {
         return transactionRepository.findAll().stream()
-                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> transaction.getType() == type)
                 .filter(transaction -> orderId.equals(transaction.getDescription()))
                 .toList();
     }
@@ -585,9 +588,7 @@ public class WalletServiceImpl implements WalletService {
 
     private boolean hasSuccessfulRefundForOrder(String orderId) {
         validateOrderId(orderId);
-        return transactionRepository.findAll().stream()
-                .filter(transaction -> transaction.getType() == TransactionType.REFUND)
-                .filter(transaction -> orderId.equals(transaction.getDescription()))
+        return findTransactionsByTypeAndOrderId(TransactionType.REFUND, orderId).stream()
                 .anyMatch(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS);
     }
 
