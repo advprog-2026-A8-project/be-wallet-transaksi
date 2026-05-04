@@ -270,7 +270,7 @@ public class WalletServiceImpl implements WalletService {
     ) {
         String normalizedOrderId = normalizeOrderId(orderId);
         Transaction callbackTransaction = findCallbackTransactionByOrderId(normalizedOrderId)
-                .orElseThrow(() -> new IllegalStateException(PENDING_PAYMENT_NOT_FOUND_MESSAGE + normalizedOrderId));
+                .orElseThrow(() -> new IllegalStateException(buildPendingCallbackNotFoundMessage(normalizedOrderId)));
 
         if (callbackTransaction.getStatus() == targetStatus) {
             return;
@@ -287,6 +287,12 @@ public class WalletServiceImpl implements WalletService {
 
     private java.util.Optional<Transaction> findCallbackTransactionByOrderId(String normalizedOrderId) {
         java.util.Optional<Transaction> pendingTopUp = findPendingTopUpByOrderId(normalizedOrderId);
+        if (isTopUpOrderId(normalizedOrderId)) {
+            if (pendingTopUp.isPresent()) {
+                return pendingTopUp;
+            }
+            return java.util.Optional.empty();
+        }
         if (shouldPrioritizePendingTopUp(normalizedOrderId, pendingTopUp)) {
             return pendingTopUp;
         }
@@ -303,6 +309,13 @@ public class WalletServiceImpl implements WalletService {
 
     private boolean isTopUpOrderId(String orderId) {
         return orderId != null && orderId.startsWith(TOPUP_ORDER_PREFIX);
+    }
+
+    private String buildPendingCallbackNotFoundMessage(String orderId) {
+        if (isTopUpOrderId(orderId)) {
+            return PENDING_TOPUP_NOT_FOUND_MESSAGE + orderId;
+        }
+        return PENDING_PAYMENT_NOT_FOUND_MESSAGE + orderId;
     }
 
     private java.util.Optional<Transaction> findPendingTopUpByOrderId(String normalizedOrderId) {
