@@ -21,7 +21,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -116,6 +118,14 @@ class WalletControllerTest {
         when(walletRequestAccessPolicy.isJwtBearerToken("Bearer invalid.jwt.token")).thenReturn(true);
         when(idempotencyKeyGuard.register(anyString())).thenReturn(true);
         when(callbackSignatureVerifier.isValid(any(), anyString())).thenReturn(true);
+        when(walletService.initiateTopUp(any(TopUpRequest.class))).thenAnswer(invocation -> {
+            TopUpRequest request = invocation.getArgument(0);
+            Map<String, String> response = new HashMap<>();
+            response.put("paymentToken", "midtrans-snap-" + UUID.randomUUID());
+            response.put("redirectUrl", "https://snap.midtrans.com/checkout/TOPUP-" + UUID.randomUUID());
+            response.put("orderId", "TOPUP-" + request.getUserId() + "-" + System.currentTimeMillis());
+            return response;
+        });
         stubInvalidSignature("invalid-signature");
         stubInvalidSignature("tampered-signature");
         stubInvalidSignature("tampered-status-signature");
