@@ -1,10 +1,7 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.grpc;
 
-import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.CheckBalanceRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.CheckBalanceResult;
-import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.DeductBalanceRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.OrderWalletContractService;
-import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.RefundBalanceRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.WalletMutationResult;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -28,7 +25,7 @@ public class WalletContractGrpcService extends WalletContractServiceGrpc.WalletC
             StreamObserver<CheckBalanceResponse> responseObserver
     ) {
         try {
-            CheckBalanceResult result = contractService.checkBalance(new CheckBalanceRequest(
+            CheckBalanceResult result = contractService.checkBalance(new id.ac.ui.cs.advprog.bewallettransaksi.service.contract.CheckBalanceRequest(
                     parseUserId(request.getUserId()),
                     parseAmount(request.getAmount())
             ));
@@ -37,8 +34,8 @@ public class WalletContractGrpcService extends WalletContractServiceGrpc.WalletC
                     .setCurrentBalance(result.currentBalance().toPlainString())
                     .build());
             responseObserver.onCompleted();
-        } catch (IllegalArgumentException ex) {
-            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(ex.getMessage()).asRuntimeException());
+        } catch (RuntimeException ex) {
+            failInvalidArgument(responseObserver, ex);
         }
     }
 
@@ -47,7 +44,7 @@ public class WalletContractGrpcService extends WalletContractServiceGrpc.WalletC
             id.ac.ui.cs.advprog.bewallettransaksi.grpc.DeductBalanceRequest request,
             StreamObserver<WalletMutationResponse> responseObserver
     ) {
-        processMutation(() -> contractService.deductBalance(new DeductBalanceRequest(
+        processMutation(() -> contractService.deductBalance(new id.ac.ui.cs.advprog.bewallettransaksi.service.contract.DeductBalanceRequest(
                 parseUserId(request.getUserId()),
                 request.getOrderId(),
                 parseAmount(request.getAmount()),
@@ -60,7 +57,7 @@ public class WalletContractGrpcService extends WalletContractServiceGrpc.WalletC
             id.ac.ui.cs.advprog.bewallettransaksi.grpc.RefundBalanceRequest request,
             StreamObserver<WalletMutationResponse> responseObserver
     ) {
-        processMutation(() -> contractService.refundBalance(new RefundBalanceRequest(
+        processMutation(() -> contractService.refundBalance(new id.ac.ui.cs.advprog.bewallettransaksi.service.contract.RefundBalanceRequest(
                 parseUserId(request.getUserId()),
                 request.getOrderId(),
                 parseAmount(request.getAmount()),
@@ -74,16 +71,10 @@ public class WalletContractGrpcService extends WalletContractServiceGrpc.WalletC
     ) {
         try {
             WalletMutationResult result = supplier.get();
-            WalletMutationResponse.Builder response = WalletMutationResponse.newBuilder()
-                    .setSuccess(result.success())
-                    .setErrorCode(defaultString(result.errorCode()));
-            if (result.updatedBalance() != null) {
-                response.setUpdatedBalance(result.updatedBalance().toPlainString());
-            }
-            responseObserver.onNext(response.build());
+            responseObserver.onNext(toMutationResponse(result));
             responseObserver.onCompleted();
-        } catch (IllegalArgumentException ex) {
-            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(ex.getMessage()).asRuntimeException());
+        } catch (RuntimeException ex) {
+            failInvalidArgument(responseObserver, ex);
         }
     }
 
@@ -97,6 +88,20 @@ public class WalletContractGrpcService extends WalletContractServiceGrpc.WalletC
 
     private String defaultString(String value) {
         return value == null ? "" : value;
+    }
+
+    private WalletMutationResponse toMutationResponse(WalletMutationResult result) {
+        WalletMutationResponse.Builder response = WalletMutationResponse.newBuilder()
+                .setSuccess(result.success())
+                .setErrorCode(defaultString(result.errorCode()));
+        if (result.updatedBalance() != null) {
+            response.setUpdatedBalance(result.updatedBalance().toPlainString());
+        }
+        return response.build();
+    }
+
+    private <T> void failInvalidArgument(StreamObserver<T> responseObserver, RuntimeException ex) {
+        responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(ex.getMessage()).asRuntimeException());
     }
 
     @FunctionalInterface
