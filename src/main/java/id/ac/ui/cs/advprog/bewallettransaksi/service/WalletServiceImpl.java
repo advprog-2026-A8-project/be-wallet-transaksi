@@ -40,6 +40,7 @@ public class WalletServiceImpl implements WalletService {
     private static final String WALLET_ALREADY_EXISTS_MESSAGE = "Wallet already exists for user";
     private static final String PENDING_PAYMENT_NOT_FOUND_MESSAGE = "Pending payment transaction not found for orderId: ";
     private static final String PENDING_TOPUP_NOT_FOUND_MESSAGE = "Pending topup transaction not found for orderId: ";
+    private static final String WALLET_NOT_FOUND_FOR_TOPUP_CALLBACK_MESSAGE = "Wallet not found for topup callback";
     private static final Comparator<Transaction> TRANSACTION_CREATED_AT_ORDER =
             Comparator.comparing(
                     Transaction::getCreatedAt,
@@ -267,8 +268,7 @@ public class WalletServiceImpl implements WalletService {
             String invalidTransitionPrefix
     ) {
         String normalizedOrderId = normalizeOrderId(orderId);
-        Transaction callbackTransaction = findPaymentByOrderId(normalizedOrderId)
-                .or(() -> findTopUpByOrderId(normalizedOrderId))
+        Transaction callbackTransaction = findCallbackTransactionByOrderId(normalizedOrderId)
                 .orElseThrow(() -> new IllegalStateException(PENDING_PAYMENT_NOT_FOUND_MESSAGE + normalizedOrderId));
 
         if (callbackTransaction.getStatus() == targetStatus) {
@@ -279,6 +279,11 @@ public class WalletServiceImpl implements WalletService {
             return;
         }
         throw new IllegalStateException(invalidTransitionPrefix + callbackTransaction.getStatus());
+    }
+
+    private java.util.Optional<Transaction> findCallbackTransactionByOrderId(String normalizedOrderId) {
+        return findPaymentByOrderId(normalizedOrderId)
+                .or(() -> findTopUpByOrderId(normalizedOrderId));
     }
 
     private void applyPendingCallbackTransition(
@@ -304,7 +309,7 @@ public class WalletServiceImpl implements WalletService {
         }
         if (targetStatus == TransactionStatus.SUCCESS) {
             Wallet wallet = walletRepository.findById(topUpTransaction.getWalletId())
-                    .orElseThrow(() -> new IllegalStateException("Wallet not found for topup callback"));
+                    .orElseThrow(() -> new IllegalStateException(WALLET_NOT_FOUND_FOR_TOPUP_CALLBACK_MESSAGE));
             wallet.setBalance(wallet.getBalance().add(topUpTransaction.getAmount()));
             walletRepository.save(wallet);
         }
