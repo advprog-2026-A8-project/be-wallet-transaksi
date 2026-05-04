@@ -591,6 +591,43 @@ class WalletServiceIntegrationFlowTest {
         assertEquals(TransactionStatus.PENDING, persistedPayment.getStatus());
     }
 
+    @Test
+    void handlePaymentSettlement_NonTopUpOrderIdWithOnlyPendingTopUp_ShouldNotSettleTopUp() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String nonTopUpOrderId = "ORDER-NON-TOPUP-ONLY-TOPUP-001";
+        BigDecimal topUpAmount = new BigDecimal("67000.00");
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+
+        Transaction pendingTopUp = new Transaction();
+        pendingTopUp.setWalletId(wallet.getWalletId());
+        pendingTopUp.setAmount(topUpAmount);
+        pendingTopUp.setType(TransactionType.TOPUP);
+        pendingTopUp.setStatus(TransactionStatus.PENDING);
+        pendingTopUp.setDescription(nonTopUpOrderId);
+        pendingTopUp.setCreatedAt(LocalDateTime.of(2026, 5, 1, 19, 0));
+        pendingTopUp.setUpdatedAt(LocalDateTime.of(2026, 5, 1, 19, 0));
+        transactionRepository.save(pendingTopUp);
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> walletService.handlePaymentSettlement(nonTopUpOrderId)
+        );
+        assertEquals("Pending payment transaction not found for orderId: " + nonTopUpOrderId, exception.getMessage());
+
+        Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
+        assertEquals(new BigDecimal("0.00"), persistedWallet.getBalance());
+
+        Transaction persistedTopUp = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> nonTopUpOrderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(TransactionStatus.PENDING, persistedTopUp.getStatus());
+    }
+
     private void pauseForDistinctPersistTimestamp() {
         LockSupport.parkNanos(5_000_000L);
     }
