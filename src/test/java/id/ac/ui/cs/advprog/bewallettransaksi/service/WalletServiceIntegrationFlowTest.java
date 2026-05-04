@@ -670,6 +670,17 @@ class WalletServiceIntegrationFlowTest {
     }
 
     @Test
+    void handlePaymentSettlement_UnknownOrderId_ShouldThrowPaymentNotFoundMessage() {
+        String unknownOrderId = "ORDER-UNKNOWN-001";
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> walletService.handlePaymentSettlement(unknownOrderId)
+        );
+        assertEquals("Payment transaction not found for orderId: " + unknownOrderId, exception.getMessage());
+    }
+
+    @Test
     void handlePaymentSettlement_BlankOrderId_ShouldThrowIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
