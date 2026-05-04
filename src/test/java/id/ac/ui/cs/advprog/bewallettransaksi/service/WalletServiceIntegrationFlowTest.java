@@ -294,6 +294,58 @@ class WalletServiceIntegrationFlowTest {
     }
 
     @Test
+    void handlePaymentFailure_WhenTopUpAlreadySucceeded_ShouldNotDemoteNewerDuplicatePendingTopUp() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String topUpOrderId = "TOPUP-DUPLICATE-SUCCESS-FAIL-001";
+        BigDecimal topUpAmount = new BigDecimal("101000.00");
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+        wallet.setBalance(topUpAmount);
+        walletRepository.save(wallet);
+
+        Transaction alreadySucceededTopUp = new Transaction();
+        alreadySucceededTopUp.setWalletId(wallet.getWalletId());
+        alreadySucceededTopUp.setAmount(topUpAmount);
+        alreadySucceededTopUp.setType(TransactionType.TOPUP);
+        alreadySucceededTopUp.setStatus(TransactionStatus.SUCCESS);
+        alreadySucceededTopUp.setDescription(topUpOrderId);
+        alreadySucceededTopUp.setCreatedAt(LocalDateTime.of(2026, 5, 2, 11, 0));
+        alreadySucceededTopUp.setUpdatedAt(LocalDateTime.of(2026, 5, 2, 11, 0));
+        transactionRepository.save(alreadySucceededTopUp);
+        pauseForDistinctPersistTimestamp();
+
+        Transaction duplicatePendingTopUp = new Transaction();
+        duplicatePendingTopUp.setWalletId(wallet.getWalletId());
+        duplicatePendingTopUp.setAmount(topUpAmount);
+        duplicatePendingTopUp.setType(TransactionType.TOPUP);
+        duplicatePendingTopUp.setStatus(TransactionStatus.PENDING);
+        duplicatePendingTopUp.setDescription(topUpOrderId);
+        duplicatePendingTopUp.setCreatedAt(LocalDateTime.of(2026, 5, 2, 11, 5));
+        duplicatePendingTopUp.setUpdatedAt(LocalDateTime.of(2026, 5, 2, 11, 5));
+        transactionRepository.save(duplicatePendingTopUp);
+
+        assertDoesNotThrow(() -> walletService.handlePaymentFailure(topUpOrderId));
+
+        Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
+        assertEquals(topUpAmount, persistedWallet.getBalance());
+
+        long successCount = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> topUpOrderId.equals(transaction.getDescription()))
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS)
+                .count();
+        long pendingCount = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> topUpOrderId.equals(transaction.getDescription()))
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.PENDING)
+                .count();
+        assertEquals(1, successCount);
+        assertEquals(1, pendingCount);
+    }
+
+    @Test
     void handlePaymentFailure_WhenLatestDuplicateIsFailed_ShouldNotProcessOlderPending() {
         UUID userId = UUID.randomUUID();
         WalletResponse walletResponse = walletService.createWallet(userId);
