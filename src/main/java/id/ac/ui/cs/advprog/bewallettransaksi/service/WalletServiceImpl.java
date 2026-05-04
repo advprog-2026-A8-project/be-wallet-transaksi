@@ -330,6 +330,9 @@ public class WalletServiceImpl implements WalletService {
         if (isOutOfOrderTopUpTerminalTransition(callbackTransaction, targetStatus)) {
             return;
         }
+        if (isOutOfOrderPaymentTerminalTransition(callbackTransaction, targetStatus)) {
+            return;
+        }
         if (callbackTransaction.getStatus() == TransactionStatus.PENDING) {
             applyPendingCallbackTransition(callbackTransaction, targetStatus, normalizedOrderId);
             return;
@@ -382,6 +385,19 @@ public class WalletServiceImpl implements WalletService {
         return (callbackTransaction.getStatus() == TransactionStatus.SUCCESS && targetStatus == TransactionStatus.FAILED)
                 || (callbackTransaction.getStatus() == TransactionStatus.FAILED
                 && targetStatus == TransactionStatus.SUCCESS);
+    }
+
+    private boolean isOutOfOrderPaymentTerminalTransition(
+            Transaction callbackTransaction,
+            TransactionStatus targetStatus
+    ) {
+        if (callbackTransaction.getType() != TransactionType.PAYMENT) {
+            return false;
+        }
+        if (callbackTransaction.getStatus() == TransactionStatus.PENDING) {
+            return false;
+        }
+        return callbackTransaction.getStatus() != targetStatus;
     }
 
     private void transitionPendingTopUp(
