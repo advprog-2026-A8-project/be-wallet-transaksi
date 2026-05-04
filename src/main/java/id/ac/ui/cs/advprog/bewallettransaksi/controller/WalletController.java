@@ -297,7 +297,13 @@ public class WalletController {
     }
 
     private void validateCallbackSignature(PaymentCallbackRequest payload, String signatureKey) {
-        if (!callbackSignatureVerifier.isValid(payload, signatureKey)) {
+        boolean validSignature;
+        try {
+            validSignature = callbackSignatureVerifier.isValid(payload, signatureKey);
+        } catch (RuntimeException ex) {
+            throw new UnauthorizedException(INVALID_CALLBACK_SIGNATURE_MESSAGE);
+        }
+        if (!validSignature) {
             throw new UnauthorizedException(INVALID_CALLBACK_SIGNATURE_MESSAGE);
         }
     }
