@@ -39,6 +39,9 @@ class WalletServiceStrategyIntegrationTest {
     @Mock
     private OrderPaymentStatusPublisher orderPaymentStatusPublisher;
 
+    @Mock
+    private PaymentGatewayClient paymentGatewayClient;
+
     @InjectMocks
     private WalletServiceImpl walletService;
 

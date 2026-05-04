@@ -46,11 +46,6 @@ public class WalletServiceImpl implements WalletService {
     private static final String TOPUP_NOT_FOUND_MESSAGE = "Topup transaction not found for orderId: ";
     private static final String WALLET_NOT_FOUND_FOR_TOPUP_CALLBACK_MESSAGE = "Wallet not found for topup callback";
     private static final String TOPUP_ORDER_PREFIX = "TOPUP-";
-    private static final String INITIATE_TOKEN_PREFIX = "midtrans-snap-";
-    private static final String INITIATE_REDIRECT_BASE = "https://snap.midtrans.com/checkout/";
-    private static final String INITIATE_PAYMENT_TOKEN_KEY = "paymentToken";
-    private static final String INITIATE_REDIRECT_URL_KEY = "redirectUrl";
-    private static final String INITIATE_ORDER_ID_KEY = "orderId";
     private static final Comparator<Transaction> TRANSACTION_CREATED_AT_ORDER =
             Comparator.comparing(
                     Transaction::getCreatedAt,
@@ -68,11 +63,13 @@ public class WalletServiceImpl implements WalletService {
     private final TransactionRepository transactionRepository;
     private final WalletMutationStrategyResolver strategyResolver;
     private final OrderPaymentStatusPublisher orderPaymentStatusPublisher;
+    private final PaymentGatewayClient paymentGatewayClient;
 
     public WalletServiceImpl(WalletRepository walletRepository,
                              TransactionRepository transactionRepository,
                              WalletMutationStrategyResolver strategyResolver,
-                             OrderPaymentStatusPublisher orderPaymentStatusPublisher) {
+                             OrderPaymentStatusPublisher orderPaymentStatusPublisher,
+                             PaymentGatewayClient paymentGatewayClient) {
         this.walletRepository = requireNonNullDependency(walletRepository, "WalletRepository");
         this.transactionRepository = requireNonNullDependency(transactionRepository, "TransactionRepository");
         this.strategyResolver = requireNonNullDependency(strategyResolver, "WalletMutationStrategyResolver");
@@ -80,6 +77,7 @@ public class WalletServiceImpl implements WalletService {
                 orderPaymentStatusPublisher,
                 "OrderPaymentStatusPublisher"
         );
+        this.paymentGatewayClient = requireNonNullDependency(paymentGatewayClient, "PaymentGatewayClient");
     }
 
     private <T> T requireNonNullDependency(T dependency, String dependencyName) {
@@ -129,7 +127,7 @@ public class WalletServiceImpl implements WalletService {
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(request.getUserId());
         String orderId = generateTopUpOrderId();
         persistPendingTopUpTransaction(wallet.getWalletId(), request.getAmount(), orderId);
-        return buildInitiateTopUpResponse(orderId);
+        return buildInitiateTopUpResponse(request, orderId);
     }
 
     private String generateTopUpOrderId() {
@@ -141,12 +139,8 @@ public class WalletServiceImpl implements WalletService {
         transactionRepository.save(pendingTopUp);
     }
 
-    private Map<String, String> buildInitiateTopUpResponse(String orderId) {
-        return Map.of(
-                INITIATE_PAYMENT_TOKEN_KEY, INITIATE_TOKEN_PREFIX + UUID.randomUUID(),
-                INITIATE_REDIRECT_URL_KEY, INITIATE_REDIRECT_BASE + orderId,
-                INITIATE_ORDER_ID_KEY, orderId
-        );
+    private Map<String, String> buildInitiateTopUpResponse(TopUpRequest request, String orderId) {
+        return paymentGatewayClient.createTopUpInstruction(request.getUserId(), request.getAmount(), orderId);
     }
 
     @Override

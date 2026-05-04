@@ -48,6 +48,9 @@ class WalletServiceCoreTest {
     @Mock
     private OrderPaymentStatusPublisher orderPaymentStatusPublisher;
 
+    @Mock
+    private PaymentGatewayClient paymentGatewayClient;
+
     @Spy
     private WalletMutationStrategyResolver strategyResolver = new WalletMutationStrategyResolver();
 
@@ -248,24 +251,32 @@ class WalletServiceCoreTest {
     @Test
     void constructor_NullOrderPaymentStatusPublisher_ShouldThrowNullPointerException() {
         assertThrows(
-                NullPointerException.class,
-                () -> new WalletServiceImpl(walletRepository, transactionRepository, strategyResolver, null)
+            NullPointerException.class,
+                () -> new WalletServiceImpl(walletRepository, transactionRepository, strategyResolver, null, paymentGatewayClient)
         );
     }
 
     @Test
     void constructor_NullWalletRepository_ShouldThrowNullPointerException() {
         assertThrows(
-                NullPointerException.class,
-                () -> new WalletServiceImpl(null, transactionRepository, strategyResolver, orderPaymentStatusPublisher)
+            NullPointerException.class,
+                () -> new WalletServiceImpl(null, transactionRepository, strategyResolver, orderPaymentStatusPublisher, paymentGatewayClient)
         );
     }
 
     @Test
     void constructor_NullTransactionRepository_ShouldThrowNullPointerException() {
         assertThrows(
+            NullPointerException.class,
+                () -> new WalletServiceImpl(walletRepository, null, strategyResolver, orderPaymentStatusPublisher, paymentGatewayClient)
+        );
+    }
+
+    @Test
+    void constructor_NullPaymentGatewayClient_ShouldThrowNullPointerException() {
+        assertThrows(
                 NullPointerException.class,
-                () -> new WalletServiceImpl(walletRepository, null, strategyResolver, orderPaymentStatusPublisher)
+                () -> new WalletServiceImpl(walletRepository, transactionRepository, strategyResolver, orderPaymentStatusPublisher, null)
         );
     }
 }
