@@ -274,6 +274,9 @@ public class WalletServiceImpl implements WalletService {
         if (callbackTransaction.getStatus() == targetStatus) {
             return;
         }
+        if (isTopUpSuccessThenFailureNoOp(callbackTransaction, targetStatus)) {
+            return;
+        }
         if (callbackTransaction.getStatus() == TransactionStatus.PENDING) {
             applyPendingCallbackTransition(callbackTransaction, targetStatus, normalizedOrderId);
             return;
@@ -306,6 +309,12 @@ public class WalletServiceImpl implements WalletService {
         }
         updateTransactionStatus(callbackTransaction, targetStatus);
         publishOrderPaymentStatusUpdate(normalizedOrderId, targetStatus);
+    }
+
+    private boolean isTopUpSuccessThenFailureNoOp(Transaction callbackTransaction, TransactionStatus targetStatus) {
+        return callbackTransaction.getType() == TransactionType.TOPUP
+                && callbackTransaction.getStatus() == TransactionStatus.SUCCESS
+                && targetStatus == TransactionStatus.FAILED;
     }
 
     private void transitionPendingTopUp(
