@@ -703,6 +703,17 @@ class WalletServiceIntegrationFlowTest {
     }
 
     @Test
+    void handlePaymentFailure_UnknownTopUpOrderId_ShouldThrowTopUpNotFoundMessage() {
+        String unknownTopUpOrderId = "TOPUP-UNKNOWN-002";
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> walletService.handlePaymentFailure(unknownTopUpOrderId)
+        );
+        assertEquals("Topup transaction not found for orderId: " + unknownTopUpOrderId, exception.getMessage());
+    }
+
+    @Test
     void handlePaymentSettlement_BlankOrderId_ShouldThrowIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
