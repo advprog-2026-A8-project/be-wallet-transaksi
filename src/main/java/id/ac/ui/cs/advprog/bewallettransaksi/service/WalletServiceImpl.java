@@ -240,7 +240,10 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private java.util.Optional<Transaction> findTopUpForIdempotentSettlement(List<Transaction> matchingTopUps) {
-        return findLatestTopUpByStatus(matchingTopUps, TransactionStatus.SUCCESS);
+        return matchingTopUps.stream()
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS
+                        || transaction.getStatus() == TransactionStatus.FAILED)
+                .max(TRANSACTION_CREATED_AT_NEWEST);
     }
 
     private List<Transaction> findMatchingPaymentTransactions(String orderId) {
