@@ -125,15 +125,18 @@ public class WalletServiceImpl implements WalletService {
         validateUserId(request.getUserId());
         validateAmount(request.getAmount());
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(request.getUserId());
-        String orderId = TOPUP_ORDER_PREFIX + UUID.randomUUID();
-        Transaction pendingTopUp = createTransaction(
-                wallet.getWalletId(),
-                request.getAmount(),
-                TransactionType.TOPUP,
-                orderId
-        );
-        transactionRepository.save(pendingTopUp);
+        String orderId = generateTopUpOrderId();
+        persistPendingTopUpTransaction(wallet.getWalletId(), request.getAmount(), orderId);
         return buildInitiateTopUpResponse(orderId);
+    }
+
+    private String generateTopUpOrderId() {
+        return TOPUP_ORDER_PREFIX + UUID.randomUUID();
+    }
+
+    private void persistPendingTopUpTransaction(UUID walletId, BigDecimal amount, String orderId) {
+        Transaction pendingTopUp = createTransaction(walletId, amount, TransactionType.TOPUP, orderId);
+        transactionRepository.save(pendingTopUp);
     }
 
     private Map<String, String> buildInitiateTopUpResponse(String orderId) {
