@@ -48,9 +48,6 @@ public class WalletController {
     private static final String GROSS_AMOUNT_INVALID_NUMBER_MESSAGE = "gross_amount must be a valid number";
     private static final String STATUS_CODE_INVALID_NUMBER_MESSAGE = "status_code must be numeric";
     private static final String STATUS_CODE_UNSUPPORTED_MESSAGE_PREFIX = "Unsupported callback status_code: ";
-    private static final String SNAP_TOKEN_PREFIX = "snap-token-";
-    private static final String SNAP_REDIRECT_BASE_URL = "https://app.sandbox.midtrans.com/snap/v2/vtweb/";
-    private static final String TOPUP_ORDER_PREFIX = "TOPUP-";
     private static final Set<String> SUPPORTED_CALLBACK_STATUS_CODES = Set.of("200", "201", "202", "407");
     private static final String JASTIPER_ROLE = "JASTIPER";
     private static final int MAX_CALLBACK_ORDER_ID_LENGTH = 128;
@@ -121,8 +118,7 @@ public class WalletController {
 
         return withIdempotencyKey(idempotencyKey, () -> {
             validateTopUpAccess(authorization, request.getUserId());
-            String orderId = generateTopUpOrderId();
-            return ResponseEntity.ok(buildTopUpInitiatePayload(orderId));
+            return ResponseEntity.ok(walletService.initiateTopUp(request));
         });
     }
 
@@ -426,18 +422,6 @@ public class WalletController {
 
     private void validateReadRoleAllowed(String authorization) {
         validateSupportedRole(authorization);
-    }
-
-    private String generateTopUpOrderId() {
-        return TOPUP_ORDER_PREFIX + UUID.randomUUID();
-    }
-
-    private Map<String, String> buildTopUpInitiatePayload(String orderId) {
-        return Map.of(
-                "paymentToken", SNAP_TOKEN_PREFIX + orderId,
-                "redirectUrl", SNAP_REDIRECT_BASE_URL + orderId,
-                "orderId", orderId
-        );
     }
 
     private void validateTopUpAccess(String authorization, UUID userId) {

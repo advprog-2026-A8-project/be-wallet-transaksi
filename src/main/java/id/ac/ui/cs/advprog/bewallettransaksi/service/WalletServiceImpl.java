@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -43,6 +44,8 @@ public class WalletServiceImpl implements WalletService {
     private static final String TOPUP_NOT_FOUND_MESSAGE = "Topup transaction not found for orderId: ";
     private static final String WALLET_NOT_FOUND_FOR_TOPUP_CALLBACK_MESSAGE = "Wallet not found for topup callback";
     private static final String TOPUP_ORDER_PREFIX = "TOPUP-";
+    private static final String INITIATE_TOKEN_PREFIX = "midtrans-snap-";
+    private static final String INITIATE_REDIRECT_BASE = "https://snap.midtrans.com/checkout/";
     private static final Comparator<Transaction> TRANSACTION_CREATED_AT_ORDER =
             Comparator.comparing(
                     Transaction::getCreatedAt,
@@ -110,6 +113,19 @@ public class WalletServiceImpl implements WalletService {
                 "Top-up saldo"
         );
         return toResponse(wallet);
+    }
+
+    @Override
+    public Map<String, String> initiateTopUp(TopUpRequest request) {
+        validateTopUpRequest(request);
+        validateUserId(request.getUserId());
+        validateAmount(request.getAmount());
+        String orderId = TOPUP_ORDER_PREFIX + UUID.randomUUID();
+        return Map.of(
+                "paymentToken", INITIATE_TOKEN_PREFIX + UUID.randomUUID(),
+                "redirectUrl", INITIATE_REDIRECT_BASE + orderId,
+                "orderId", orderId
+        );
     }
 
     @Override
