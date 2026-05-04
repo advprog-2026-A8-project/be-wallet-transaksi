@@ -1,10 +1,7 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.grpc;
 
-import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.CheckBalanceRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.CheckBalanceResult;
-import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.DeductBalanceRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.OrderWalletContractService;
-import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.RefundBalanceRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.WalletMutationResult;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -39,12 +36,17 @@ class WalletContractGrpcServiceTest {
     @Test
     void checkBalance_ShouldReturnContractResult() {
         UUID userId = UUID.randomUUID();
-        when(contractService.checkBalance(new CheckBalanceRequest(userId, new BigDecimal("100.00"))))
+        when(contractService.checkBalance(
+                new id.ac.ui.cs.advprog.bewallettransaksi.service.contract.CheckBalanceRequest(
+                        userId,
+                        new BigDecimal("100.00")
+                )
+        ))
                 .thenReturn(new CheckBalanceResult(true, new BigDecimal("150.00")));
 
-        TestStreamObserver<WalletContract.CheckBalanceResponse> observer = new TestStreamObserver<>();
+        TestStreamObserver<CheckBalanceResponse> observer = new TestStreamObserver<>();
         grpcService.checkBalance(
-                WalletContract.CheckBalanceRequest.newBuilder()
+                CheckBalanceRequest.newBuilder()
                         .setUserId(userId.toString())
                         .setAmount("100.00")
                         .build(),
@@ -60,9 +62,9 @@ class WalletContractGrpcServiceTest {
 
     @Test
     void deductBalance_InvalidAmount_ShouldReturnInvalidArgumentStatus() {
-        TestStreamObserver<WalletContract.WalletMutationResponse> observer = new TestStreamObserver<>();
+        TestStreamObserver<WalletMutationResponse> observer = new TestStreamObserver<>();
         grpcService.deductBalance(
-                WalletContract.DeductBalanceRequest.newBuilder()
+                DeductBalanceRequest.newBuilder()
                         .setUserId(UUID.randomUUID().toString())
                         .setOrderId("ORDER-1")
                         .setAmount("abc")
@@ -79,12 +81,19 @@ class WalletContractGrpcServiceTest {
     @Test
     void refundBalance_ShouldMapMutationResult() {
         UUID userId = UUID.randomUUID();
-        when(contractService.refundBalance(new RefundBalanceRequest(userId, "ORDER-2", new BigDecimal("20.00"), "idem-2")))
+        when(contractService.refundBalance(
+                new id.ac.ui.cs.advprog.bewallettransaksi.service.contract.RefundBalanceRequest(
+                        userId,
+                        "ORDER-2",
+                        new BigDecimal("20.00"),
+                        "idem-2"
+                )
+        ))
                 .thenReturn(new WalletMutationResult(false, null, "ORDER_NOT_FOUND"));
 
-        TestStreamObserver<WalletContract.WalletMutationResponse> observer = new TestStreamObserver<>();
+        TestStreamObserver<WalletMutationResponse> observer = new TestStreamObserver<>();
         grpcService.refundBalance(
-                WalletContract.RefundBalanceRequest.newBuilder()
+                RefundBalanceRequest.newBuilder()
                         .setUserId(userId.toString())
                         .setOrderId("ORDER-2")
                         .setAmount("20.00")

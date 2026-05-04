@@ -5,6 +5,7 @@ plugins {
     id("org.springframework.boot") version "3.5.10"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.sonarqube") version "4.4.1.3373"
+    id("com.google.protobuf") version "0.9.4"
 }
 
 group = "id.ac.ui.cs.advprog"
@@ -28,6 +29,11 @@ repositories {
 }
 
 dependencies {
+    implementation("io.grpc:grpc-protobuf:1.68.1")
+    implementation("io.grpc:grpc-stub:1.68.1")
+    implementation("io.grpc:grpc-netty-shaded:1.68.1")
+    compileOnly("org.apache.tomcat:annotations-api:6.0.53")
+
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -46,8 +52,27 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("io.grpc:grpc-testing:1.68.1")
     testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.25.5"
+    }
+    plugins {
+        create("grpc") {
+            artifact = "io.grpc:protoc-gen-grpc-java:1.68.1"
+        }
+    }
+    generateProtoTasks {
+        all().configureEach {
+            plugins {
+                create("grpc")
+            }
+        }
+    }
 }
 
 sonar {
