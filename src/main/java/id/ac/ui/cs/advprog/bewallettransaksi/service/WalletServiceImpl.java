@@ -289,8 +289,7 @@ public class WalletServiceImpl implements WalletService {
         if (isTopUpOrderId(normalizedOrderId)) {
             return findPendingTopUpByOrderId(normalizedOrderId);
         }
-        return findPaymentByOrderId(normalizedOrderId)
-                .or(() -> findTopUpByOrderId(normalizedOrderId));
+        return findPaymentByOrderId(normalizedOrderId);
     }
 
     private boolean isTopUpOrderId(String orderId) {
