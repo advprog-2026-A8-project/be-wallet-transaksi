@@ -327,10 +327,7 @@ public class WalletServiceImpl implements WalletService {
         if (callbackTransaction.getStatus() == targetStatus) {
             return;
         }
-        if (isOutOfOrderTopUpTerminalTransition(callbackTransaction, targetStatus)) {
-            return;
-        }
-        if (isOutOfOrderPaymentTerminalTransition(callbackTransaction, targetStatus)) {
+        if (isOutOfOrderTerminalNoOp(callbackTransaction, targetStatus)) {
             return;
         }
         if (callbackTransaction.getStatus() == TransactionStatus.PENDING) {
@@ -373,6 +370,11 @@ public class WalletServiceImpl implements WalletService {
         }
         updateTransactionStatus(callbackTransaction, targetStatus);
         publishOrderPaymentStatusUpdate(normalizedOrderId, targetStatus);
+    }
+
+    private boolean isOutOfOrderTerminalNoOp(Transaction callbackTransaction, TransactionStatus targetStatus) {
+        return isOutOfOrderTopUpTerminalTransition(callbackTransaction, targetStatus)
+                || isOutOfOrderPaymentTerminalTransition(callbackTransaction, targetStatus);
     }
 
     private boolean isOutOfOrderTopUpTerminalTransition(
