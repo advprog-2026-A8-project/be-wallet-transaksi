@@ -30,16 +30,9 @@ public class GrpcServerLifecycle implements SmartLifecycle {
         if (!properties.isEnabled()) {
             return;
         }
-        validateInternalToken();
+        String token = validatedInternalToken();
         try {
-            server = NettyServerBuilder
-                    .forPort(properties.getPort())
-                    .addService(ServerInterceptors.intercept(
-                            walletContractGrpcService,
-                            new GrpcInternalAuthInterceptor(properties.getInternalToken())
-                    ))
-                    .build()
-                    .start();
+            server = buildServer(token).start();
             running = true;
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to start gRPC server", ex);
@@ -48,10 +41,7 @@ public class GrpcServerLifecycle implements SmartLifecycle {
 
     @Override
     public void stop() {
-        if (server != null) {
-            server.shutdownNow();
-            server = null;
-        }
+        shutdownServerIfRunning();
         running = false;
     }
 
@@ -76,10 +66,29 @@ public class GrpcServerLifecycle implements SmartLifecycle {
         callback.run();
     }
 
-    private void validateInternalToken() {
+    private String validatedInternalToken() {
         String token = properties.getInternalToken();
         if (token == null || token.isBlank()) {
             throw new IllegalStateException("grpc.server.internal-token must not be blank when grpc.server.enabled=true");
         }
+        return token;
+    }
+
+    private Server buildServer(String token) {
+        return NettyServerBuilder
+                .forPort(properties.getPort())
+                .addService(ServerInterceptors.intercept(
+                        walletContractGrpcService,
+                        new GrpcInternalAuthInterceptor(token)
+                ))
+                .build();
+    }
+
+    private void shutdownServerIfRunning() {
+        if (server == null) {
+            return;
+        }
+        server.shutdownNow();
+        server = null;
     }
 }
