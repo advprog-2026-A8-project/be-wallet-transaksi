@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +68,7 @@ public class WalletServiceImpl implements WalletService {
     private final WalletMutationStrategyResolver strategyResolver;
     private final OrderPaymentStatusPublisher orderPaymentStatusPublisher;
     private final PaymentGatewayClient paymentGatewayClient;
+    private final Map<String, Object> callbackOrderLocks = new ConcurrentHashMap<>();
 
     public WalletServiceImpl(WalletRepository walletRepository,
                              TransactionRepository transactionRepository,
@@ -245,21 +247,33 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public void handlePaymentSettlement(String orderId) {
-        transitionPaymentCallbackStatus(
+        executeWithCallbackOrderLock(orderId, () -> transitionPaymentCallbackStatus(
                 orderId,
                 TransactionStatus.SUCCESS,
                 "Cannot mark payment as settled from status: "
-        );
+        ));
     }
 
     @Override
     @Transactional
     public void handlePaymentFailure(String orderId) {
-        transitionPaymentCallbackStatus(
+        executeWithCallbackOrderLock(orderId, () -> transitionPaymentCallbackStatus(
                 orderId,
                 TransactionStatus.FAILED,
                 "Cannot mark payment as failed from status: "
-        );
+        ));
+    }
+
+    private void executeWithCallbackOrderLock(String orderId, Runnable action) {
+        if (orderId == null || orderId.isBlank()) {
+            action.run();
+            return;
+        }
+        Object lock = callbackOrderLocks.computeIfAbsent(orderId, ignored -> new Object());
+        synchronized (lock) {
+            action.run();
+        }
+        callbackOrderLocks.remove(orderId, lock);
     }
 
     private String normalizeOrderId(String orderId) {
@@ -507,8 +521,14 @@ public class WalletServiceImpl implements WalletService {
             TransactionStatus targetStatus,
             String normalizedOrderId
     ) {
-        if (topUpTransaction.getStatus() != TransactionStatus.PENDING) {
-            throw new IllegalStateException(PENDING_TOPUP_NOT_FOUND_MESSAGE + normalizedOrderId);
+        boolean transitioned = transactionRepository.transitionStatusIfMatches(
+                topUpTransaction.getTransactionId(),
+                TransactionStatus.PENDING,
+                targetStatus,
+                LocalDateTime.now()
+        ) == 1;
+        if (!transitioned) {
+            return;
         }
         if (targetStatus == TransactionStatus.SUCCESS) {
             Wallet wallet = walletRepository.findById(topUpTransaction.getWalletId())
@@ -516,7 +536,6 @@ public class WalletServiceImpl implements WalletService {
             wallet.setBalance(wallet.getBalance().add(topUpTransaction.getAmount()));
             walletRepository.save(wallet);
         }
-        updateTransactionStatus(topUpTransaction, targetStatus);
     }
 
     private void publishOrderPaymentStatusUpdate(String orderId, TransactionStatus targetStatus) {
