@@ -24,6 +24,7 @@ import java.util.concurrent.locks.LockSupport;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
@@ -528,6 +529,15 @@ class WalletServiceIntegrationFlowTest {
                 .count();
         assertEquals(1, pendingCount);
         assertEquals(1, failedCount);
+    }
+
+    @Test
+    void handlePaymentSettlement_BlankOrderId_ShouldThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> walletService.handlePaymentSettlement("   ")
+        );
+        assertTrue(exception.getMessage().contains("Order ID must not be blank"));
     }
 
     @Test
