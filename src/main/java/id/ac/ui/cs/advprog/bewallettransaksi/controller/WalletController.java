@@ -117,7 +117,7 @@ public class WalletController {
             @Valid @RequestBody TopUpRequest request
     ) {
         validateIdempotencyKey(idempotencyKey);
-        Map<String, String> cachedResponse = cachedTopUpInitiateResponses.get(idempotencyKey);
+        Map<String, String> cachedResponse = getCachedTopUpInitiateResponse(idempotencyKey);
         if (cachedResponse != null) {
             return ResponseEntity.ok(cachedResponse);
         }
@@ -125,9 +125,17 @@ public class WalletController {
         return withIdempotencyKey(idempotencyKey, () -> {
             validateTopUpAccess(authorization, request.getUserId());
             Map<String, String> response = walletService.initiateTopUp(request);
-            cachedTopUpInitiateResponses.putIfAbsent(idempotencyKey, response);
-            return ResponseEntity.ok(cachedTopUpInitiateResponses.get(idempotencyKey));
+            return ResponseEntity.ok(cacheTopUpInitiateResponse(idempotencyKey, response));
         });
+    }
+
+    private Map<String, String> getCachedTopUpInitiateResponse(String idempotencyKey) {
+        return cachedTopUpInitiateResponses.get(idempotencyKey);
+    }
+
+    private Map<String, String> cacheTopUpInitiateResponse(String idempotencyKey, Map<String, String> response) {
+        cachedTopUpInitiateResponses.putIfAbsent(idempotencyKey, response);
+        return cachedTopUpInitiateResponses.get(idempotencyKey);
     }
 
     @PostMapping("/pay")
