@@ -119,11 +119,20 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
+    @Transactional
     public Map<String, String> initiateTopUp(TopUpRequest request) {
         validateTopUpRequest(request);
         validateUserId(request.getUserId());
         validateAmount(request.getAmount());
+        Wallet wallet = findWalletByUserIdForUpdateOrThrow(request.getUserId());
         String orderId = TOPUP_ORDER_PREFIX + UUID.randomUUID();
+        Transaction pendingTopUp = createTransaction(
+                wallet.getWalletId(),
+                request.getAmount(),
+                TransactionType.TOPUP,
+                orderId
+        );
+        transactionRepository.save(pendingTopUp);
         return buildInitiateTopUpResponse(orderId);
     }
 
