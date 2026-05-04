@@ -25,10 +25,12 @@ public class WalletContractGrpcService extends WalletContractServiceGrpc.WalletC
             StreamObserver<CheckBalanceResponse> responseObserver
     ) {
         try {
-            CheckBalanceResult result = contractService.checkBalance(new id.ac.ui.cs.advprog.bewallettransaksi.service.contract.CheckBalanceRequest(
-                    parseUserId(request.getUserId()),
-                    parseAmount(request.getAmount())
-            ));
+            CheckBalanceResult result = contractService.checkBalance(
+                    new id.ac.ui.cs.advprog.bewallettransaksi.service.contract.CheckBalanceRequest(
+                            parseUserId(request.getUserId()),
+                            parseAmount(request.getAmount())
+                    )
+            );
             responseObserver.onNext(CheckBalanceResponse.newBuilder()
                     .setSufficient(result.sufficient())
                     .setCurrentBalance(result.currentBalance().toPlainString())

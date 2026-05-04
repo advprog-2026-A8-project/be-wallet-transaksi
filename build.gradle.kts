@@ -108,3 +108,11 @@ tasks.withType<Checkstyle> {
         html.required.set(true)
     }
 }
+
+tasks.named<Checkstyle>("checkstyleMain") {
+    source = fileTree("src/main/java")
+}
+
+tasks.named<Checkstyle>("checkstyleTest") {
+    source = fileTree("src/test/java")
+}

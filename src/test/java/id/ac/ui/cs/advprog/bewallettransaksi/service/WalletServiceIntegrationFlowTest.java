@@ -24,13 +24,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @TestPropertySource(properties = {
@@ -1274,26 +1274,45 @@ class WalletServiceIntegrationFlowTest {
             executor.shutdownNow();
         }
 
-        Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
-        assertEquals(topUpAmount, persistedWallet.getBalance());
+        assertSettlementEventuallyConsistent(walletId, topUpAmount, topUpOrderId);
 
-        long successCount = transactionRepository.findAll().stream()
-                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
-                .filter(transaction -> topUpOrderId.equals(transaction.getDescription()))
-                .filter(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS)
-                .count();
+        long successCount = countSuccessfulTopUpByOrderId(topUpOrderId);
         assertEquals(1, successCount);
     }
 
     private void awaitAndSettle(CountDownLatch startGate, String orderId) {
         try {
-            boolean started = startGate.await(5, java.util.concurrent.TimeUnit.SECONDS);
+            boolean started = startGate.await(5, TimeUnit.SECONDS);
             assertTrue(started);
             walletService.handlePaymentSettlement(orderId);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(ex);
         }
+    }
+
+    private void assertSettlementEventuallyConsistent(UUID walletId, BigDecimal expectedBalance, String orderId) {
+        long deadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        while (System.nanoTime() < deadlineNanos) {
+            Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
+            long successCount = countSuccessfulTopUpByOrderId(orderId);
+            if (expectedBalance.compareTo(persistedWallet.getBalance()) == 0 && successCount == 1) {
+                return;
+            }
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(20));
+        }
+
+        Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
+        assertEquals(expectedBalance, persistedWallet.getBalance());
+        assertEquals(1, countSuccessfulTopUpByOrderId(orderId));
+    }
+
+    private long countSuccessfulTopUpByOrderId(String orderId) {
+        return transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> orderId.equals(transaction.getDescription()))
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS)
+                .count();
     }
 
     private void pauseForDistinctPersistTimestamp() {

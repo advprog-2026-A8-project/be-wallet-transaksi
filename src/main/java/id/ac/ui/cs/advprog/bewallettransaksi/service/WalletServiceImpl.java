@@ -395,11 +395,20 @@ public class WalletServiceImpl implements WalletService {
                 .orElseThrow(() -> new IllegalStateException(buildCallbackNotFoundMessage(normalizedOrderId)));
 
         if (callbackTransaction.getStatus() == targetStatus) {
-            log.info("wallet.callback.transition.idempotent orderId={} currentStatus={}", normalizedOrderId, callbackTransaction.getStatus());
+            log.info(
+                    "wallet.callback.transition.idempotent orderId={} currentStatus={}",
+                    normalizedOrderId,
+                    callbackTransaction.getStatus()
+            );
             return;
         }
         if (isOutOfOrderTerminalNoOp(callbackTransaction, targetStatus)) {
-            log.info("wallet.callback.transition.noop_out_of_order orderId={} currentStatus={} targetStatus={}", normalizedOrderId, callbackTransaction.getStatus(), targetStatus);
+            log.info(
+                    "wallet.callback.transition.noop_out_of_order orderId={} currentStatus={} targetStatus={}",
+                    normalizedOrderId,
+                    callbackTransaction.getStatus(),
+                    targetStatus
+            );
             return;
         }
         if (callbackTransaction.getStatus() == TransactionStatus.PENDING) {

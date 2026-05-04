@@ -260,7 +260,13 @@ class WalletServiceCoreTest {
     void constructor_NullWalletRepository_ShouldThrowNullPointerException() {
         assertThrows(
             NullPointerException.class,
-                () -> new WalletServiceImpl(null, transactionRepository, strategyResolver, orderPaymentStatusPublisher, paymentGatewayClient)
+                () -> new WalletServiceImpl(
+                        null,
+                        transactionRepository,
+                        strategyResolver,
+                        orderPaymentStatusPublisher,
+                        paymentGatewayClient
+                )
         );
     }
 
