@@ -381,6 +381,22 @@ class WalletControllerTest {
     }
 
     @Test
+    void initiateTopUp_WithValidRequest_ShouldNotUseControllerMockInstructionPattern() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50000.00));
+
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-topup-3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentToken").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.startsWith("snap-token-")
+                )))
+                .andExpect(jsonPath("$.redirectUrl").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.startsWith("https://app.sandbox.midtrans.com/snap/v2/vtweb/")
+                )));
+    }
+
+    @Test
     void initiateTopUp_MissingIdempotencyKey_ShouldReturnBadRequest() throws Exception {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);
