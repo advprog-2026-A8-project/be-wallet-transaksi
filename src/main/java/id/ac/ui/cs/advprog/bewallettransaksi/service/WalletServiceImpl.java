@@ -224,15 +224,33 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private java.util.Optional<Transaction> findTopUpByOrderId(String orderId) {
-        return transactionRepository.findAll().stream()
-                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
-                .filter(transaction -> orderId.equals(transaction.getDescription()))
-                .max(TRANSACTION_CREATED_AT_NEWEST);
+        List<Transaction> matchingTopUps = findMatchingTopUpTransactions(orderId);
+        java.util.Optional<Transaction> latestSuccess = findLatestTopUpByStatus(
+                matchingTopUps,
+                TransactionStatus.SUCCESS
+        );
+        if (latestSuccess.isPresent()) {
+            return latestSuccess;
+        }
+        java.util.Optional<Transaction> newestPending = findPendingTopUp(matchingTopUps);
+        java.util.Optional<Transaction> latestNonPending = findLatestNonPendingTopUpByCreatedAt(matchingTopUps);
+
+        if (shouldPreferLatestNonPending(newestPending, latestNonPending)) {
+            return latestNonPending;
+        }
+        return newestPending.or(() -> findLatestTopUpByCreatedAt(matchingTopUps));
     }
 
     private List<Transaction> findMatchingPaymentTransactions(String orderId) {
         return transactionRepository.findAll().stream()
                 .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
+                .filter(transaction -> orderId.equals(transaction.getDescription()))
+                .toList();
+    }
+
+    private List<Transaction> findMatchingTopUpTransactions(String orderId) {
+        return transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
                 .filter(transaction -> orderId.equals(transaction.getDescription()))
                 .toList();
     }
@@ -247,9 +265,34 @@ public class WalletServiceImpl implements WalletService {
         return matchingPayments.stream().max(TRANSACTION_CREATED_AT_NEWEST);
     }
 
+    private java.util.Optional<Transaction> findLatestTopUpByCreatedAt(List<Transaction> matchingTopUps) {
+        return matchingTopUps.stream().max(TRANSACTION_CREATED_AT_NEWEST);
+    }
+
     private java.util.Optional<Transaction> findLatestNonPendingPaymentByCreatedAt(List<Transaction> matchingPayments) {
         return matchingPayments.stream()
                 .filter(transaction -> transaction.getStatus() != TransactionStatus.PENDING)
+                .max(TRANSACTION_CREATED_AT_NEWEST);
+    }
+
+    private java.util.Optional<Transaction> findPendingTopUp(List<Transaction> matchingTopUps) {
+        return matchingTopUps.stream()
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.PENDING)
+                .max(TRANSACTION_CREATED_AT_NEWEST);
+    }
+
+    private java.util.Optional<Transaction> findLatestNonPendingTopUpByCreatedAt(List<Transaction> matchingTopUps) {
+        return matchingTopUps.stream()
+                .filter(transaction -> transaction.getStatus() != TransactionStatus.PENDING)
+                .max(TRANSACTION_CREATED_AT_NEWEST);
+    }
+
+    private java.util.Optional<Transaction> findLatestTopUpByStatus(
+            List<Transaction> matchingTopUps,
+            TransactionStatus status
+    ) {
+        return matchingTopUps.stream()
+                .filter(transaction -> transaction.getStatus() == status)
                 .max(TRANSACTION_CREATED_AT_NEWEST);
     }
 
