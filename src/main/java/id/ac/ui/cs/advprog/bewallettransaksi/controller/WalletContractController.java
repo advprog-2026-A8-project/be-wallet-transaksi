@@ -9,6 +9,7 @@ import id.ac.ui.cs.advprog.bewallettransaksi.service.contract.WalletMutationResu
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.UnauthorizedException;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/contracts/wallet")
+@Tag(name = "Wallet Contract API", description = "Contract endpoints for order module integrations")
 public class WalletContractController {
     private static final String UNAUTHORIZED_MESSAGE = "Autentikasi diperlukan!";
     private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
