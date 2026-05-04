@@ -1,11 +1,15 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.grpc;
 
 import io.grpc.Metadata;
+import io.grpc.MethodDescriptor;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
-import io.grpc.ServerInterceptor;
 import io.grpc.Status;
 import org.junit.jupiter.api.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -79,9 +83,27 @@ class GrpcInternalAuthInterceptorTest {
             return MethodDescriptor.<String, String>newBuilder()
                     .setType(MethodDescriptor.MethodType.UNARY)
                     .setFullMethodName("wallet.Contract/Test")
-                    .setRequestMarshaller(io.grpc.StringMarshaller.INSTANCE)
-                    .setResponseMarshaller(io.grpc.StringMarshaller.INSTANCE)
+                    .setRequestMarshaller(stringMarshaller())
+                    .setResponseMarshaller(stringMarshaller())
                     .build();
+        }
+
+        private MethodDescriptor.Marshaller<String> stringMarshaller() {
+            return new MethodDescriptor.Marshaller<>() {
+                @Override
+                public InputStream stream(String value) {
+                    return new ByteArrayInputStream(value.getBytes(StandardCharsets.UTF_8));
+                }
+
+                @Override
+                public String parse(InputStream stream) {
+                    try {
+                        return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+                    } catch (Exception ex) {
+                        return "";
+                    }
+                }
+            };
         }
     }
 }
