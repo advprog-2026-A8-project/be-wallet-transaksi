@@ -749,6 +749,41 @@ class WalletServiceIntegrationFlowTest {
     }
 
     @Test
+    void handlePaymentSettlement_AfterTopUpFailure_ShouldRemainNoOpOnRepeatedSettlement() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String topUpOrderId = "TOPUP-REPEAT-SETTLEMENT-001";
+        BigDecimal topUpAmount = new BigDecimal("91000.00");
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+
+        Transaction pendingTopUp = new Transaction();
+        pendingTopUp.setWalletId(wallet.getWalletId());
+        pendingTopUp.setAmount(topUpAmount);
+        pendingTopUp.setType(TransactionType.TOPUP);
+        pendingTopUp.setStatus(TransactionStatus.PENDING);
+        pendingTopUp.setDescription(topUpOrderId);
+        pendingTopUp.setCreatedAt(LocalDateTime.of(2026, 5, 3, 11, 0));
+        pendingTopUp.setUpdatedAt(LocalDateTime.of(2026, 5, 3, 11, 0));
+        transactionRepository.save(pendingTopUp);
+
+        walletService.handlePaymentFailure(topUpOrderId);
+        assertDoesNotThrow(() -> walletService.handlePaymentSettlement(topUpOrderId));
+        assertDoesNotThrow(() -> walletService.handlePaymentSettlement(topUpOrderId));
+
+        Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
+        assertEquals(new BigDecimal("0.00"), persistedWallet.getBalance());
+
+        Transaction persistedTopUp = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> topUpOrderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(TransactionStatus.FAILED, persistedTopUp.getStatus());
+    }
+
+    @Test
     void handlePaymentSettlement_BlankOrderId_ShouldThrowIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
