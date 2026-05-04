@@ -20,12 +20,17 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.LockSupport;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @TestPropertySource(properties = {
@@ -1155,6 +1160,60 @@ class WalletServiceIntegrationFlowTest {
                 .findFirst()
                 .orElseThrow();
         assertEquals(TransactionStatus.PENDING, persistedPayment.getStatus());
+    }
+
+    @Test
+    void handlePaymentSettlement_ConcurrentCallbacks_ShouldCreditWalletOnlyOnce() throws Exception {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String topUpOrderId = "TOPUP-CONCURRENT-SETTLEMENT-001";
+        BigDecimal topUpAmount = new BigDecimal("54000.00");
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+
+        Transaction pendingTopUp = new Transaction();
+        pendingTopUp.setWalletId(wallet.getWalletId());
+        pendingTopUp.setAmount(topUpAmount);
+        pendingTopUp.setType(TransactionType.TOPUP);
+        pendingTopUp.setStatus(TransactionStatus.PENDING);
+        pendingTopUp.setDescription(topUpOrderId);
+        pendingTopUp.setCreatedAt(LocalDateTime.of(2026, 5, 2, 20, 0));
+        pendingTopUp.setUpdatedAt(LocalDateTime.of(2026, 5, 2, 20, 0));
+        transactionRepository.save(pendingTopUp);
+
+        CountDownLatch startGate = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = executor.submit(() -> awaitAndSettle(startGate, topUpOrderId));
+            Future<?> second = executor.submit(() -> awaitAndSettle(startGate, topUpOrderId));
+            startGate.countDown();
+            first.get();
+            second.get();
+        } finally {
+            executor.shutdownNow();
+        }
+
+        Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
+        assertEquals(topUpAmount, persistedWallet.getBalance());
+
+        long successCount = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> topUpOrderId.equals(transaction.getDescription()))
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS)
+                .count();
+        assertEquals(1, successCount);
+    }
+
+    private void awaitAndSettle(CountDownLatch startGate, String orderId) {
+        try {
+            boolean started = startGate.await(5, java.util.concurrent.TimeUnit.SECONDS);
+            assertTrue(started);
+            walletService.handlePaymentSettlement(orderId);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(ex);
+        }
     }
 
     private void pauseForDistinctPersistTimestamp() {
