@@ -345,7 +345,7 @@ class WalletServiceIntegrationFlowTest {
         walletService.handlePaymentFailure(sharedOrderId);
 
         Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
-        assertEquals(BigDecimal.ZERO, persistedWallet.getBalance());
+        assertEquals(new BigDecimal("0.00"), persistedWallet.getBalance());
 
         Transaction failedTopUp = transactionRepository.findAll().stream()
                 .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
