@@ -148,6 +148,30 @@ class WalletServiceIntegrationFlowTest {
     }
 
     @Test
+    void initiateTopUp_ShouldCreatePendingTopUpTransaction() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        BigDecimal amount = new BigDecimal("75000.00");
+
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(amount);
+
+        String orderId = walletService.initiateTopUp(request).get("orderId");
+
+        Transaction pendingTopUp = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.PENDING)
+                .filter(transaction -> orderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(walletId, pendingTopUp.getWalletId());
+        assertEquals(amount, pendingTopUp.getAmount());
+    }
+
+    @Test
     void handlePaymentSettlement_WhenLatestDuplicateIsSuccess_ShouldNotProcessOlderPending() {
         UUID userId = UUID.randomUUID();
         WalletResponse walletResponse = walletService.createWallet(userId);
