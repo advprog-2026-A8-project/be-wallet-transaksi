@@ -852,6 +852,36 @@ class WalletServiceIntegrationFlowTest {
     }
 
     @Test
+    void handlePaymentFailure_OnPendingPayment_ShouldRemainIdempotentOnRepeatedFailure() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String orderId = "ORDER-REPEAT-PENDING-FAILURE-001";
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+
+        Transaction pendingPayment = new Transaction();
+        pendingPayment.setWalletId(wallet.getWalletId());
+        pendingPayment.setAmount(new BigDecimal("75000.00"));
+        pendingPayment.setType(TransactionType.PAYMENT);
+        pendingPayment.setStatus(TransactionStatus.PENDING);
+        pendingPayment.setDescription(orderId);
+        pendingPayment.setCreatedAt(LocalDateTime.of(2026, 5, 3, 14, 0));
+        pendingPayment.setUpdatedAt(LocalDateTime.of(2026, 5, 3, 14, 0));
+        transactionRepository.save(pendingPayment);
+
+        walletService.handlePaymentFailure(orderId);
+        assertDoesNotThrow(() -> walletService.handlePaymentFailure(orderId));
+
+        Transaction persistedPayment = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
+                .filter(transaction -> orderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(TransactionStatus.FAILED, persistedPayment.getStatus());
+    }
+
+    @Test
     void handlePaymentSettlement_BlankOrderId_ShouldThrowIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
