@@ -784,6 +784,40 @@ class WalletServiceIntegrationFlowTest {
     }
 
     @Test
+    void handlePaymentFailure_OnPendingTopUp_ShouldRemainIdempotentOnRepeatedFailure() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String topUpOrderId = "TOPUP-REPEAT-PENDING-FAILURE-001";
+        BigDecimal topUpAmount = new BigDecimal("54000.00");
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+
+        Transaction pendingTopUp = new Transaction();
+        pendingTopUp.setWalletId(wallet.getWalletId());
+        pendingTopUp.setAmount(topUpAmount);
+        pendingTopUp.setType(TransactionType.TOPUP);
+        pendingTopUp.setStatus(TransactionStatus.PENDING);
+        pendingTopUp.setDescription(topUpOrderId);
+        pendingTopUp.setCreatedAt(LocalDateTime.of(2026, 5, 3, 12, 0));
+        pendingTopUp.setUpdatedAt(LocalDateTime.of(2026, 5, 3, 12, 0));
+        transactionRepository.save(pendingTopUp);
+
+        walletService.handlePaymentFailure(topUpOrderId);
+        assertDoesNotThrow(() -> walletService.handlePaymentFailure(topUpOrderId));
+
+        Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
+        assertEquals(new BigDecimal("0.00"), persistedWallet.getBalance());
+
+        Transaction persistedTopUp = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> topUpOrderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(TransactionStatus.FAILED, persistedTopUp.getStatus());
+    }
+
+    @Test
     void handlePaymentSettlement_BlankOrderId_ShouldThrowIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
