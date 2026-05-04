@@ -312,6 +312,49 @@ class WalletServiceIntegrationFlowTest {
         assertEquals(TransactionStatus.SUCCESS, settledTopUp.getStatus());
     }
 
+    @Test
+    void handlePaymentFailure_WhenPaymentAndTopUpShareOrderId_ShouldFailPendingTopUpWithoutCreditingBalance() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String sharedOrderId = "ORDER-SHARED-FAIL-001";
+        BigDecimal topUpAmount = new BigDecimal("88000.00");
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+
+        Transaction existingPayment = new Transaction();
+        existingPayment.setWalletId(wallet.getWalletId());
+        existingPayment.setAmount(new BigDecimal("30000.00"));
+        existingPayment.setType(TransactionType.PAYMENT);
+        existingPayment.setStatus(TransactionStatus.SUCCESS);
+        existingPayment.setDescription(sharedOrderId);
+        existingPayment.setCreatedAt(LocalDateTime.of(2026, 5, 1, 8, 0));
+        existingPayment.setUpdatedAt(LocalDateTime.of(2026, 5, 1, 8, 0));
+        transactionRepository.save(existingPayment);
+
+        Transaction pendingTopUp = new Transaction();
+        pendingTopUp.setWalletId(wallet.getWalletId());
+        pendingTopUp.setAmount(topUpAmount);
+        pendingTopUp.setType(TransactionType.TOPUP);
+        pendingTopUp.setStatus(TransactionStatus.PENDING);
+        pendingTopUp.setDescription(sharedOrderId);
+        pendingTopUp.setCreatedAt(LocalDateTime.of(2026, 5, 1, 9, 0));
+        pendingTopUp.setUpdatedAt(LocalDateTime.of(2026, 5, 1, 9, 0));
+        transactionRepository.save(pendingTopUp);
+
+        walletService.handlePaymentFailure(sharedOrderId);
+
+        Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
+        assertEquals(BigDecimal.ZERO, persistedWallet.getBalance());
+
+        Transaction failedTopUp = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> sharedOrderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(TransactionStatus.FAILED, failedTopUp.getStatus());
+    }
+
     private void pauseForDistinctPersistTimestamp() {
         LockSupport.parkNanos(5_000_000L);
     }
