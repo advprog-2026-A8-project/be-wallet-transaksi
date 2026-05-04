@@ -10,6 +10,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
@@ -27,6 +29,7 @@ import id.ac.ui.cs.advprog.bewallettransaksi.service.strategy.WalletMutationStra
 
 @Service
 public class WalletServiceImpl implements WalletService {
+    private static final Logger log = LoggerFactory.getLogger(WalletServiceImpl.class);
 
     private static final BigDecimal MINIMUM_AMOUNT = BigDecimal.ONE;
     private static final BigDecimal MAXIMUM_AMOUNT = new BigDecimal("99999999999999999.99");
@@ -127,6 +130,7 @@ public class WalletServiceImpl implements WalletService {
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(request.getUserId());
         String orderId = generateTopUpOrderId();
         persistPendingTopUpTransaction(wallet.getWalletId(), request.getAmount(), orderId);
+        log.info("wallet.topup.initiate userId={} orderId={} amount={}", request.getUserId(), orderId, request.getAmount());
         return buildInitiateTopUpResponse(request, orderId);
     }
 
@@ -194,10 +198,12 @@ public class WalletServiceImpl implements WalletService {
         validateRequired(idempotencyKey, "Idempotency key must not be null");
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         if (hasSuccessfulPaymentForOrder(orderId)) {
+            log.info("wallet.order.deduct.idempotent userId={} orderId={} amount={}", userId, orderId, amount);
             return toResponse(wallet);
         }
         validateSufficientBalanceOrRecordFailure(wallet, amount, TransactionType.PAYMENT, orderId);
         processMutation(wallet, amount, TransactionType.PAYMENT, orderId);
+        log.info("wallet.order.deduct.success userId={} orderId={} amount={}", userId, orderId, amount);
         return toResponse(wallet);
     }
 
@@ -209,9 +215,11 @@ public class WalletServiceImpl implements WalletService {
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
         requireSuccessfulPaymentForOrder(orderId);
         if (hasSuccessfulRefundForOrder(orderId)) {
+            log.info("wallet.order.refund.idempotent userId={} orderId={} amount={}", userId, orderId, amount);
             return toResponse(wallet);
         }
         processMutation(wallet, amount, TransactionType.REFUND, orderId);
+        log.info("wallet.order.refund.success userId={} orderId={} amount={}", userId, orderId, amount);
         return toResponse(wallet);
     }
 
@@ -382,13 +390,16 @@ public class WalletServiceImpl implements WalletService {
             String invalidTransitionPrefix
     ) {
         String normalizedOrderId = normalizeOrderId(orderId);
+        log.info("wallet.callback.transition.start orderId={} targetStatus={}", normalizedOrderId, targetStatus);
         Transaction callbackTransaction = findCallbackTransactionByOrderId(normalizedOrderId)
                 .orElseThrow(() -> new IllegalStateException(buildCallbackNotFoundMessage(normalizedOrderId)));
 
         if (callbackTransaction.getStatus() == targetStatus) {
+            log.info("wallet.callback.transition.idempotent orderId={} currentStatus={}", normalizedOrderId, callbackTransaction.getStatus());
             return;
         }
         if (isOutOfOrderTerminalNoOp(callbackTransaction, targetStatus)) {
+            log.info("wallet.callback.transition.noop_out_of_order orderId={} currentStatus={} targetStatus={}", normalizedOrderId, callbackTransaction.getStatus(), targetStatus);
             return;
         }
         if (callbackTransaction.getStatus() == TransactionStatus.PENDING) {
