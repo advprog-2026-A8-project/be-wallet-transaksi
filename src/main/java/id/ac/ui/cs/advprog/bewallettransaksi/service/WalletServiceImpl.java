@@ -287,7 +287,7 @@ public class WalletServiceImpl implements WalletService {
 
     private java.util.Optional<Transaction> findCallbackTransactionByOrderId(String normalizedOrderId) {
         if (isTopUpOrderId(normalizedOrderId)) {
-            return findPendingTopUpByOrderId(normalizedOrderId);
+            return findTopUpByOrderId(normalizedOrderId);
         }
         return findNonTopUpCallbackTransactionByOrderId(normalizedOrderId);
     }
@@ -305,11 +305,6 @@ public class WalletServiceImpl implements WalletService {
             return PENDING_TOPUP_NOT_FOUND_MESSAGE + orderId;
         }
         return PENDING_PAYMENT_NOT_FOUND_MESSAGE + orderId;
-    }
-
-    private java.util.Optional<Transaction> findPendingTopUpByOrderId(String normalizedOrderId) {
-        return findTopUpByOrderId(normalizedOrderId)
-                .filter(transaction -> transaction.getStatus() == TransactionStatus.PENDING);
     }
 
     private void applyPendingCallbackTransition(
