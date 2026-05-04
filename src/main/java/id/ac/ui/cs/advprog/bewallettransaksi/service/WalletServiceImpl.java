@@ -39,6 +39,8 @@ public class WalletServiceImpl implements WalletService {
     private static final String TOP_UP_REQUEST_REQUIRED_MESSAGE = "Top-up request must not be null";
     private static final String STATUS_REQUIRED_MESSAGE = "Status must not be null";
     private static final String WALLET_ALREADY_EXISTS_MESSAGE = "Wallet already exists for user";
+    private static final String ORDER_ID_REQUIRED_MESSAGE = "Order ID must not be blank";
+    private static final String SUCCESSFUL_PAYMENT_NOT_FOUND_MESSAGE = "Successful payment transaction not found for orderId: ";
     private static final String PENDING_PAYMENT_NOT_FOUND_MESSAGE = "Pending payment transaction not found for orderId: ";
     private static final String PENDING_TOPUP_NOT_FOUND_MESSAGE = "Pending topup transaction not found for orderId: ";
     private static final String TOPUP_NOT_FOUND_MESSAGE = "Topup transaction not found for orderId: ";
@@ -188,6 +190,32 @@ public class WalletServiceImpl implements WalletService {
                 TransactionType.WITHDRAW,
                 description
         );
+        return toResponse(wallet);
+    }
+
+    @Override
+    @Transactional(noRollbackFor = IllegalStateException.class)
+    public WalletResponse deductBalanceForOrder(UUID userId, String orderId, BigDecimal amount, String idempotencyKey) {
+        validateMutationInput(userId, amount, orderId);
+        Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
+        if (hasSuccessfulPaymentForOrder(orderId)) {
+            return toResponse(wallet);
+        }
+        validateSufficientBalanceOrRecordFailure(wallet, amount, TransactionType.PAYMENT, orderId);
+        processMutation(wallet, amount, TransactionType.PAYMENT, orderId);
+        return toResponse(wallet);
+    }
+
+    @Override
+    @Transactional
+    public WalletResponse refundBalanceForOrder(UUID userId, String orderId, BigDecimal amount, String idempotencyKey) {
+        validateMutationInput(userId, amount, orderId);
+        Wallet wallet = findWalletByUserIdForUpdateOrThrow(userId);
+        requireSuccessfulPaymentForOrder(orderId);
+        if (hasSuccessfulRefundForOrder(orderId)) {
+            return toResponse(wallet);
+        }
+        processMutation(wallet, amount, TransactionType.REFUND, orderId);
         return toResponse(wallet);
     }
 
@@ -540,6 +568,32 @@ public class WalletServiceImpl implements WalletService {
     private void validateDescription(String description) {
         if (description == null || description.isBlank()) {
             throw new IllegalArgumentException(DESCRIPTION_REQUIRED_MESSAGE);
+        }
+    }
+
+    private void validateOrderId(String orderId) {
+        if (orderId == null || orderId.isBlank()) {
+            throw new IllegalArgumentException(ORDER_ID_REQUIRED_MESSAGE);
+        }
+    }
+
+    private boolean hasSuccessfulPaymentForOrder(String orderId) {
+        validateOrderId(orderId);
+        return findMatchingPaymentTransactions(orderId).stream()
+                .anyMatch(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS);
+    }
+
+    private boolean hasSuccessfulRefundForOrder(String orderId) {
+        validateOrderId(orderId);
+        return transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.REFUND)
+                .filter(transaction -> orderId.equals(transaction.getDescription()))
+                .anyMatch(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS);
+    }
+
+    private void requireSuccessfulPaymentForOrder(String orderId) {
+        if (!hasSuccessfulPaymentForOrder(orderId)) {
+            throw new IllegalStateException(SUCCESSFUL_PAYMENT_NOT_FOUND_MESSAGE + orderId);
         }
     }
 

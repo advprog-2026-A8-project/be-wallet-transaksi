@@ -17,6 +17,8 @@ public interface WalletService {
     WalletResponse pay(UUID userId, BigDecimal amount, String description);
     WalletResponse refund(UUID userId, BigDecimal amount, String description);
     WalletResponse withdraw(UUID userId, BigDecimal amount, String description);
+    WalletResponse deductBalanceForOrder(UUID userId, String orderId, BigDecimal amount, String idempotencyKey);
+    WalletResponse refundBalanceForOrder(UUID userId, String orderId, BigDecimal amount, String idempotencyKey);
     Map<String, String> initiateTopUp(TopUpRequest request);
     List<TransactionResponse> getTransactionHistory(UUID userId);
     List<TransactionResponse> getTransactionHistoryByStatus(UUID userId, TransactionStatus status);
