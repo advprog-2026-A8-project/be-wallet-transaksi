@@ -225,12 +225,10 @@ public class WalletServiceImpl implements WalletService {
 
     private java.util.Optional<Transaction> findTopUpByOrderId(String orderId) {
         List<Transaction> matchingTopUps = findMatchingTopUpTransactions(orderId);
-        java.util.Optional<Transaction> latestSuccess = findLatestTopUpByStatus(
-                matchingTopUps,
-                TransactionStatus.SUCCESS
-        );
-        if (latestSuccess.isPresent()) {
-            return latestSuccess;
+        java.util.Optional<Transaction> topUpForIdempotentSettlement =
+                findTopUpForIdempotentSettlement(matchingTopUps);
+        if (topUpForIdempotentSettlement.isPresent()) {
+            return topUpForIdempotentSettlement;
         }
         java.util.Optional<Transaction> newestPending = findPendingTopUp(matchingTopUps);
         java.util.Optional<Transaction> latestNonPending = findLatestNonPendingTopUpByCreatedAt(matchingTopUps);
@@ -239,6 +237,10 @@ public class WalletServiceImpl implements WalletService {
             return latestNonPending;
         }
         return newestPending.or(() -> findLatestTopUpByCreatedAt(matchingTopUps));
+    }
+
+    private java.util.Optional<Transaction> findTopUpForIdempotentSettlement(List<Transaction> matchingTopUps) {
+        return findLatestTopUpByStatus(matchingTopUps, TransactionStatus.SUCCESS);
     }
 
     private List<Transaction> findMatchingPaymentTransactions(String orderId) {
