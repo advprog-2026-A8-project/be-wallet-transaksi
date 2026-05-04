@@ -628,6 +628,56 @@ class WalletServiceIntegrationFlowTest {
         assertEquals(TransactionStatus.PENDING, persistedTopUp.getStatus());
     }
 
+    @Test
+    void handlePaymentFailure_TopUpOrderIdWithPendingPaymentAndTopUp_ShouldPrioritizeTopUp() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String topUpOrderId = "TOPUP-FAIL-PRIORITY-001";
+        BigDecimal topUpAmount = new BigDecimal("77000.00");
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+
+        Transaction pendingPayment = new Transaction();
+        pendingPayment.setWalletId(wallet.getWalletId());
+        pendingPayment.setAmount(new BigDecimal("50000.00"));
+        pendingPayment.setType(TransactionType.PAYMENT);
+        pendingPayment.setStatus(TransactionStatus.PENDING);
+        pendingPayment.setDescription(topUpOrderId);
+        pendingPayment.setCreatedAt(LocalDateTime.of(2026, 5, 1, 20, 0));
+        pendingPayment.setUpdatedAt(LocalDateTime.of(2026, 5, 1, 20, 0));
+        transactionRepository.save(pendingPayment);
+
+        Transaction pendingTopUp = new Transaction();
+        pendingTopUp.setWalletId(wallet.getWalletId());
+        pendingTopUp.setAmount(topUpAmount);
+        pendingTopUp.setType(TransactionType.TOPUP);
+        pendingTopUp.setStatus(TransactionStatus.PENDING);
+        pendingTopUp.setDescription(topUpOrderId);
+        pendingTopUp.setCreatedAt(LocalDateTime.of(2026, 5, 1, 20, 1));
+        pendingTopUp.setUpdatedAt(LocalDateTime.of(2026, 5, 1, 20, 1));
+        transactionRepository.save(pendingTopUp);
+
+        walletService.handlePaymentFailure(topUpOrderId);
+
+        Wallet persistedWallet = walletRepository.findById(walletId).orElseThrow();
+        assertEquals(new BigDecimal("0.00"), persistedWallet.getBalance());
+
+        Transaction persistedTopUp = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.TOPUP)
+                .filter(transaction -> topUpOrderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(TransactionStatus.FAILED, persistedTopUp.getStatus());
+
+        Transaction persistedPayment = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
+                .filter(transaction -> topUpOrderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(TransactionStatus.PENDING, persistedPayment.getStatus());
+    }
+
     private void pauseForDistinctPersistTimestamp() {
         LockSupport.parkNanos(5_000_000L);
     }
