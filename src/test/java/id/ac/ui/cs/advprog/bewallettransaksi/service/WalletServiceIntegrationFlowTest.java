@@ -525,6 +525,39 @@ class WalletServiceIntegrationFlowTest {
         assertEquals(TransactionStatus.PENDING, persistedTopUp.getStatus());
     }
 
+    @Test
+    void handlePaymentSettlement_TopUpOrderIdWithoutPendingTopUp_ShouldNotFallbackToPayment() {
+        UUID userId = UUID.randomUUID();
+        WalletResponse walletResponse = walletService.createWallet(userId);
+        UUID walletId = walletResponse.getWalletId();
+        String topUpOrderId = "TOPUP-NO-PENDING-001";
+
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+
+        Transaction pendingPayment = new Transaction();
+        pendingPayment.setWalletId(wallet.getWalletId());
+        pendingPayment.setAmount(new BigDecimal("50000.00"));
+        pendingPayment.setType(TransactionType.PAYMENT);
+        pendingPayment.setStatus(TransactionStatus.PENDING);
+        pendingPayment.setDescription(topUpOrderId);
+        pendingPayment.setCreatedAt(LocalDateTime.of(2026, 5, 1, 17, 0));
+        pendingPayment.setUpdatedAt(LocalDateTime.of(2026, 5, 1, 17, 0));
+        transactionRepository.save(pendingPayment);
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> walletService.handlePaymentSettlement(topUpOrderId)
+        );
+        assertEquals("Pending topup transaction not found for orderId: " + topUpOrderId, exception.getMessage());
+
+        Transaction persistedPayment = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
+                .filter(transaction -> topUpOrderId.equals(transaction.getDescription()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(TransactionStatus.PENDING, persistedPayment.getStatus());
+    }
+
     private void pauseForDistinctPersistTimestamp() {
         LockSupport.parkNanos(5_000_000L);
     }
