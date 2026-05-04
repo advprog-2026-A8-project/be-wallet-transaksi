@@ -1163,6 +1163,86 @@ class WalletServiceIntegrationFlowTest {
     }
 
     @Test
+    void deductBalanceForOrder_SameOrderAndIdempotencyKey_ShouldBeIdempotent() {
+        UUID userId = UUID.randomUUID();
+        walletService.createWallet(userId);
+        TopUpRequest topUpRequest = new TopUpRequest();
+        topUpRequest.setUserId(userId);
+        topUpRequest.setAmount(new BigDecimal("200000.00"));
+        walletService.topUp(topUpRequest);
+
+        WalletResponse first = walletService.deductBalanceForOrder(
+                userId,
+                "ORDER-GRPC-001",
+                new BigDecimal("50000.00"),
+                "idem-order-001"
+        );
+        WalletResponse second = walletService.deductBalanceForOrder(
+                userId,
+                "ORDER-GRPC-001",
+                new BigDecimal("50000.00"),
+                "idem-order-001"
+        );
+
+        assertEquals(new BigDecimal("150000.00"), first.getBalance());
+        assertEquals(new BigDecimal("150000.00"), second.getBalance());
+
+        long paymentCount = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.PAYMENT)
+                .filter(transaction -> "ORDER-GRPC-001".equals(transaction.getDescription()))
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS)
+                .count();
+        assertEquals(1, paymentCount);
+    }
+
+    @Test
+    void refundBalanceForOrder_WithoutSuccessfulPayment_ShouldFailAndPreventDoubleRefund() {
+        UUID userId = UUID.randomUUID();
+        walletService.createWallet(userId);
+
+        IllegalStateException noPaymentException = assertThrows(
+                IllegalStateException.class,
+                () -> walletService.refundBalanceForOrder(
+                        userId,
+                        "ORDER-GRPC-REFUND-001",
+                        new BigDecimal("20000.00"),
+                        "idem-refund-001"
+                )
+        );
+        assertEquals("Successful payment transaction not found for orderId: ORDER-GRPC-REFUND-001",
+                noPaymentException.getMessage());
+
+        TopUpRequest topUpRequest = new TopUpRequest();
+        topUpRequest.setUserId(userId);
+        topUpRequest.setAmount(new BigDecimal("200000.00"));
+        walletService.topUp(topUpRequest);
+        walletService.deductBalanceForOrder(userId, "ORDER-GRPC-REFUND-001", new BigDecimal("50000.00"), "idem-order-002");
+
+        WalletResponse firstRefund = walletService.refundBalanceForOrder(
+                userId,
+                "ORDER-GRPC-REFUND-001",
+                new BigDecimal("50000.00"),
+                "idem-refund-001"
+        );
+        WalletResponse secondRefund = walletService.refundBalanceForOrder(
+                userId,
+                "ORDER-GRPC-REFUND-001",
+                new BigDecimal("50000.00"),
+                "idem-refund-001"
+        );
+
+        assertEquals(new BigDecimal("200000.00"), firstRefund.getBalance());
+        assertEquals(new BigDecimal("200000.00"), secondRefund.getBalance());
+
+        long refundCount = transactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getType() == TransactionType.REFUND)
+                .filter(transaction -> "ORDER-GRPC-REFUND-001".equals(transaction.getDescription()))
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS)
+                .count();
+        assertEquals(1, refundCount);
+    }
+
+    @Test
     void handlePaymentSettlement_ConcurrentCallbacks_ShouldCreditWalletOnlyOnce() throws Exception {
         UUID userId = UUID.randomUUID();
         WalletResponse walletResponse = walletService.createWallet(userId);
