@@ -38,7 +38,8 @@ public class WalletServiceImpl implements WalletService {
     private static final String TOP_UP_REQUEST_REQUIRED_MESSAGE = "Top-up request must not be null";
     private static final String STATUS_REQUIRED_MESSAGE = "Status must not be null";
     private static final String WALLET_ALREADY_EXISTS_MESSAGE = "Wallet already exists for user";
-    private static final String PAYMENT_NOT_FOUND_MESSAGE = "Payment transaction not found for orderId: ";
+    private static final String PENDING_PAYMENT_NOT_FOUND_MESSAGE = "Pending payment transaction not found for orderId: ";
+    private static final String PENDING_TOPUP_NOT_FOUND_MESSAGE = "Pending topup transaction not found for orderId: ";
     private static final String TOPUP_NOT_FOUND_MESSAGE = "Topup transaction not found for orderId: ";
     private static final String WALLET_NOT_FOUND_FOR_TOPUP_CALLBACK_MESSAGE = "Wallet not found for topup callback";
     private static final String TOPUP_ORDER_PREFIX = "TOPUP-";
@@ -209,7 +210,7 @@ public class WalletServiceImpl implements WalletService {
     private Transaction findPendingPaymentByOrderId(String orderId) {
         return findPaymentByOrderId(orderId)
                 .filter(this::isPendingPaymentTransaction)
-                .orElseThrow(() -> new IllegalStateException(PAYMENT_NOT_FOUND_MESSAGE + orderId));
+                .orElseThrow(() -> new IllegalStateException(PENDING_PAYMENT_NOT_FOUND_MESSAGE + orderId));
     }
 
     private java.util.Optional<Transaction> findPaymentByOrderId(String orderId) {
@@ -345,7 +346,17 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private java.util.Optional<Transaction> findNonTopUpCallbackTransactionByOrderId(String normalizedOrderId) {
-        return findPaymentByOrderId(normalizedOrderId);
+        java.util.Optional<Transaction> selectedPayment = findPaymentByOrderId(normalizedOrderId);
+        if (selectedPayment.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        if (selectedPayment.get().getStatus() != TransactionStatus.PENDING) {
+            java.util.Optional<Transaction> pendingTopUp = findPendingTopUp(findMatchingTopUpTransactions(normalizedOrderId));
+            if (pendingTopUp.isPresent()) {
+                return pendingTopUp;
+            }
+        }
+        return selectedPayment;
     }
 
     private boolean isTopUpOrderId(String orderId) {
@@ -354,9 +365,9 @@ public class WalletServiceImpl implements WalletService {
 
     private String buildCallbackNotFoundMessage(String orderId) {
         if (isTopUpOrderId(orderId)) {
-            return TOPUP_NOT_FOUND_MESSAGE + orderId;
+            return PENDING_TOPUP_NOT_FOUND_MESSAGE + orderId;
         }
-        return PAYMENT_NOT_FOUND_MESSAGE + orderId;
+        return PENDING_PAYMENT_NOT_FOUND_MESSAGE + orderId;
     }
 
     private void applyPendingCallbackTransition(
@@ -399,7 +410,16 @@ public class WalletServiceImpl implements WalletService {
         if (callbackTransaction.getStatus() == TransactionStatus.PENDING) {
             return false;
         }
-        return callbackTransaction.getStatus() != targetStatus;
+        return callbackTransaction.getStatus() != targetStatus
+                && hasPendingPaymentDuplicate(callbackTransaction.getDescription());
+    }
+
+    private boolean hasPendingPaymentDuplicate(String orderId) {
+        if (orderId == null) {
+            return false;
+        }
+        return findMatchingPaymentTransactions(orderId).stream()
+                .anyMatch(transaction -> transaction.getStatus() == TransactionStatus.PENDING);
     }
 
     private void transitionPendingTopUp(
@@ -408,7 +428,7 @@ public class WalletServiceImpl implements WalletService {
             String normalizedOrderId
     ) {
         if (topUpTransaction.getStatus() != TransactionStatus.PENDING) {
-            throw new IllegalStateException(TOPUP_NOT_FOUND_MESSAGE + normalizedOrderId);
+            throw new IllegalStateException(PENDING_TOPUP_NOT_FOUND_MESSAGE + normalizedOrderId);
         }
         if (targetStatus == TransactionStatus.SUCCESS) {
             Wallet wallet = walletRepository.findById(topUpTransaction.getWalletId())
