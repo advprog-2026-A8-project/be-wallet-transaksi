@@ -286,25 +286,11 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private java.util.Optional<Transaction> findCallbackTransactionByOrderId(String normalizedOrderId) {
-        java.util.Optional<Transaction> pendingTopUp = findPendingTopUpByOrderId(normalizedOrderId);
         if (isTopUpOrderId(normalizedOrderId)) {
-            if (pendingTopUp.isPresent()) {
-                return pendingTopUp;
-            }
-            return java.util.Optional.empty();
-        }
-        if (shouldPrioritizePendingTopUp(normalizedOrderId, pendingTopUp)) {
-            return pendingTopUp;
+            return findPendingTopUpByOrderId(normalizedOrderId);
         }
         return findPaymentByOrderId(normalizedOrderId)
                 .or(() -> findTopUpByOrderId(normalizedOrderId));
-    }
-
-    private boolean shouldPrioritizePendingTopUp(
-            String normalizedOrderId,
-            java.util.Optional<Transaction> pendingTopUp
-    ) {
-        return isTopUpOrderId(normalizedOrderId) && pendingTopUp.isPresent();
     }
 
     private boolean isTopUpOrderId(String orderId) {
