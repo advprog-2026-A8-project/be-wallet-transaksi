@@ -282,11 +282,6 @@ public class WalletServiceImpl implements WalletService {
         return orderId.trim();
     }
 
-    private boolean isPendingPaymentTransaction(Transaction transaction) {
-        return transaction.getType() == TransactionType.PAYMENT
-                && transaction.getStatus() == TransactionStatus.PENDING;
-    }
-
     private java.util.Optional<Transaction> findPaymentByOrderId(String orderId) {
         List<Transaction> matchingPayments = findMatchingPaymentTransactions(orderId);
         java.util.Optional<Transaction> newestPending = findPendingPayment(matchingPayments);
