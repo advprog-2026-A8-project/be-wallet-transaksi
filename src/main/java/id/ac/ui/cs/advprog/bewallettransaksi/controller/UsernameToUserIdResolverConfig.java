@@ -19,10 +19,16 @@ public class UsernameToUserIdResolverConfig {
     )
     UsernameToUserIdResolver authServiceUsernameToUserIdResolver(
             @Value("${auth.service.base-url:http://localhost:8080}") String baseUrl,
-            @Value("${auth.service.timeout-ms:1000}") long timeoutMs
+            @Value("${auth.service.timeout-ms:1000}") long timeoutMs,
+            @Value("${auth.service.user-lookup-path:/internal/users/by-username}") String userLookupPath
     ) {
         long safeTimeoutMs = timeoutMs > 0 ? timeoutMs : 1000;
-        return new AuthServiceUsernameToUserIdResolver(baseUrl, Duration.ofMillis(safeTimeoutMs));
+        return new AuthServiceUsernameToUserIdResolver(
+                baseUrl,
+                java.net.http.HttpClient.newHttpClient(),
+                Duration.ofMillis(safeTimeoutMs),
+                userLookupPath
+        );
     }
 
     @Bean
@@ -31,4 +37,3 @@ public class UsernameToUserIdResolverConfig {
         return new NoopUsernameToUserIdResolver();
     }
 }
-

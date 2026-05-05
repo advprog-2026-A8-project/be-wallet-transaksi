@@ -28,7 +28,7 @@ class HttpOrderPaymentStatusPublisherTest {
     void setUp() {
         restTemplate = new RestTemplate();
         mockServer = MockRestServiceServer.bindTo(restTemplate).build();
-        publisher = new HttpOrderPaymentStatusPublisher(restTemplate, BASE_URL);
+        publisher = new HttpOrderPaymentStatusPublisher(restTemplate, BASE_URL, SETTLED_PATH, FAILED_PATH);
     }
 
     @Test
@@ -62,7 +62,12 @@ class HttpOrderPaymentStatusPublisherTest {
     @Test
     void constructor_BaseUrlWithOuterWhitespace_ShouldBeTrimmed() {
         HttpOrderPaymentStatusPublisher publisherWithSpacedBaseUrl =
-                new HttpOrderPaymentStatusPublisher(restTemplate, "  " + BASE_URL + "  ");
+                new HttpOrderPaymentStatusPublisher(
+                        restTemplate,
+                        "  " + BASE_URL + "  ",
+                        SETTLED_PATH,
+                        FAILED_PATH
+                );
         expectPostSuccess(SETTLED_PATH, "{\"orderId\":\"ORDER-999\",\"status\":\"SUCCESS\"}");
 
         publisherWithSpacedBaseUrl.publishPaymentSettled("ORDER-999");

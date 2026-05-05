@@ -19,10 +19,10 @@ public class GrpcInternalAuthInterceptor implements ServerInterceptor {
     }
 
     @Override
-    public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
-            ServerCall<ReqT, RespT> call,
+    public <R, S> ServerCall.Listener<R> interceptCall(
+            ServerCall<R, S> call,
             Metadata headers,
-            ServerCallHandler<ReqT, RespT> next
+            ServerCallHandler<R, S> next
     ) {
         String actualToken = headers.get(SERVICE_TOKEN_HEADER);
         if (!isAuthorized(actualToken)) {

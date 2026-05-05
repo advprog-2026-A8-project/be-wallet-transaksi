@@ -38,10 +38,11 @@ public class WalletRequestAccessPolicy {
         if (!isJwtToken(authorization) || targetUserId == null) {
             return false;
         }
-        Claims claims = parseClaims(authorization);
-        if (claims == null) {
+        Optional<Claims> parsedClaims = parseClaims(authorization);
+        if (parsedClaims.isEmpty()) {
             return false;
         }
+        Claims claims = parsedClaims.get();
         if (isAdmin(claims)) {
             return false;
         }
@@ -93,10 +94,11 @@ public class WalletRequestAccessPolicy {
 
     public boolean isAllowedWalletMutationRole(String authorization) {
         if (isJwtToken(authorization)) {
-            Claims claims = parseClaims(authorization);
-            if (claims == null) {
+            Optional<Claims> parsedClaims = parseClaims(authorization);
+            if (parsedClaims.isEmpty()) {
                 return false;
             }
+            Claims claims = parsedClaims.get();
             String role = claims.get(ROLE_CLAIM, String.class);
             return isSupportedMutationRole(role);
         }
@@ -111,16 +113,17 @@ public class WalletRequestAccessPolicy {
         if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
             return false;
         }
-        Claims claims = parseClaims(authorization);
-        if (claims == null) {
+        Optional<Claims> parsedClaims = parseClaims(authorization);
+        if (parsedClaims.isEmpty()) {
             return false;
         }
+        Claims claims = parsedClaims.get();
         String role = claims.get(ROLE_CLAIM, String.class);
         return expectedRole.equalsIgnoreCase(role);
     }
 
     private boolean isJwtParsable(String authorization) {
-        return parseClaims(authorization) != null;
+        return parseClaims(authorization).isPresent();
     }
 
     private boolean isJwtToken(String authorization) {
@@ -131,16 +134,16 @@ public class WalletRequestAccessPolicy {
         return token.chars().filter(ch -> ch == '.').count() == 2;
     }
 
-    private Claims parseClaims(String authorization) {
+    private Optional<Claims> parseClaims(String authorization) {
         String token = authorization.substring(BEARER_PREFIX.length());
         try {
-            return Jwts.parser()
+            return Optional.of(Jwts.parser()
                     .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
                     .build()
                     .parseSignedClaims(token)
-                    .getPayload();
+                    .getPayload());
         } catch (RuntimeException ex) {
-            return null;
+            return Optional.empty();
         }
     }
 

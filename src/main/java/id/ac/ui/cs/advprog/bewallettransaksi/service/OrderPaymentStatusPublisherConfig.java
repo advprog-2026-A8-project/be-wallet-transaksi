@@ -19,7 +19,9 @@ public class OrderPaymentStatusPublisherConfig {
     OrderPaymentStatusPublisher httpOrderPaymentStatusPublisher(
             RestTemplateBuilder restTemplateBuilder,
             @Value("${order.service.base-url}") String baseUrl,
-            @Value("${order.service.timeout-ms:1000}") long timeoutMs
+            @Value("${order.service.timeout-ms:1000}") long timeoutMs,
+            @Value("${order.service.payment-settled-path:/internal/orders/payment/settled}") String settledPath,
+            @Value("${order.service.payment-failed-path:/internal/orders/payment/failed}") String failedPath
     ) {
         long safeTimeoutMs = timeoutMs > 0 ? timeoutMs : 1000;
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
@@ -29,7 +31,9 @@ public class OrderPaymentStatusPublisherConfig {
                 restTemplateBuilder
                         .requestFactory(() -> requestFactory)
                         .build(),
-                baseUrl
+                baseUrl,
+                settledPath,
+                failedPath
         );
     }
 

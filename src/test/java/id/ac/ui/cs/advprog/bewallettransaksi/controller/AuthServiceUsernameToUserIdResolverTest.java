@@ -180,7 +180,7 @@ class AuthServiceUsernameToUserIdResolverTest {
         UUID expectedUserId = UUID.fromString("77777777-7777-7777-7777-777777777777");
         HttpServer server = createServerWithResponse("{\"userId\":\"" + expectedUserId + "\"}");
         server.start();
-        try {
+        try (ServerStopper ignored = new ServerStopper(server)) {
             String baseUrl = "http://localhost:" + server.getAddress().getPort();
             AuthServiceUsernameToUserIdResolver resolver =
                     new AuthServiceUsernameToUserIdResolver(baseUrl, HttpClient.newHttpClient(), null);
@@ -189,8 +189,6 @@ class AuthServiceUsernameToUserIdResolverTest {
 
             assertTrue(resolved.isPresent());
             assertEquals(expectedUserId, resolved.get());
-        } finally {
-            server.stop(0);
         }
     }
 
@@ -199,7 +197,7 @@ class AuthServiceUsernameToUserIdResolverTest {
         UUID expectedUserId = UUID.fromString("88888888-8888-8888-8888-888888888888");
         HttpServer server = createServerWithResponse("{\"userId\":\"" + expectedUserId + "\"}");
         server.start();
-        try {
+        try (ServerStopper ignored = new ServerStopper(server)) {
             String baseUrl = "http://localhost:" + server.getAddress().getPort();
             AuthServiceUsernameToUserIdResolver resolver =
                     new AuthServiceUsernameToUserIdResolver(baseUrl, HttpClient.newHttpClient(), Duration.ZERO);
@@ -208,7 +206,18 @@ class AuthServiceUsernameToUserIdResolverTest {
 
             assertTrue(resolved.isPresent());
             assertEquals(expectedUserId, resolved.get());
-        } finally {
+        }
+    }
+
+    private static final class ServerStopper implements AutoCloseable {
+        private final HttpServer server;
+
+        private ServerStopper(HttpServer server) {
+            this.server = server;
+        }
+
+        @Override
+        public void close() {
             server.stop(0);
         }
     }

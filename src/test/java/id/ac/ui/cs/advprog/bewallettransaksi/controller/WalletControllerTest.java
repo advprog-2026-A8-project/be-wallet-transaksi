@@ -449,10 +449,10 @@ class WalletControllerTest {
         request.setAmount(BigDecimal.valueOf(50000.00));
         doThrow(new RuntimeException("id generator failed"))
                 .when(walletRequestAccessPolicy).isForbiddenTopUpRole(READ_JWT_HEADER_VALUE);
+        MockHttpServletRequestBuilder requestBuilder =
+                performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-fail");
 
-        assertThrows(Exception.class, () -> mockMvc.perform(
-                        performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-fail"))
-                .andReturn());
+        assertThrows(Exception.class, () -> mockMvc.perform(requestBuilder).andReturn());
 
         verify(idempotencyKeyGuard, times(1)).release("idem-initiate-fail");
     }
@@ -848,26 +848,6 @@ class WalletControllerTest {
     }
 
     @Test
-    void withdraw_ValidJastiperJwtWithoutLegacyRoleHeader_ShouldSucceed() throws Exception {
-        WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
-
-        when(walletService.withdraw(userId, BigDecimal.valueOf(30.00), "BCA-123456")).thenReturn(
-                WalletResponse.builder()
-                        .walletId(walletId)
-                        .userId(userId)
-                        .balance(BigDecimal.valueOf(70.00))
-                        .build()
-        );
-
-        mockMvc.perform(post("/wallet/withdraw")
-                        .header("Authorization", "Bearer valid-jastiper-jwt")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.balance").value(70.00));
-    }
-
-    @Test
     void withdraw_ValidSignedJastiperJwtWithoutLegacyRoleHeader_ShouldSucceed() throws Exception {
         WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
 
@@ -1002,6 +982,8 @@ class WalletControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
                 .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(walletService, never()).withdraw(any(), any(), anyString());
     }
 
     @Test

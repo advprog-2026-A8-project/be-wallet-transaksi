@@ -12,6 +12,13 @@ group = "id.ac.ui.cs.advprog"
 version = "0.0.1-SNAPSHOT"
 description = "be-wallet-transaksi"
 
+val grpcVersion = "1.68.1"
+val jjwtVersion = "0.12.6"
+val springdocVersion = "2.8.8"
+val protobufVersion = "3.25.5"
+val grpcPluginVersion = "1.68.1"
+val tomcatAnnotationsVersion = "6.0.53"
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -29,17 +36,16 @@ repositories {
 }
 
 dependencies {
-    implementation("io.grpc:grpc-protobuf:1.68.1")
-    implementation("io.grpc:grpc-stub:1.68.1")
-    implementation("io.grpc:grpc-netty-shaded:1.68.1")
-    compileOnly("org.apache.tomcat:annotations-api:6.0.53")
-
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8")
-    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
+    implementation("io.grpc:grpc-netty-shaded:$grpcVersion")
+    implementation("io.grpc:grpc-protobuf:$grpcVersion")
+    implementation("io.grpc:grpc-stub:$grpcVersion")
+    implementation("io.jsonwebtoken:jjwt-api:$jjwtVersion")
 
+    compileOnly("org.apache.tomcat:annotations-api:$tomcatAnnotationsVersion")
     compileOnly("org.projectlombok:lombok")
 
     annotationProcessor("org.projectlombok:lombok")
@@ -47,23 +53,23 @@ dependencies {
 
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:$jjwtVersion")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jjwtVersion")
     runtimeOnly("org.postgresql:postgresql")
-    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
+    testImplementation("io.grpc:grpc-testing:$grpcVersion")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("io.grpc:grpc-testing:1.68.1")
     testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:3.25.5"
+        artifact = "com.google.protobuf:protoc:$protobufVersion"
     }
     plugins {
         create("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.68.1"
+            artifact = "io.grpc:protoc-gen-grpc-java:$grpcPluginVersion"
         }
     }
     generateProtoTasks {
@@ -73,6 +79,10 @@ protobuf {
             }
         }
     }
+}
+
+dependencyLocking {
+    lockAllConfigurations()
 }
 
 sonar {

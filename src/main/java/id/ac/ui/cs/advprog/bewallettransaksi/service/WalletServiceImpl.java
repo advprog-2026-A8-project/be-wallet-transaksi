@@ -47,7 +47,6 @@ public class WalletServiceImpl implements WalletService {
     private static final String SUCCESSFUL_PAYMENT_NOT_FOUND_MESSAGE = "Successful payment transaction not found for orderId: ";
     private static final String PENDING_PAYMENT_NOT_FOUND_MESSAGE = "Pending payment transaction not found for orderId: ";
     private static final String PENDING_TOPUP_NOT_FOUND_MESSAGE = "Pending topup transaction not found for orderId: ";
-    private static final String TOPUP_NOT_FOUND_MESSAGE = "Topup transaction not found for orderId: ";
     private static final String WALLET_NOT_FOUND_FOR_TOPUP_CALLBACK_MESSAGE = "Wallet not found for topup callback";
     private static final String TOPUP_ORDER_PREFIX = "TOPUP-";
     private static final Comparator<Transaction> TRANSACTION_CREATED_AT_ORDER =
@@ -132,7 +131,7 @@ public class WalletServiceImpl implements WalletService {
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(request.getUserId());
         String orderId = generateTopUpOrderId();
         persistPendingTopUpTransaction(wallet.getWalletId(), request.getAmount(), orderId);
-        log.info("wallet.topup.initiate userId={} orderId={} amount={}", request.getUserId(), orderId, request.getAmount());
+        log.info("wallet.topup.initiate request accepted");
         return buildInitiateTopUpResponse(request, orderId);
     }
 
@@ -278,7 +277,7 @@ public class WalletServiceImpl implements WalletService {
 
     private String normalizeOrderId(String orderId) {
         if (orderId == null || orderId.isBlank()) {
-            throw new IllegalArgumentException("Order ID must not be blank");
+            throw new IllegalArgumentException(ORDER_ID_REQUIRED_MESSAGE);
         }
         return orderId.trim();
     }
@@ -286,12 +285,6 @@ public class WalletServiceImpl implements WalletService {
     private boolean isPendingPaymentTransaction(Transaction transaction) {
         return transaction.getType() == TransactionType.PAYMENT
                 && transaction.getStatus() == TransactionStatus.PENDING;
-    }
-
-    private Transaction findPendingPaymentByOrderId(String orderId) {
-        return findPaymentByOrderId(orderId)
-                .filter(this::isPendingPaymentTransaction)
-                .orElseThrow(() -> new IllegalStateException(PENDING_PAYMENT_NOT_FOUND_MESSAGE + orderId));
     }
 
     private java.util.Optional<Transaction> findPaymentByOrderId(String orderId) {
@@ -379,15 +372,6 @@ public class WalletServiceImpl implements WalletService {
                 .max(TRANSACTION_CREATED_AT_NEWEST);
     }
 
-    private java.util.Optional<Transaction> findLatestTopUpByStatus(
-            List<Transaction> matchingTopUps,
-            TransactionStatus status
-    ) {
-        return matchingTopUps.stream()
-                .filter(transaction -> transaction.getStatus() == status)
-                .max(TRANSACTION_CREATED_AT_NEWEST);
-    }
-
     private boolean shouldPreferLatestNonPending(
             java.util.Optional<Transaction> newestPending,
             java.util.Optional<Transaction> latestNonPending
@@ -470,7 +454,7 @@ public class WalletServiceImpl implements WalletService {
             String normalizedOrderId
     ) {
         if (callbackTransaction.getType() == TransactionType.TOPUP) {
-            transitionPendingTopUp(callbackTransaction, targetStatus, normalizedOrderId);
+            transitionPendingTopUp(callbackTransaction, targetStatus);
             return;
         }
         updateTransactionStatus(callbackTransaction, targetStatus);
@@ -518,8 +502,7 @@ public class WalletServiceImpl implements WalletService {
 
     private void transitionPendingTopUp(
             Transaction topUpTransaction,
-            TransactionStatus targetStatus,
-            String normalizedOrderId
+            TransactionStatus targetStatus
     ) {
         boolean transitioned = transactionRepository.transitionStatusIfMatches(
                 topUpTransaction.getTransactionId(),

@@ -1199,13 +1199,14 @@ class WalletServiceIntegrationFlowTest {
     void refundBalanceForOrder_WithoutSuccessfulPayment_ShouldFailAndPreventDoubleRefund() {
         UUID userId = UUID.randomUUID();
         walletService.createWallet(userId);
+        BigDecimal refundAmount = new BigDecimal("20000.00");
 
         IllegalStateException noPaymentException = assertThrows(
                 IllegalStateException.class,
                 () -> walletService.refundBalanceForOrder(
                         userId,
                         "ORDER-GRPC-REFUND-001",
-                        new BigDecimal("20000.00"),
+                        refundAmount,
                         "idem-refund-001"
                 )
         );
