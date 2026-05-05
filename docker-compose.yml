@@ -1,17 +1,108 @@
-version: "3.8"
-
 services:
-  postgres:
+  postgres-main:
     image: postgres:15-alpine
-    container_name: wallet-postgres
+    container_name: wallet-postgres-main
+    profiles: ["main"]
     environment:
-      POSTGRES_DB: walletdb
+      POSTGRES_DB: ${POSTGRES_DB:-walletdb}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "6001:5432"
     volumes:
-      - wallet_pgdata:/var/lib/postgresql/data
+      - wallet_pgdata_main:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  wallet-app-main:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wallet-app-main
+    profiles: ["main"]
+    depends_on:
+      postgres-main:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres-main
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-walletdb}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY}
+      MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY}
+      MIDTRANS_MERCHANT_ID: ${MIDTRANS_MERCHANT_ID}
+      MIDTRANS_SNAP_TOKEN_PREFIX: ${MIDTRANS_SNAP_TOKEN_PREFIX}
+      MIDTRANS_SNAP_REDIRECT_BASE_URL: ${MIDTRANS_SNAP_REDIRECT_BASE_URL}
+      AUTH_SERVICE_USERNAME_RESOLVER_ENABLED: ${AUTH_SERVICE_USERNAME_RESOLVER_ENABLED}
+      AUTH_SERVICE_BASE_URL: ${AUTH_SERVICE_BASE_URL}
+      AUTH_SERVICE_TIMEOUT_MS: ${AUTH_SERVICE_TIMEOUT_MS}
+      ORDER_SERVICE_PUBLISHER_ENABLED: ${ORDER_SERVICE_PUBLISHER_ENABLED}
+      ORDER_SERVICE_BASE_URL: ${ORDER_SERVICE_BASE_URL}
+      ORDER_SERVICE_TIMEOUT_MS: ${ORDER_SERVICE_TIMEOUT_MS}
+      GRPC_SERVER_ENABLED: ${GRPC_SERVER_ENABLED}
+      GRPC_SERVER_PORT: ${GRPC_SERVER_PORT}
+      GRPC_SERVER_INTERNAL_TOKEN: ${GRPC_SERVER_INTERNAL_TOKEN}
+    ports:
+      - "6000:8080"
+
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: wallet-postgres-dev
+    profiles: ["dev"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB_DEV:-walletdb_dev}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "6003:5432"
+    volumes:
+      - wallet_pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB_DEV:-walletdb_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  wallet-app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wallet-app-dev
+    profiles: ["dev"]
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres-dev
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB_DEV:-walletdb_dev}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY}
+      MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY}
+      MIDTRANS_MERCHANT_ID: ${MIDTRANS_MERCHANT_ID}
+      MIDTRANS_SNAP_TOKEN_PREFIX: ${MIDTRANS_SNAP_TOKEN_PREFIX}
+      MIDTRANS_SNAP_REDIRECT_BASE_URL: ${MIDTRANS_SNAP_REDIRECT_BASE_URL}
+      AUTH_SERVICE_USERNAME_RESOLVER_ENABLED: ${AUTH_SERVICE_USERNAME_RESOLVER_ENABLED}
+      AUTH_SERVICE_BASE_URL: ${AUTH_SERVICE_BASE_URL}
+      AUTH_SERVICE_TIMEOUT_MS: ${AUTH_SERVICE_TIMEOUT_MS}
+      ORDER_SERVICE_PUBLISHER_ENABLED: ${ORDER_SERVICE_PUBLISHER_ENABLED}
+      ORDER_SERVICE_BASE_URL: ${ORDER_SERVICE_BASE_URL}
+      ORDER_SERVICE_TIMEOUT_MS: ${ORDER_SERVICE_TIMEOUT_MS}
+      GRPC_SERVER_ENABLED: ${GRPC_SERVER_ENABLED}
+      GRPC_SERVER_PORT: ${GRPC_SERVER_PORT}
+      GRPC_SERVER_INTERNAL_TOKEN: ${GRPC_SERVER_INTERNAL_TOKEN}
+    ports:
+      - "6002:8080"
 
 volumes:
-  wallet_pgdata:
+  wallet_pgdata_main:
+  wallet_pgdata_dev:

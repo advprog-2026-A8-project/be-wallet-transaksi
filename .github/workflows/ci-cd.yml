@@ -17,11 +17,11 @@ jobs:
       postgres:
         image: postgres:15-alpine
         env:
-          POSTGRES_DB: walletdb
+          POSTGRES_DB: walletdb_test
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         ports:
-          - 5432:5432
+          - 6001:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -86,6 +86,7 @@ jobs:
             echo "DB_NAME=walletdb_prod" >> $GITHUB_ENV
             echo "DB_PORT=5432" >> $GITHUB_ENV
             echo "DB_VOLUME=postgres_data_prod" >> $GITHUB_ENV
+            echo "AUTH_SERVICE_BASE_URL=http://${{ secrets.SSH_HOST }}:3000" >> $GITHUB_ENV
           else
             echo "APP_PORT=8081" >> $GITHUB_ENV
             echo "CONTAINER_NAME=wallet_server_staging" >> $GITHUB_ENV
@@ -94,6 +95,7 @@ jobs:
             echo "DB_NAME=walletdb_staging" >> $GITHUB_ENV
             echo "DB_PORT=5433" >> $GITHUB_ENV
             echo "DB_VOLUME=postgres_data_staging" >> $GITHUB_ENV
+            echo "AUTH_SERVICE_BASE_URL=http://${{ secrets.SSH_HOST }}:3002" >> $GITHUB_ENV
           fi
 
       - name: Check out code
@@ -163,6 +165,13 @@ jobs:
               -e POSTGRES_DB=${{ env.DB_NAME }} \
               -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
               -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -e JWT_EXPIRATION=${{ secrets.JWT_EXPIRATION }} \
+              -e MIDTRANS_SERVER_KEY=${{ secrets.MIDTRANS_SERVER_KEY }} \
+              -e MIDTRANS_CLIENT_KEY=${{ secrets.MIDTRANS_CLIENT_KEY }} \
+              -e MIDTRANS_MERCHANT_ID=${{ secrets.MIDTRANS_MERCHANT_ID }} \
+              -e GRPC_SERVER_INTERNAL_TOKEN=${{ secrets.GRPC_SERVER_INTERNAL_TOKEN }} \
+              -e AUTH_SERVICE_BASE_URL=${{ env.AUTH_SERVICE_BASE_URL }} \
               -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
               --restart always \
               ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}

@@ -36,6 +36,12 @@ class WalletServiceStrategyIntegrationTest {
     @Mock
     private WalletMutationStrategy strategy;
 
+    @Mock
+    private OrderPaymentStatusPublisher orderPaymentStatusPublisher;
+
+    @Mock
+    private PaymentGatewayClient paymentGatewayClient;
+
     @InjectMocks
     private WalletServiceImpl walletService;
 
@@ -81,4 +87,3 @@ class WalletServiceStrategyIntegrationTest {
         verify(strategy).apply(BigDecimal.valueOf(100.00), BigDecimal.valueOf(30.00));
     }
 }
-

@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.bewallettransaksi.service;
 import java.util.UUID;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
@@ -16,6 +17,11 @@ public interface WalletService {
     WalletResponse pay(UUID userId, BigDecimal amount, String description);
     WalletResponse refund(UUID userId, BigDecimal amount, String description);
     WalletResponse withdraw(UUID userId, BigDecimal amount, String description);
+    WalletResponse deductBalanceForOrder(UUID userId, String orderId, BigDecimal amount, String idempotencyKey);
+    WalletResponse refundBalanceForOrder(UUID userId, String orderId, BigDecimal amount, String idempotencyKey);
+    Map<String, String> initiateTopUp(TopUpRequest request);
     List<TransactionResponse> getTransactionHistory(UUID userId);
     List<TransactionResponse> getTransactionHistoryByStatus(UUID userId, TransactionStatus status);
+    void handlePaymentSettlement(String orderId);
+    void handlePaymentFailure(String orderId);
 }

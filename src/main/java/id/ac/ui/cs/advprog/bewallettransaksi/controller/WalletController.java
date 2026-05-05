@@ -1,24 +1,32 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
-import java.util.UUID;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import id.ac.ui.cs.advprog.bewallettransaksi.dto.PaymentCallbackRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletMutationRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
+import id.ac.ui.cs.advprog.bewallettransaksi.exception.ConflictException;
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.bewallettransaksi.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
@@ -26,51 +34,134 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/wallet")
+@Tag(name = "Wallet API", description = "Wallet operations, mutations, history, and payment callbacks")
 public class WalletController {
-    private static final String UNAUTHORIZED_MESSAGE = "Unauthorized";
-    private static final String FORBIDDEN_MESSAGE = "Forbidden";
-    private static final String MISSING_JASTIPER_ROLE_MESSAGE = "Missing required role: JASTIPER";
+    private static final String UNAUTHORIZED_MESSAGE = "Autentikasi diperlukan!";
+    private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
+    private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
+    private static final String SIGNATURE_HEADER = "X-Signature-Key";
+    private static final String CALLBACK_ACCEPTED_MESSAGE = "Callback accepted";
+    private static final String INVALID_CALLBACK_SIGNATURE_MESSAGE = "Invalid callback signature";
+    private static final String DUPLICATE_IDEMPOTENCY_MESSAGE = "Duplicate idempotency key";
+    private static final String CALLBACK_TRANSACTION_STATUS_KEY = "transaction_status";
+    private static final String CALLBACK_STATUS_CODE_KEY = "status_code";
+    private static final String CALLBACK_GROSS_AMOUNT_KEY = "gross_amount";
+    private static final String ORDER_ID_BLANK_MESSAGE = "Order ID must not be blank";
+    private static final String ORDER_ID_TOO_LONG_MESSAGE = "Order ID must be at most 128 characters";
+    private static final String GROSS_AMOUNT_INVALID_NUMBER_MESSAGE = "gross_amount must be a valid number";
+    private static final String STATUS_CODE_INVALID_NUMBER_MESSAGE = "status_code must be numeric";
+    private static final String STATUS_CODE_UNSUPPORTED_MESSAGE_PREFIX = "Unsupported callback status_code: ";
+    private static final Set<String> SUPPORTED_CALLBACK_STATUS_CODES = Set.of("200", "201", "202", "407");
+    private static final String JASTIPER_ROLE = "JASTIPER";
+    private static final int MAX_CALLBACK_ORDER_ID_LENGTH = 128;
 
     private final WalletService walletService;
+    private final WalletRequestAccessPolicy walletRequestAccessPolicy;
+    private final IdempotencyKeyGuard idempotencyKeyGuard;
+    private final MidtransCallbackSignatureVerifier callbackSignatureVerifier;
+    private final PaymentCallbackProcessor paymentCallbackProcessor;
+    private final Map<String, Map<String, String>> cachedTopUpInitiateResponses = new ConcurrentHashMap<>();
 
-    public WalletController(WalletService walletService) {
+    private record NormalizedCallbackFields(
+            String orderId,
+            String statusCode,
+            String grossAmount,
+            String transactionStatus
+    ) {
+    }
+
+    public WalletController(
+            WalletService walletService,
+            WalletRequestAccessPolicy walletRequestAccessPolicy,
+            IdempotencyKeyGuard idempotencyKeyGuard,
+            MidtransCallbackSignatureVerifier callbackSignatureVerifier,
+            PaymentCallbackProcessor paymentCallbackProcessor
+    ) {
         this.walletService = walletService;
+        this.walletRequestAccessPolicy = walletRequestAccessPolicy;
+        this.idempotencyKeyGuard = idempotencyKeyGuard;
+        this.callbackSignatureVerifier = callbackSignatureVerifier;
+        this.paymentCallbackProcessor = paymentCallbackProcessor;
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<WalletResponse> getWallet(@PathVariable UUID userId) {
+    public ResponseEntity<WalletResponse> getWallet(
+            @PathVariable("userId") UUID userId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        validateReadAccess(authorization, userId);
         return ResponseEntity.ok(walletService.getWallet(userId));
     }
 
     @PostMapping
-    public ResponseEntity<WalletResponse> createWallet(@RequestParam UUID userId) {
+    public ResponseEntity<WalletResponse> createWallet(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestParam("userId") UUID userId
+    ) {
+        validateMutationOwnerAccess(authorization, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(walletService.createWallet(userId));
     }
 
     @PostMapping("/topup")
-    public ResponseEntity<WalletResponse> topUp(@Valid @RequestBody TopUpRequest request) {
+    public ResponseEntity<WalletResponse> topUp(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @Valid @RequestBody TopUpRequest request
+    ) {
+        validateTopUpAccess(authorization, request.getUserId());
         return ResponseEntity.ok(walletService.topUp(request));
+    }
+
+    @PostMapping("/topup/initiate")
+    public ResponseEntity<Map<String, String>> initiateTopUp(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = IDEMPOTENCY_HEADER, required = false) String idempotencyKey,
+            @Valid @RequestBody TopUpRequest request
+    ) {
+        validateIdempotencyKey(idempotencyKey);
+        Map<String, String> cachedResponse = getCachedTopUpInitiateResponse(idempotencyKey);
+        if (cachedResponse != null) {
+            return ResponseEntity.ok(cachedResponse);
+        }
+
+        return withIdempotencyKey(idempotencyKey, () -> {
+            validateTopUpAccess(authorization, request.getUserId());
+            Map<String, String> response = walletService.initiateTopUp(request);
+            return ResponseEntity.ok(cacheTopUpInitiateResponse(idempotencyKey, response));
+        });
+    }
+
+    private Map<String, String> getCachedTopUpInitiateResponse(String idempotencyKey) {
+        return cachedTopUpInitiateResponses.get(idempotencyKey);
+    }
+
+    private Map<String, String> cacheTopUpInitiateResponse(String idempotencyKey, Map<String, String> response) {
+        cachedTopUpInitiateResponses.putIfAbsent(idempotencyKey, response);
+        return cachedTopUpInitiateResponses.get(idempotencyKey);
     }
 
     @PostMapping("/pay")
     public ResponseEntity<WalletResponse> pay(
             @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = IDEMPOTENCY_HEADER, required = false) String idempotencyKey,
             @Valid @RequestBody WalletMutationRequest request
     ) {
-        if (isMissingHeader(authorization)) {
-            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
-        }
-
-        return ResponseEntity.ok(walletService.pay(
+        validatePayAuthorization(authorization);
+        validateIdempotencyKey(idempotencyKey);
+        validateOwnerAccess(authorization, request.getUserId());
+        return withIdempotencyKey(idempotencyKey, () -> ResponseEntity.ok(walletService.pay(
                 request.getUserId(),
                 request.getAmount(),
                 request.getDescription()
-        ));
+        )));
     }
 
     @PostMapping("/refund")
-    public ResponseEntity<WalletResponse> refund(@Valid @RequestBody WalletMutationRequest request) {
+    public ResponseEntity<WalletResponse> refund(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @Valid @RequestBody WalletMutationRequest request
+    ) {
+        validateMutationOwnerAccess(authorization, request.getUserId());
         return ResponseEntity.ok(walletService.refund(
                 request.getUserId(),
                 request.getAmount(),
@@ -78,18 +169,29 @@ public class WalletController {
         ));
     }
 
+    @PostMapping("/payments/callback")
+    public ResponseEntity<Map<String, String>> paymentCallback(
+            @RequestHeader(value = SIGNATURE_HEADER, required = false) String signatureKey,
+            @RequestBody(required = false) PaymentCallbackRequest payload
+    ) {
+        requireHeader(signatureKey, SIGNATURE_HEADER);
+        requireCallbackPayload(payload);
+        validateCallbackSignature(payload, signatureKey);
+        NormalizedCallbackFields normalizedFields = normalizeRequiredCallbackFields(payload);
+        validateCallbackStatus(normalizedFields.transactionStatus());
+        applyNormalizedCallbackFields(payload, normalizedFields);
+        paymentCallbackProcessor.process(payload);
+        return ResponseEntity.ok(callbackAcceptedResponse());
+    }
+
     @PostMapping("/withdraw")
     public ResponseEntity<WalletResponse> withdraw(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody WalletMutationRequest request
     ) {
-        if (isMissingHeader(role)) {
-            throw new ForbiddenException(MISSING_JASTIPER_ROLE_MESSAGE);
-        }
-
-        if (!isJastiper(role)) {
-            throw new ForbiddenException(FORBIDDEN_MESSAGE);
-        }
+        validateMutationOwnerAccess(authorization, request.getUserId());
+        validateWithdrawAccess(authorization, role, request.getUserId());
 
         return ResponseEntity.ok(walletService.withdraw(
                 request.getUserId(),
@@ -100,9 +202,11 @@ public class WalletController {
 
     @GetMapping("/{userId}/transactions")
     public ResponseEntity<List<TransactionResponse>> getTransactionHistory(
-            @PathVariable UUID userId,
-            @RequestParam(required = false) TransactionStatus status
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @PathVariable("userId") UUID userId,
+            @RequestParam(value = "status", required = false) TransactionStatus status
     ) {
+        validateReadAccess(authorization, userId);
         if (status != null) {
             return ResponseEntity.ok(walletService.getTransactionHistoryByStatus(userId, status));
         }
@@ -114,6 +218,255 @@ public class WalletController {
     }
 
     private boolean isJastiper(String role) {
-        return "JASTIPER".equalsIgnoreCase(role);
+        return JASTIPER_ROLE.equalsIgnoreCase(role);
+    }
+
+    private boolean hasValidJastiperJwt(String authorization) {
+        return walletRequestAccessPolicy.isValidJastiperJwt(authorization);
+    }
+
+    private boolean hasPrivilegedWithdrawJwt(String authorization) {
+        return walletRequestAccessPolicy.isValidAdminJwt(authorization)
+                || hasValidJastiperJwt(authorization);
+    }
+
+    private boolean hasInvalidJwt(String authorization) {
+        return walletRequestAccessPolicy.isInvalidJwtToken(authorization);
+    }
+
+    private void requireJwtBearerToken(String authorization) {
+        if (!walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+    }
+
+    private boolean isAuthorizedPayPrincipal(String authorization) {
+        return walletRequestAccessPolicy.isAllowedPayRole(authorization);
+    }
+
+    private void validatePayAuthorization(String authorization) {
+        if (walletRequestAccessPolicy.isDisallowedRoleForPay(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+        if (isAuthorizedPayPrincipal(authorization)) {
+            return;
+        }
+        if (shouldRejectAsUnauthorizedPayRequest(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+        throw new ForbiddenException(FORBIDDEN_MESSAGE);
+    }
+
+    private void validateIdempotencyKey(String idempotencyKey) {
+        requireHeader(idempotencyKey, IDEMPOTENCY_HEADER);
+    }
+
+    private void registerIdempotencyKeyOrThrow(String idempotencyKey) {
+        if (!idempotencyKeyGuard.register(idempotencyKey)) {
+            throw new ConflictException(DUPLICATE_IDEMPOTENCY_MESSAGE);
+        }
+    }
+
+    private <T> T withIdempotencyKey(String idempotencyKey, Supplier<T> action) {
+        registerIdempotencyKeyOrThrow(idempotencyKey);
+        try {
+            return action.get();
+        } catch (RuntimeException ex) {
+            idempotencyKeyGuard.release(idempotencyKey);
+            throw ex;
+        }
+    }
+
+    private void requireHeader(String value, String headerName) {
+        if (isMissingHeader(value)) {
+            throw new IllegalArgumentException("Missing required header: " + headerName);
+        }
+    }
+
+    private boolean shouldRejectAsUnauthorizedPayRequest(String authorization) {
+        return !walletRequestAccessPolicy.isJwtBearerToken(authorization)
+                || !walletRequestAccessPolicy.isValidReadJwt(authorization);
+    }
+
+    private void requireCallbackPayload(PaymentCallbackRequest payload) {
+        if (payload == null) {
+            throw new IllegalArgumentException("Callback payload must not be empty");
+        }
+    }
+
+    private Map<String, String> callbackAcceptedResponse() {
+        return Map.of("message", CALLBACK_ACCEPTED_MESSAGE);
+    }
+
+    private void validateCallbackSignature(PaymentCallbackRequest payload, String signatureKey) {
+        if (!isValidCallbackSignature(payload, signatureKey)) {
+            throw new UnauthorizedException(INVALID_CALLBACK_SIGNATURE_MESSAGE);
+        }
+    }
+
+    private boolean isValidCallbackSignature(PaymentCallbackRequest payload, String signatureKey) {
+        try {
+            return callbackSignatureVerifier.isValid(payload, signatureKey);
+        } catch (RuntimeException ex) {
+            throw new UnauthorizedException(INVALID_CALLBACK_SIGNATURE_MESSAGE);
+        }
+    }
+
+    private void validateCallbackStatus(String transactionStatus) {
+        if (!MidtransTransactionStatus.isSupported(transactionStatus)) {
+            throw new IllegalArgumentException("Unsupported callback status: " + transactionStatus);
+        }
+    }
+
+    private String requiredCallbackField(String value, String key) {
+        return requiredTrimmedValue(value, "Missing required callback field: " + key).toLowerCase();
+    }
+
+    private String requiredCallbackOrderId(String orderId) {
+        String normalizedOrderId = requiredTrimmedValue(orderId, ORDER_ID_BLANK_MESSAGE);
+        if (normalizedOrderId.length() > MAX_CALLBACK_ORDER_ID_LENGTH) {
+            throw new IllegalArgumentException(ORDER_ID_TOO_LONG_MESSAGE);
+        }
+        return normalizedOrderId;
+    }
+
+    private NormalizedCallbackFields normalizeRequiredCallbackFields(PaymentCallbackRequest payload) {
+        String orderId = requiredCallbackOrderId(payload.getOrderId());
+        String statusCode = requiredCallbackField(payload.getStatusCode(), CALLBACK_STATUS_CODE_KEY);
+        requireNumericStatusCode(statusCode);
+        String grossAmount = requiredCallbackField(payload.getGrossAmount(), CALLBACK_GROSS_AMOUNT_KEY);
+        requireNumericGrossAmount(grossAmount);
+        String transactionStatus = requiredCallbackField(payload.getTransactionStatus(), CALLBACK_TRANSACTION_STATUS_KEY);
+        return new NormalizedCallbackFields(orderId, statusCode, grossAmount, transactionStatus);
+    }
+
+    private void requireNumericGrossAmount(String grossAmount) {
+        try {
+            parseNumericGrossAmount(grossAmount);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException(GROSS_AMOUNT_INVALID_NUMBER_MESSAGE);
+        }
+    }
+
+    private BigDecimal parseNumericGrossAmount(String grossAmount) {
+        return new BigDecimal(grossAmount);
+    }
+
+    private void requireNumericStatusCode(String statusCode) {
+        if (!isDigitsOnly(statusCode)) {
+            throw new IllegalArgumentException(STATUS_CODE_INVALID_NUMBER_MESSAGE);
+        }
+        if (!SUPPORTED_CALLBACK_STATUS_CODES.contains(statusCode)) {
+            throw new IllegalArgumentException(STATUS_CODE_UNSUPPORTED_MESSAGE_PREFIX + statusCode);
+        }
+    }
+
+    private boolean isDigitsOnly(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            if (!Character.isDigit(value.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void applyNormalizedCallbackFields(PaymentCallbackRequest payload, NormalizedCallbackFields normalizedFields) {
+        payload.setOrderId(normalizedFields.orderId());
+        payload.setStatusCode(normalizedFields.statusCode());
+        payload.setGrossAmount(normalizedFields.grossAmount());
+        payload.setTransactionStatus(normalizedFields.transactionStatus());
+    }
+
+    private String requiredTrimmedValue(String value, String message) {
+        if (value == null) {
+            throw new IllegalArgumentException(message);
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException(message);
+        }
+        return trimmed;
+    }
+
+    private void requireAuthorization(String authorization) {
+        if (isMissingHeader(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+    }
+
+    private void validateWithdrawAccess(String authorization, String role, UUID userId) {
+        if (isPrivilegedWithdrawJwt(authorization)) {
+            validateOwnerAccess(authorization, userId);
+            return;
+        }
+        if (walletRequestAccessPolicy.isJwtBearerToken(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+        if (isMissingOrNotJastiper(role)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+    }
+
+    private boolean isPrivilegedWithdrawJwt(String authorization) {
+        return walletRequestAccessPolicy.isJwtBearerToken(authorization)
+                && hasPrivilegedWithdrawJwt(authorization);
+    }
+
+    private boolean isMissingOrNotJastiper(String role) {
+        return isMissingHeader(role) || !isJastiper(role);
+    }
+
+    private void validateOwnerAccess(String authorization, UUID userId) {
+        if (walletRequestAccessPolicy.isOwnerMismatchJwt(authorization, userId)
+                || walletRequestAccessPolicy.isOwnerMismatchToken()) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+    }
+
+    private void validateMutationOwnerAccess(String authorization, UUID userId) {
+        requireAuthorization(authorization);
+        if (hasInvalidJwt(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+        requireJwtBearerToken(authorization);
+        if (!walletRequestAccessPolicy.isValidReadJwt(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+        validateOwnerAccess(authorization, userId);
+        validateMutationRoleAllowed(authorization);
+    }
+
+    private void validateSupportedRole(String authorization) {
+        if (!walletRequestAccessPolicy.isAllowedWalletMutationRole(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+    }
+
+    private void validateMutationRoleAllowed(String authorization) {
+        validateSupportedRole(authorization);
+    }
+
+    private void validateReadRoleAllowed(String authorization) {
+        validateSupportedRole(authorization);
+    }
+
+    private void validateTopUpAccess(String authorization, UUID userId) {
+        validateMutationOwnerAccess(authorization, userId);
+        if (walletRequestAccessPolicy.isForbiddenTopUpRole(authorization)) {
+            throw new ForbiddenException(FORBIDDEN_MESSAGE);
+        }
+    }
+
+    private void validateReadAccess(String authorization, UUID userId) {
+        requireAuthorization(authorization);
+        if (hasInvalidJwt(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+        requireJwtBearerToken(authorization);
+        validateOwnerAccess(authorization, userId);
+        if (!walletRequestAccessPolicy.isValidReadJwt(authorization)) {
+            throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
+        }
+        validateReadRoleAllowed(authorization);
     }
 }

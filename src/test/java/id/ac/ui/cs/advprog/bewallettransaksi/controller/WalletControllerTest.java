@@ -16,15 +16,27 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -32,12 +44,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(WalletController.class)
 class WalletControllerTest {
+    private static final String JWT_SECRET = "DefaultSecretKeyUntukDevelopmentLokalYangSangatPanjangSekali123!@#";
+    private static final String AUTH_HEADER = "Authorization";
+    private static final String READ_JWT_HEADER_VALUE = "Bearer valid-read-jwt";
+    private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
     private WalletService walletService;
+    @MockitoBean
+    private WalletRequestAccessPolicy walletRequestAccessPolicy;
+    @MockitoBean
+    private IdempotencyKeyGuard idempotencyKeyGuard;
+    @MockitoBean
+    private MidtransCallbackSignatureVerifier callbackSignatureVerifier;
+    @MockitoBean
+    private PaymentCallbackProcessor paymentCallbackProcessor;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -55,13 +79,70 @@ class WalletControllerTest {
                 .userId(userId)
                 .balance(BigDecimal.valueOf(100.00))
                 .build();
+
+        stubAccessPolicyDefaults();
+    }
+
+    private void stubAccessPolicyDefaults() {
+                when(walletRequestAccessPolicy.isOwnerMismatchToken()).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isInvalidJwtToken(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isDisallowedRoleForPay(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isValidReadJwt(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isValidJastiperJwt(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isAllowedPayRole(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isAllowedWalletMutationRole(anyString())).thenReturn(true);
+        when(walletRequestAccessPolicy.isJwtBearerToken(anyString())).thenReturn(true);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(isNull())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(anyString())).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole(isNull())).thenReturn(false);
+        when(walletRequestAccessPolicy.isInvalidJwtToken(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isDisallowedRoleForPay(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isValidReadJwt(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isValidJastiperJwt(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isAllowedPayRole(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isAllowedWalletMutationRole(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isJwtBearerToken(null)).thenReturn(false);
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer valid-jastiper")).thenReturn(true);
+        when(walletRequestAccessPolicy.isInvalidJwtToken("Bearer invalid.jwt.token")).thenReturn(true);
+        when(walletRequestAccessPolicy.isDisallowedRoleForPay("Bearer valid-jastiper-jwt")).thenReturn(true);
+        when(walletRequestAccessPolicy.isValidReadJwt("Bearer valid-read-jwt")).thenReturn(true);
+        when(walletRequestAccessPolicy.isValidReadJwt("Bearer valid-jastiper-jwt")).thenReturn(true);
+        when(walletRequestAccessPolicy.isValidJastiperJwt("Bearer valid-jastiper-jwt")).thenReturn(true);
+        when(walletRequestAccessPolicy.isAllowedPayRole("Bearer valid-read-jwt")).thenReturn(true);
+        when(walletRequestAccessPolicy.isAllowedPayRole("Bearer valid-jastiper-jwt")).thenReturn(false);
+        when(walletRequestAccessPolicy.isAllowedPayRole("Bearer test-token")).thenReturn(false);
+        when(walletRequestAccessPolicy.isValidReadJwt("Bearer valid-non-admin-other-user")).thenReturn(true);
+        when(walletRequestAccessPolicy.isOwnerMismatchJwt("Bearer valid-non-admin-other-user", userId)).thenReturn(true);
+        when(walletRequestAccessPolicy.isAllowedWalletMutationRole("Bearer invalid.jwt.token")).thenReturn(false);
+        when(walletRequestAccessPolicy.isJwtBearerToken("Bearer test-token")).thenReturn(true);
+        when(walletRequestAccessPolicy.isJwtBearerToken("Bearer invalid.jwt.token")).thenReturn(true);
+        when(idempotencyKeyGuard.register(anyString())).thenReturn(true);
+        when(callbackSignatureVerifier.isValid(any(), anyString())).thenReturn(true);
+        when(walletService.initiateTopUp(any(TopUpRequest.class))).thenAnswer(invocation -> {
+            TopUpRequest request = invocation.getArgument(0);
+            Map<String, String> response = new HashMap<>();
+            response.put("paymentToken", "midtrans-snap-" + UUID.randomUUID());
+            response.put("redirectUrl", "https://snap.midtrans.com/checkout/TOPUP-" + UUID.randomUUID());
+            response.put("orderId", "TOPUP-" + request.getUserId() + "-" + System.currentTimeMillis());
+            return response;
+        });
+        stubInvalidSignature("invalid-signature");
+        stubInvalidSignature("tampered-signature");
+        stubInvalidSignature("tampered-status-signature");
+        stubInvalidSignature("some-signature");
+    }
+
+    private void stubInvalidSignature(String signature) {
+        when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq(signature))).thenReturn(false);
     }
 
     @Test
     void getWallet_Success() throws Exception {
         when(walletService.getWallet(userId)).thenReturn(walletResponse);
 
-        mockMvc.perform(get("/wallet/{userId}", userId))
+        mockMvc.perform(get("/wallet/{userId}", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.walletId").value(walletId.toString()))
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
@@ -69,10 +150,43 @@ class WalletControllerTest {
     }
 
     @Test
+    void getWallet_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        when(walletService.getWallet(userId)).thenReturn(walletResponse);
+
+        mockMvc.perform(get("/wallet/{userId}", userId))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void getWallet_NonAdminOwnerMismatch_ShouldReturnForbidden() throws Exception {
+        when(walletService.getWallet(userId)).thenReturn(walletResponse);
+
+        mockMvc.perform(get("/wallet/{userId}", userId)
+                        .header("Authorization", "Bearer valid-non-admin-other-user"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void getWallet_InvalidJwtToken_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        when(walletService.getWallet(userId)).thenReturn(walletResponse);
+
+        mockMvc.perform(get("/wallet/{userId}", userId)
+                        .header("Authorization", "Bearer invalid.jwt.token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
     void getWallet_NotFound() throws Exception {
         when(walletService.getWallet(userId)).thenThrow(new WalletNotFoundException(userId));
 
-        mockMvc.perform(get("/wallet/{userId}", userId))
+        mockMvc.perform(get("/wallet/{userId}", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE))
                 .andExpect(status().isNotFound());
     }
 
@@ -87,6 +201,7 @@ class WalletControllerTest {
         when(walletService.createWallet(userId)).thenReturn(newWalletResponse);
 
         mockMvc.perform(post("/wallet")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("userId", userId.toString()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.walletId").value(walletId.toString()))
@@ -95,11 +210,21 @@ class WalletControllerTest {
     }
 
     @Test
+    void createWallet_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        mockMvc.perform(post("/wallet")
+                        .param("userId", userId.toString()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
     void createWallet_DuplicateUser_BadRequest() throws Exception {
         when(walletService.createWallet(userId))
                 .thenThrow(new DataIntegrityViolationException("duplicate userId"));
 
         mockMvc.perform(post("/wallet")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("userId", userId.toString()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").exists());
@@ -134,10 +259,59 @@ class WalletControllerTest {
         when(walletService.topUp(any(TopUpRequest.class))).thenReturn(updatedResponse);
 
         mockMvc.perform(post("/wallet/topup")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(150.00));
+    }
+
+    @Test
+    void topUp_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/topup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void topUp_LegacyJastiperToken_ShouldReturnUnauthorized() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/topup")
+                        .header("Authorization", "Bearer valid-jastiper")
+                        .header("X-Role", "JASTIPER")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void topUp_ValidSignedJastiperJwtWithoutLegacyRoleHeader_ShouldReturnForbidden() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50.00));
+
+        String jwt = generateJwtToken("jastiper-subject", "JASTIPER");
+        when(walletRequestAccessPolicy.isForbiddenTopUpRole("Bearer " + jwt)).thenReturn(true);
+        when(walletRequestAccessPolicy.isValidReadJwt("Bearer " + jwt)).thenReturn(true);
+        mockMvc.perform(post("/wallet/topup")
+                        .header(AUTH_HEADER, "Bearer " + jwt)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test
@@ -147,6 +321,7 @@ class WalletControllerTest {
         request.setAmount(BigDecimal.valueOf(0));
 
         mockMvc.perform(post("/wallet/topup")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -158,6 +333,7 @@ class WalletControllerTest {
         TopUpRequest request = buildTopUpRequest(null, BigDecimal.valueOf(50.00));
 
         mockMvc.perform(post("/wallet/topup")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -169,6 +345,7 @@ class WalletControllerTest {
         TopUpRequest request = buildTopUpRequest(null, BigDecimal.valueOf(50.00));
 
         mockMvc.perform(post("/wallet/topup")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -180,10 +357,104 @@ class WalletControllerTest {
         TopUpRequest request = buildTopUpRequest(userId, null);
 
         mockMvc.perform(post("/wallet/topup")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Amount must be at least 1"));
+    }
+
+    @Test
+    void initiateTopUp_WithValidRequest_ShouldReturnPaymentInstruction() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50000.00));
+
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-topup-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentToken").exists())
+                .andExpect(jsonPath("$.redirectUrl").exists())
+                .andExpect(jsonPath("$.orderId").exists())
+                .andExpect(jsonPath("$.orderId").value(org.hamcrest.Matchers.startsWith("TOPUP-")));
+    }
+
+    @Test
+    void initiateTopUp_WithValidRequest_ShouldNotReturnMockPaymentToken() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50000.00));
+
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-topup-2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentToken").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.startsWith("mock-token-")
+                )));
+    }
+
+    @Test
+    void initiateTopUp_WithValidRequest_ShouldNotUseControllerMockInstructionPattern() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50000.00));
+
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-topup-3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentToken").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.startsWith("snap-token-")
+                )))
+                .andExpect(jsonPath("$.redirectUrl").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.startsWith("https://app.sandbox.midtrans.com/snap/v2/vtweb/")
+                )));
+    }
+
+    @Test
+    void initiateTopUp_MissingIdempotencyKey_ShouldReturnBadRequest() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50000.00));
+
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, null))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing required header: Idempotency-Key"));
+    }
+
+    @Test
+    void initiateTopUp_DuplicateIdempotencyKey_ShouldReturnConflict() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50000.00));
+
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-dup"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentToken").exists())
+                .andExpect(jsonPath("$.redirectUrl").exists())
+                .andExpect(jsonPath("$.orderId").exists());
+
+        clearInvocations(walletService);
+        when(idempotencyKeyGuard.register("idem-initiate-dup")).thenReturn(false);
+
+        mockMvc.perform(performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-dup"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentToken").exists())
+                .andExpect(jsonPath("$.redirectUrl").exists())
+                .andExpect(jsonPath("$.orderId").exists());
+
+        verify(walletService, never()).initiateTopUp(any(TopUpRequest.class));
+    }
+
+    @Test
+    void initiateTopUp_WhenInstructionGenerationFails_ShouldReleaseIdempotencyKey() throws Exception {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(userId);
+        request.setAmount(BigDecimal.valueOf(50000.00));
+        doThrow(new RuntimeException("id generator failed"))
+                .when(walletRequestAccessPolicy).isForbiddenTopUpRole(READ_JWT_HEADER_VALUE);
+        MockHttpServletRequestBuilder requestBuilder =
+                performInitiateTopUpRequest(request, READ_JWT_HEADER_VALUE, "idem-initiate-fail");
+
+        assertThrows(Exception.class, () -> mockMvc.perform(requestBuilder).andReturn());
+
+        verify(idempotencyKeyGuard, times(1)).release("idem-initiate-fail");
     }
 
     @Test
@@ -210,10 +481,19 @@ class WalletControllerTest {
 
         when(walletService.getTransactionHistory(userId)).thenReturn(List.of(latest, older));
 
-        mockMvc.perform(get("/wallet/{userId}/transactions", userId))
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header("Authorization", "Bearer valid-read-jwt"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].description").value("Latest payment"))
                 .andExpect(jsonPath("$[1].description").value("Older refund"));
+    }
+
+    @Test
+    void getTransactionHistory_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test
@@ -232,6 +512,7 @@ class WalletControllerTest {
                 .thenReturn(List.of(failedWithdraw));
 
         mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("status", "FAILED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("FAILED"))
@@ -254,6 +535,7 @@ class WalletControllerTest {
                 .thenReturn(List.of(failedWithdraw));
 
         mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("status", "failed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("FAILED"));
@@ -263,13 +545,15 @@ class WalletControllerTest {
     void getTransactionHistory_WalletNotFound() throws Exception {
         when(walletService.getTransactionHistory(userId)).thenThrow(new WalletNotFoundException(userId));
 
-        mockMvc.perform(get("/wallet/{userId}/transactions", userId))
+        mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void getTransactionHistory_InvalidStatus_BadRequest() throws Exception {
         mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("status", "INVALID_STATUS"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").exists());
@@ -290,6 +574,7 @@ class WalletControllerTest {
         when(walletService.getTransactionHistory(userId)).thenReturn(List.of(latest));
 
         mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("status", ""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].description").value("Latest payment"));
@@ -310,6 +595,7 @@ class WalletControllerTest {
         when(walletService.getTransactionHistory(userId)).thenReturn(List.of(latest));
 
         mockMvc.perform(get("/wallet/{userId}/transactions", userId)
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .param("status", "   "))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].description").value("Latest payment"));
@@ -328,7 +614,8 @@ class WalletControllerTest {
         );
 
         mockMvc.perform(post("/wallet/pay")
-                        .header("Authorization", "Bearer test-token")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-pay-success")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -353,7 +640,144 @@ class WalletControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Unauthorized"));
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void pay_InvalidBearerToken_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header("Authorization", "Bearer invalid.token.value")
+                        .header("Idempotency-Key", "idem-pay-invalid-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void pay_ValidJwtButDisallowedRole_ShouldReturnForbiddenWithApiResponse() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header("Authorization", "Bearer valid-jastiper-jwt")
+                        .header("Idempotency-Key", "idem-pay-forbidden-role")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void pay_ValidSignedTitiperJwt_ShouldSucceed() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        when(walletService.pay(userId, BigDecimal.valueOf(50.00), "Order payment")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(50.00))
+                        .build()
+        );
+
+        String jwt = generateJwtToken("titiper-subject", "TITIPER");
+        when(walletRequestAccessPolicy.isValidTitiperJwt("Bearer " + jwt)).thenReturn(true);
+        when(walletRequestAccessPolicy.isAllowedPayRole("Bearer " + jwt)).thenReturn(true);
+        mockMvc.perform(post("/wallet/pay")
+                        .header("Authorization", "Bearer " + jwt)
+                        .header("Idempotency-Key", "idem-pay-valid-jwt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(50.00));
+    }
+
+    @Test
+    void pay_MissingIdempotencyKey_ShouldReturnBadRequest() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        when(walletService.pay(userId, BigDecimal.valueOf(50.00), "Order payment")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(50.00))
+                        .build()
+        );
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing required header: Idempotency-Key"));
+    }
+
+    @Test
+    void pay_DuplicateIdempotencyKey_ShouldReturnConflict() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        when(walletService.pay(userId, BigDecimal.valueOf(50.00), "Order payment")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(50.00))
+                        .build()
+        );
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-dup-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        when(idempotencyKeyGuard.register("idem-dup-001")).thenReturn(false);
+        mockMvc.perform(post("/wallet/pay")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-dup-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Duplicate idempotency key"));
+
+        verify(walletService, times(1)).pay(userId, BigDecimal.valueOf(50.00), "Order payment");
+    }
+
+    @Test
+    void pay_SameIdempotencyKeyAfterFailedBusinessValidation_ShouldRetrySuccessfully() throws Exception {
+        WalletMutationRequest failedRequest = buildMutationRequest("Order payment", BigDecimal.valueOf(500.00));
+        WalletMutationRequest successRequest = buildMutationRequest("Order payment", BigDecimal.valueOf(50.00));
+
+        when(walletService.pay(userId, BigDecimal.valueOf(500.00), "Order payment"))
+                .thenThrow(new IllegalStateException("Insufficient balance"));
+        when(walletService.pay(userId, BigDecimal.valueOf(50.00), "Order payment"))
+                .thenReturn(WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(50.00))
+                        .build());
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-retry-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(failedRequest)))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/wallet/pay")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-retry-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(successRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(50.00));
+
+        verify(walletService, times(1)).pay(userId, BigDecimal.valueOf(500.00), "Order payment");
+        verify(walletService, times(1)).pay(userId, BigDecimal.valueOf(50.00), "Order payment");
     }
 
     @Test
@@ -369,10 +793,23 @@ class WalletControllerTest {
         );
 
         mockMvc.perform(post("/wallet/refund")
+                        .header("Authorization", "Bearer valid-read-jwt")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(125.00));
+    }
+
+    @Test
+    void refund_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("Order refund", BigDecimal.valueOf(25.00));
+
+        mockMvc.perform(post("/wallet/refund")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test
@@ -383,6 +820,7 @@ class WalletControllerTest {
         request.setDescription("Order refund");
 
         mockMvc.perform(post("/wallet/refund")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -402,7 +840,30 @@ class WalletControllerTest {
         );
 
         mockMvc.perform(post("/wallet/withdraw")
-                        .header("X-Role", "JASTIPER")
+                        .header("Authorization", "Bearer valid-jastiper-jwt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(70.00));
+    }
+
+    @Test
+    void withdraw_ValidSignedJastiperJwtWithoutLegacyRoleHeader_ShouldSucceed() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
+
+        when(walletService.withdraw(userId, BigDecimal.valueOf(30.00), "BCA-123456")).thenReturn(
+                WalletResponse.builder()
+                        .walletId(walletId)
+                        .userId(userId)
+                        .balance(BigDecimal.valueOf(70.00))
+                        .build()
+        );
+
+        String jwt = generateJwtToken("jastiper-subject", "JASTIPER");
+        when(walletRequestAccessPolicy.isValidJastiperJwt("Bearer " + jwt)).thenReturn(true);
+        when(walletRequestAccessPolicy.isValidReadJwt("Bearer " + jwt)).thenReturn(true);
+        mockMvc.perform(post("/wallet/withdraw")
+                        .header("Authorization", "Bearer " + jwt)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -414,6 +875,7 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("   ", BigDecimal.valueOf(30.00));
 
         mockMvc.perform(post("/wallet/withdraw")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .header("X-Role", "JASTIPER")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -429,7 +891,8 @@ class WalletControllerTest {
                 .thenThrow(new IllegalStateException("Insufficient balance"));
 
         mockMvc.perform(post("/wallet/pay")
-                        .header("Authorization", "Bearer test-token")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-pay-decimal")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -440,7 +903,8 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("Order payment", new BigDecimal("1.001"));
 
         mockMvc.perform(post("/wallet/pay")
-                        .header("Authorization", "Bearer test-token")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
+                        .header("Idempotency-Key", "idem-pay-blank-desc")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -451,7 +915,7 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("   ", BigDecimal.valueOf(50.00));
 
         mockMvc.perform(post("/wallet/pay")
-                        .header("Authorization", "Bearer test-token")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -466,7 +930,7 @@ class WalletControllerTest {
                 .thenThrow(new IllegalStateException("Insufficient balance"));
 
         mockMvc.perform(post("/wallet/withdraw")
-                        .header("X-Role", "JASTIPER")
+                        .header("Authorization", "Bearer valid-jastiper-jwt")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -477,7 +941,7 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
 
         mockMvc.perform(post("/wallet/withdraw")
-                        .header("X-Role", "TITIPERS")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
@@ -488,11 +952,12 @@ class WalletControllerTest {
         WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
 
         mockMvc.perform(post("/wallet/withdraw")
-                        .header("X-Role", "TITIPERS")
+                        .header(AUTH_HEADER, READ_JWT_HEADER_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("Forbidden"));
+                .andExpect(jsonPath("$.message").value("Akses ditolak!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test
@@ -502,8 +967,287 @@ class WalletControllerTest {
         mockMvc.perform(post("/wallet/withdraw")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("Missing required role: JASTIPER"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void withdraw_MissingJwt_ShouldReturnUnauthorizedWithApiResponse() throws Exception {
+        WalletMutationRequest request = buildMutationRequest("BCA-123456", BigDecimal.valueOf(30.00));
+
+        mockMvc.perform(post("/wallet/withdraw")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Autentikasi diperlukan!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(walletService, never()).withdraw(any(), any(), anyString());
+    }
+
+    @Test
+    void paymentCallback_MissingSignature_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"transactionId\":\"dummy\",\"status\":\"settlement\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing required header: X-Signature-Key"));
+    }
+
+    @Test
+    void paymentCallback_InvalidSignature_ShouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "invalid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Invalid callback signature"));
+    }
+
+    @Test
+    void paymentCallback_WhenVerifierThrows_ShouldReturnUnauthorized() throws Exception {
+        when(callbackSignatureVerifier.isValid(any(), org.mockito.ArgumentMatchers.eq("verifier-throws")))
+                .thenThrow(new IllegalStateException("signature verification failed"));
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "verifier-throws")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                                + "\"transaction_status\":\"settlement\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Invalid callback signature"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
+    @Test
+    void paymentCallback_TamperedGrossAmountWithInvalidSignature_ShouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "tampered-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"99999.00\","
+                                + "\"transaction_status\":\"settlement\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Invalid callback signature"));
+    }
+
+    @Test
+    void paymentCallback_TamperedStatusCodeWithInvalidSignature_ShouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "tampered-status-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"order_id\":\"ORDER-1\",\"status_code\":\"500\",\"gross_amount\":\"10000.00\","
+                                + "\"transaction_status\":\"settlement\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Invalid callback signature"));
+    }
+
+    @Test
+    void paymentCallback_MissingOrderIdWithSignature_ShouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "some-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                                + "\"transaction_status\":\"settlement\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Invalid callback signature"));
+    }
+
+    @Test
+    void paymentCallback_UnsupportedTransactionStatus_ShouldReturnBadRequest() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"mystery\"}";
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Unsupported callback status: mystery"));
+    }
+
+    @Test
+    void paymentCallback_ValidPayload_ShouldDelegateToProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Callback accepted"));
+
+        verify(paymentCallbackProcessor, times(1)).process(any());
+    }
+
+    @Test
+    void paymentCallback_TransactionStatusWithWhitespace_ShouldBeAccepted() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\" settlement \"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Callback accepted"));
+
+        verify(paymentCallbackProcessor, times(1)).process(any());
+    }
+
+    @Test
+    void paymentCallback_BlankOrderId_ShouldReturnBadRequest() throws Exception {
+        String payload =
+                "{\"order_id\":\"   \",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Order ID must not be blank"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
+    @Test
+    void paymentCallback_BlankTransactionStatus_ShouldReturnBadRequestAndNotInvokeProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-7\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"   \"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("Missing required callback field: transaction_status"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
+    @Test
+    void paymentCallback_BlankGrossAmount_ShouldReturnBadRequestAndNotInvokeProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-8\",\"status_code\":\"200\",\"gross_amount\":\"   \","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing required callback field: gross_amount"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
+    @Test
+    void paymentCallback_BlankStatusCode_ShouldReturnBadRequestAndNotInvokeProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-9\",\"status_code\":\"   \",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing required callback field: status_code"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
+    @Test
+    void paymentCallback_OverlongOrderId_ShouldReturnBadRequestAndNotInvokeProcessor() throws Exception {
+        String longOrderId = "O".repeat(129);
+        String payload =
+                "{\"order_id\":\"" + longOrderId + "\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Order ID must be at most 128 characters"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
+    @Test
+    void paymentCallback_NonNumericGrossAmount_ShouldReturnBadRequestAndNotInvokeProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-10\",\"status_code\":\"200\",\"gross_amount\":\"abc\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("gross_amount must be a valid number"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
+    @Test
+    void paymentCallback_NonNumericStatusCode_ShouldReturnBadRequestAndNotInvokeProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-11\",\"status_code\":\"abc\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("status_code must be numeric"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
+    @Test
+    void paymentCallback_UnsupportedStatusCode_ShouldReturnBadRequestAndNotInvokeProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-12\",\"status_code\":\"500\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Unsupported callback status_code: 500"));
+
+        verify(paymentCallbackProcessor, never()).process(any());
+    }
+
+    @Test
+    void paymentCallback_ShouldPassNormalizedFieldsToProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"  ORDER-123  \",\"status_code\":\" 200 \",\"gross_amount\":\" 10000.00 \","
+                        + "\"transaction_status\":\" settlement \"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .header("X-Signature-Key", "valid-signature")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Callback accepted"));
+
+        verify(paymentCallbackProcessor).process(argThat(request ->
+                "ORDER-123".equals(request.getOrderId())
+                        && "200".equals(request.getStatusCode())
+                        && "10000.00".equals(request.getGrossAmount())
+                        && "settlement".equals(request.getTransactionStatus())
+        ));
     }
 
     private WalletMutationRequest buildMutationRequest(String description, BigDecimal amount) {
@@ -520,4 +1264,24 @@ class WalletControllerTest {
         request.setAmount(amount);
         return request;
     }
+
+    private MockHttpServletRequestBuilder performInitiateTopUpRequest(
+            TopUpRequest request,
+            String authorization,
+            String idempotencyKey
+    ) throws Exception {
+        MockHttpServletRequestBuilder builder = post("/wallet/topup/initiate")
+                .header(AUTH_HEADER, authorization)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request));
+        if (idempotencyKey != null) {
+            builder.header(IDEMPOTENCY_HEADER, idempotencyKey);
+        }
+        return builder;
+    }
+
+    private String generateJwtToken(String subject, String role) {
+        return TestJwtTokenFactory.generateHmac256Token(JWT_SECRET, subject, role);
+    }
 }
+
