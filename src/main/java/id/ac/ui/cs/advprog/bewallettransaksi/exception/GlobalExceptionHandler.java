@@ -35,6 +35,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(ConflictException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(InvalidAmountException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidAmount(InvalidAmountException ex) {
         return handleBadRequest(ex);

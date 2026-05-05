@@ -45,6 +45,12 @@ class WalletServiceCoreTest {
     @Mock
     private TransactionRepository transactionRepository;
 
+    @Mock
+    private OrderPaymentStatusPublisher orderPaymentStatusPublisher;
+
+    @Mock
+    private PaymentGatewayClient paymentGatewayClient;
+
     @Spy
     private WalletMutationStrategyResolver strategyResolver = new WalletMutationStrategyResolver();
 
@@ -239,6 +245,44 @@ class WalletServiceCoreTest {
                 Arguments.of(new BigDecimal("1.001")),
                 Arguments.of(new BigDecimal("1.000")),
                 Arguments.of(new BigDecimal("100000000000000000.00"))
+        );
+    }
+
+    @Test
+    void constructor_NullOrderPaymentStatusPublisher_ShouldThrowNullPointerException() {
+        assertThrows(
+            NullPointerException.class,
+                () -> new WalletServiceImpl(walletRepository, transactionRepository, strategyResolver, null, paymentGatewayClient)
+        );
+    }
+
+    @Test
+    void constructor_NullWalletRepository_ShouldThrowNullPointerException() {
+        assertThrows(
+            NullPointerException.class,
+                () -> new WalletServiceImpl(
+                        null,
+                        transactionRepository,
+                        strategyResolver,
+                        orderPaymentStatusPublisher,
+                        paymentGatewayClient
+                )
+        );
+    }
+
+    @Test
+    void constructor_NullTransactionRepository_ShouldThrowNullPointerException() {
+        assertThrows(
+            NullPointerException.class,
+                () -> new WalletServiceImpl(walletRepository, null, strategyResolver, orderPaymentStatusPublisher, paymentGatewayClient)
+        );
+    }
+
+    @Test
+    void constructor_NullPaymentGatewayClient_ShouldThrowNullPointerException() {
+        assertThrows(
+                NullPointerException.class,
+                () -> new WalletServiceImpl(walletRepository, transactionRepository, strategyResolver, orderPaymentStatusPublisher, null)
         );
     }
 }

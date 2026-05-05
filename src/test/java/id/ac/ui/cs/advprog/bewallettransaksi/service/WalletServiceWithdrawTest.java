@@ -41,6 +41,12 @@ class WalletServiceWithdrawTest {
     @Mock
     private TransactionRepository transactionRepository;
 
+    @Mock
+    private OrderPaymentStatusPublisher orderPaymentStatusPublisher;
+
+    @Mock
+    private PaymentGatewayClient paymentGatewayClient;
+
     @Spy
     private WalletMutationStrategyResolver strategyResolver = new WalletMutationStrategyResolver();
 
