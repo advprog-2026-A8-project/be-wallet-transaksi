@@ -79,21 +79,21 @@ jobs:
       - name: Set environment variables
         run: |
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "APP_PORT=8080" >> $GITHUB_ENV
+            echo "APP_PORT=6000" >> $GITHUB_ENV
             echo "CONTAINER_NAME=wallet_server_prod" >> $GITHUB_ENV
             echo "IMAGE_TAG=latest" >> $GITHUB_ENV
             echo "DB_CONTAINER_NAME=postgres_db_prod" >> $GITHUB_ENV
             echo "DB_NAME=walletdb_prod" >> $GITHUB_ENV
-            echo "DB_PORT=5432" >> $GITHUB_ENV
+            echo "DB_PORT=6001" >> $GITHUB_ENV
             echo "DB_VOLUME=postgres_data_prod" >> $GITHUB_ENV
             echo "AUTH_SERVICE_BASE_URL=http://${{ secrets.SSH_HOST }}:3000" >> $GITHUB_ENV
           else
-            echo "APP_PORT=8081" >> $GITHUB_ENV
+            echo "APP_PORT=6002" >> $GITHUB_ENV
             echo "CONTAINER_NAME=wallet_server_staging" >> $GITHUB_ENV
             echo "IMAGE_TAG=staging" >> $GITHUB_ENV
             echo "DB_CONTAINER_NAME=postgres_db_staging" >> $GITHUB_ENV
             echo "DB_NAME=walletdb_staging" >> $GITHUB_ENV
-            echo "DB_PORT=5433" >> $GITHUB_ENV
+            echo "DB_PORT=6003" >> $GITHUB_ENV
             echo "DB_VOLUME=postgres_data_staging" >> $GITHUB_ENV
             echo "AUTH_SERVICE_BASE_URL=http://${{ secrets.SSH_HOST }}:3002" >> $GITHUB_ENV
           fi
