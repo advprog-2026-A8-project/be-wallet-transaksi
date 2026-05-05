@@ -38,4 +38,5 @@ message WalletMutationResponse {
   bool success = 1;
   string updated_balance = 2;
   string error_code = 3;
+  bool retryable = 4;
 }

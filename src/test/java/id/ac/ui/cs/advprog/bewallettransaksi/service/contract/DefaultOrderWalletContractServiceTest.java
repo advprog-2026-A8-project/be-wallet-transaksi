@@ -41,7 +41,38 @@ class DefaultOrderWalletContractServiceTest {
         );
 
         assertFalse(result.success());
-        assertEquals("WALLET_NOT_FOUND", result.errorCode());
+        assertEquals(WalletContractErrorCode.WALLET_NOT_FOUND.name(), result.errorCode());
+        assertFalse(result.retryable());
+    }
+
+    @Test
+    void refundBalance_NoPaymentTransaction_ShouldReturnPaymentNotFoundError() {
+        UUID userId = UUID.randomUUID();
+        when(walletService.refundBalanceForOrder(userId, "ORDER-2", BigDecimal.TEN, "idem-2"))
+                .thenThrow(new IllegalStateException("Successful payment transaction not found for orderId: ORDER-2"));
+
+        WalletMutationResult result = contractService.refundBalance(
+                new RefundBalanceRequest(userId, "ORDER-2", BigDecimal.TEN, "idem-2")
+        );
+
+        assertFalse(result.success());
+        assertEquals(WalletContractErrorCode.PAYMENT_NOT_FOUND.name(), result.errorCode());
+        assertFalse(result.retryable());
+    }
+
+    @Test
+    void deductBalance_UnexpectedRuntimeException_ShouldReturnRetryableInternalError() {
+        UUID userId = UUID.randomUUID();
+        when(walletService.deductBalanceForOrder(userId, "ORDER-3", BigDecimal.TEN, "idem-3"))
+                .thenThrow(new RuntimeException("temporary downstream failure"));
+
+        WalletMutationResult result = contractService.deductBalance(
+                new DeductBalanceRequest(userId, "ORDER-3", BigDecimal.TEN, "idem-3")
+        );
+
+        assertFalse(result.success());
+        assertEquals(WalletContractErrorCode.INTERNAL_ERROR.name(), result.errorCode());
+        assertTrue(result.retryable());
     }
 
     @Test
@@ -67,4 +98,3 @@ class DefaultOrderWalletContractServiceTest {
         assertEquals(new BigDecimal("100.00"), sufficient.currentBalance());
     }
 }
-

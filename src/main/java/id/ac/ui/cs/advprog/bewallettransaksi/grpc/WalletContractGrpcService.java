@@ -95,7 +95,8 @@ public class WalletContractGrpcService extends WalletContractServiceGrpc.WalletC
     private WalletMutationResponse toMutationResponse(WalletMutationResult result) {
         WalletMutationResponse.Builder response = WalletMutationResponse.newBuilder()
                 .setSuccess(result.success())
-                .setErrorCode(defaultString(result.errorCode()));
+                .setErrorCode(defaultString(result.errorCode()))
+                .setRetryable(result.retryable());
         if (result.updatedBalance() != null) {
             response.setUpdatedBalance(result.updatedBalance().toPlainString());
         }

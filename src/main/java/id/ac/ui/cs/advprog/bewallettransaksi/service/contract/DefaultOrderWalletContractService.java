@@ -8,9 +8,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class DefaultOrderWalletContractService implements OrderWalletContractService {
 
-    private static final String ERROR_WALLET_NOT_FOUND = "WALLET_NOT_FOUND";
-    private static final String ERROR_INSUFFICIENT_BALANCE = "INSUFFICIENT_BALANCE";
-    private static final String ERROR_INVALID_REQUEST = "INVALID_REQUEST";
+    private static final String INSUFFICIENT_BALANCE_MESSAGE = "Insufficient balance";
+    private static final String SUCCESSFUL_PAYMENT_NOT_FOUND_PREFIX =
+            "Successful payment transaction not found";
 
     private final WalletService walletService;
 
@@ -34,13 +34,15 @@ public class DefaultOrderWalletContractService implements OrderWalletContractSer
                     request.amount(),
                     request.idempotencyKey()
             );
-            return new WalletMutationResult(true, response.getBalance(), null);
+            return WalletMutationResult.success(response.getBalance());
         } catch (WalletNotFoundException ex) {
-            return new WalletMutationResult(false, null, ERROR_WALLET_NOT_FOUND);
+            return WalletMutationResult.failure(WalletContractErrorCode.WALLET_NOT_FOUND);
         } catch (IllegalStateException ex) {
-            return new WalletMutationResult(false, null, ERROR_INSUFFICIENT_BALANCE);
+            return mapIllegalState(ex);
         } catch (IllegalArgumentException ex) {
-            return new WalletMutationResult(false, null, ERROR_INVALID_REQUEST);
+            return WalletMutationResult.failure(WalletContractErrorCode.INVALID_REQUEST);
+        } catch (RuntimeException ex) {
+            return WalletMutationResult.failure(WalletContractErrorCode.INTERNAL_ERROR);
         }
     }
 
@@ -53,14 +55,29 @@ public class DefaultOrderWalletContractService implements OrderWalletContractSer
                     request.amount(),
                     request.idempotencyKey()
             );
-            return new WalletMutationResult(true, response.getBalance(), null);
+            return WalletMutationResult.success(response.getBalance());
         } catch (WalletNotFoundException ex) {
-            return new WalletMutationResult(false, null, ERROR_WALLET_NOT_FOUND);
+            return WalletMutationResult.failure(WalletContractErrorCode.WALLET_NOT_FOUND);
         } catch (IllegalStateException ex) {
-            return new WalletMutationResult(false, null, ERROR_INSUFFICIENT_BALANCE);
+            return mapIllegalState(ex);
         } catch (IllegalArgumentException ex) {
-            return new WalletMutationResult(false, null, ERROR_INVALID_REQUEST);
+            return WalletMutationResult.failure(WalletContractErrorCode.INVALID_REQUEST);
+        } catch (RuntimeException ex) {
+            return WalletMutationResult.failure(WalletContractErrorCode.INTERNAL_ERROR);
         }
     }
-}
 
+    private WalletMutationResult mapIllegalState(IllegalStateException exception) {
+        String message = exception.getMessage();
+        if (message == null) {
+            return WalletMutationResult.failure(WalletContractErrorCode.INVALID_REQUEST);
+        }
+        if (message.contains(SUCCESSFUL_PAYMENT_NOT_FOUND_PREFIX)) {
+            return WalletMutationResult.failure(WalletContractErrorCode.PAYMENT_NOT_FOUND);
+        }
+        if (message.contains(INSUFFICIENT_BALANCE_MESSAGE)) {
+            return WalletMutationResult.failure(WalletContractErrorCode.INSUFFICIENT_BALANCE);
+        }
+        return WalletMutationResult.failure(WalletContractErrorCode.INVALID_REQUEST);
+    }
+}

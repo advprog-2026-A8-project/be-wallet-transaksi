@@ -107,6 +107,7 @@ class WalletContractGrpcServiceTest {
         assertTrue(observer.completed);
         assertEquals(false, observer.value.getSuccess());
         assertEquals("ORDER_NOT_FOUND", observer.value.getErrorCode());
+        assertEquals(false, observer.value.getRetryable());
         assertEquals("", observer.value.getUpdatedBalance());
     }
 
