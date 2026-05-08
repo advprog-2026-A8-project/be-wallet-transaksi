@@ -54,13 +54,23 @@ Variabel utama:
 
 ## Run with Docker Compose
 
-Menjalankan app + PostgreSQL sekaligus:
+Menjalankan app + PostgreSQL untuk local testing yang disesuaikan dengan behavior production dengan memakai profile:
+
+- `main` profile:
+  - App: `6000`
+  - Postgres: `6001`
+- `dev` profile:
+  - App: `6002`
+  - Postgres: `6003`
+
+Jalankan `dev`:
 
 ```powershell
-docker compose up --build
+docker compose --profile dev up --build
 ```
 
-Port:
+Jalankan `main`:
 
-- App: `8080`
-- Postgres: `5432`
+```powershell
+docker compose --profile main up --build
+```

@@ -15,45 +15,37 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdResolver {
-    private static final String DEFAULT_USER_LOOKUP_PATH = "/internal/users/by-username";
+    private static final String DEFAULT_USER_LOOKUP_PATH = "/api/profile/lookup";
     private static final Duration DEFAULT_HTTP_TIMEOUT = Duration.ofMillis(1000);
     private static final Pattern USER_ID_CAMEL_PATTERN =
             uuidFieldPattern("userId", false);
+    private static final Pattern ID_CAMEL_PATTERN =
+            uuidFieldPattern("id", false);
     private static final List<Pattern> USER_ID_PATTERNS = List.of(
-            USER_ID_CAMEL_PATTERN
+            USER_ID_CAMEL_PATTERN,
+            ID_CAMEL_PATTERN
     );
 
     private final String authServiceBaseUrl;
     private final HttpClient httpClient;
     private final Duration httpTimeout;
-    private final String userLookupPath;
 
     public AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl) {
         this(authServiceBaseUrl, DEFAULT_HTTP_TIMEOUT);
     }
 
     AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, Duration httpTimeout) {
-        this(authServiceBaseUrl, createHttpClient(httpTimeout), httpTimeout, DEFAULT_USER_LOOKUP_PATH);
+        this(authServiceBaseUrl, createHttpClient(httpTimeout), httpTimeout);
     }
 
     AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient) {
-        this(authServiceBaseUrl, httpClient, DEFAULT_HTTP_TIMEOUT, DEFAULT_USER_LOOKUP_PATH);
+        this(authServiceBaseUrl, httpClient, DEFAULT_HTTP_TIMEOUT);
     }
 
     AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient, Duration httpTimeout) {
-        this(authServiceBaseUrl, httpClient, httpTimeout, DEFAULT_USER_LOOKUP_PATH);
-    }
-
-    AuthServiceUsernameToUserIdResolver(
-            String authServiceBaseUrl,
-            HttpClient httpClient,
-            Duration httpTimeout,
-            String userLookupPath
-    ) {
         this.authServiceBaseUrl = normalizeBaseUrl(authServiceBaseUrl);
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient must not be null");
         this.httpTimeout = normalizeTimeout(httpTimeout);
-        this.userLookupPath = normalizeLookupPath(userLookupPath);
     }
 
     private static HttpClient createHttpClient(Duration httpTimeout) {
@@ -107,7 +99,7 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
 
     private URI buildUserLookupUri(String username) {
         String encoded = encodeQueryParam(username);
-        return URI.create(authServiceBaseUrl + userLookupPath + "?username=" + encoded);
+        return URI.create(authServiceBaseUrl + DEFAULT_USER_LOOKUP_PATH + "?email=" + encoded);
     }
 
     private static String normalizeBaseUrl(String baseUrl) {
@@ -126,14 +118,6 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
             return DEFAULT_HTTP_TIMEOUT;
         }
         return timeout;
-    }
-
-    private static String normalizeLookupPath(String lookupPath) {
-        if (lookupPath == null || lookupPath.isBlank()) {
-            return DEFAULT_USER_LOOKUP_PATH;
-        }
-        String normalized = lookupPath.trim();
-        return normalized.startsWith("/") ? normalized : "/" + normalized;
     }
 
     private static boolean isPositive(Duration timeout) {
