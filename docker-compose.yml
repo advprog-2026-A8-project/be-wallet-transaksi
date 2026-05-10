@@ -50,6 +50,8 @@ services:
       GRPC_SERVER_INTERNAL_TOKEN: ${GRPC_SERVER_INTERNAL_TOKEN}
     ports:
       - "6000:8080"
+    cpus: 2.0
+    mem_limit: 1g
 
   postgres-dev:
     image: postgres:15-alpine
@@ -100,8 +102,18 @@ services:
       GRPC_SERVER_ENABLED: ${GRPC_SERVER_ENABLED}
       GRPC_SERVER_PORT: ${GRPC_SERVER_PORT}
       GRPC_SERVER_INTERNAL_TOKEN: ${GRPC_SERVER_INTERNAL_TOKEN}
+      JAVA_TOOL_OPTIONS: >-
+        -Dcom.sun.management.jmxremote=true
+        -Dcom.sun.management.jmxremote.port=9010
+        -Dcom.sun.management.jmxremote.rmi.port=9010
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+        -Djava.rmi.server.hostname=127.0.0.1
     ports:
       - "6002:8080"
+      - "1000:9010"
+    cpus: 2.0
+    mem_limit: 1g
 
 volumes:
   wallet_pgdata_main:
