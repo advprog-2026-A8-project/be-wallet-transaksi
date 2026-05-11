@@ -38,4 +38,5 @@ out/
 
 .env
 performance/jmeter/results/*.jtl
-performance/jmeter/results/*.log
+performance/jmeter/results/report-*/
+jmeter.log

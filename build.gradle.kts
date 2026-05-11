@@ -101,6 +101,15 @@ tasks.withType<Test> {
 
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
+    classDirectories.setFrom(
+        files(
+            classDirectories.files.map {
+                fileTree(it) {
+                    exclude("id/ac/ui/cs/advprog/bewallettransaksi/grpc/**")
+                }
+            }
+        )
+    )
     reports {
         xml.required.set(true)
         html.required.set(true)
