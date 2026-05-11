@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -50,4 +51,25 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             """)
     List<Transaction> findByWalletIdAndStatusOrderByCreatedAtDesc(@Param("walletId") UUID walletId,
                                                                    @Param("status") TransactionStatus status);
+
+    @Query("""
+            SELECT t
+            FROM Transaction t
+            WHERE t.type = :type
+              AND t.description = :description
+            ORDER BY t.createdAt DESC, t.transactionId DESC
+            """)
+    List<Transaction> findByTypeAndDescriptionOrderByCreatedAtDesc(@Param("type") TransactionType type,
+                                                                    @Param("description") String description);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+            FROM Transaction t
+            WHERE t.type = :type
+              AND t.description = :description
+              AND t.status = :status
+            """)
+    boolean existsByTypeAndDescriptionAndStatus(@Param("type") TransactionType type,
+                                                @Param("description") String description,
+                                                @Param("status") TransactionStatus status);
 }

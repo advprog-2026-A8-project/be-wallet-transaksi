@@ -329,10 +329,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private List<Transaction> findTransactionsByTypeAndOrderId(TransactionType type, String orderId) {
-        return transactionRepository.findAll().stream()
-                .filter(transaction -> transaction.getType() == type)
-                .filter(transaction -> orderId.equals(transaction.getDescription()))
-                .toList();
+        return transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(type, orderId);
     }
 
     private java.util.Optional<Transaction> findPendingPayment(List<Transaction> matchingPayments) {
@@ -491,8 +488,11 @@ public class WalletServiceImpl implements WalletService {
         if (orderId == null) {
             return false;
         }
-        return findMatchingPaymentTransactions(orderId).stream()
-                .anyMatch(transaction -> transaction.getStatus() == TransactionStatus.PENDING);
+        return transactionRepository.existsByTypeAndDescriptionAndStatus(
+                TransactionType.PAYMENT,
+                orderId,
+                TransactionStatus.PENDING
+        );
     }
 
     private void transitionPendingTopUp(
@@ -593,14 +593,20 @@ public class WalletServiceImpl implements WalletService {
 
     private boolean hasSuccessfulPaymentForOrder(String orderId) {
         validateOrderId(orderId);
-        return findMatchingPaymentTransactions(orderId).stream()
-                .anyMatch(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS);
+        return transactionRepository.existsByTypeAndDescriptionAndStatus(
+                TransactionType.PAYMENT,
+                orderId,
+                TransactionStatus.SUCCESS
+        );
     }
 
     private boolean hasSuccessfulRefundForOrder(String orderId) {
         validateOrderId(orderId);
-        return findTransactionsByTypeAndOrderId(TransactionType.REFUND, orderId).stream()
-                .anyMatch(transaction -> transaction.getStatus() == TransactionStatus.SUCCESS);
+        return transactionRepository.existsByTypeAndDescriptionAndStatus(
+                TransactionType.REFUND,
+                orderId,
+                TransactionStatus.SUCCESS
+        );
     }
 
     private void requireSuccessfulPaymentForOrder(String orderId) {
