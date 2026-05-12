@@ -2,35 +2,21 @@
 
 ## Context Diagram
 
-![]()
+![alt text](/assets/SystemContext.png)
 
 ## Container Diagram
 
-![]()
+![alt text](/assets/ContainerDiagram.png)
 
 ## Deployment Diagram
 
-![]()
+![alt text](/assets/DeploymentDiagram.png)
 
 ## Risk Analysis & Architecture Modification
 
 ![]()
 
-**1. Risiko Integrasi Antar-Service (Order | Wallet | Auth)** \
-Risiko utama ada pada ketidaksesuaian kontrak payload, header autentikasi internal, dan semantik error code antar-service yang bisa menyebabkan transaksi gagal atau status tidak sinkron.
-
-Mitigasi: Service wallet menyediakan contract API khusus (`/api/contracts/wallet/*`) dan gRPC contract, serta error code terstruktur (`success`, `errorCode`, `retryable`) agar modul pemanggil bisa menerapkan retry policy dan fallback yang konsisten.
-
-**2. Risiko Callback Payment Tidak Idempotent** \
-Callback dari payment gateway berpotensi terkirim lebih dari sekali atau out-of-order, sehingga saldo bisa berubah tidak sesuai jika tidak dilindungi.
-
-Mitigasi: Service wallet menerapkan validasi signature callback, guard idempotency key pada operasi kritis, dan transisi status transaksi yang ketat untuk mencegah double mutation.
-
 # Individu (Jaysen Lestari)
-
-## Component Diagram
-
-![]()
 
 ## Code Diagram
 
