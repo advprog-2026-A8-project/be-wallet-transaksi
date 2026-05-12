@@ -27,9 +27,13 @@ Risk Storming juga bermanfaat karena menghubungkan diskusi arsitektur dengan kep
 
 # Individu (Jaysen Lestari)
 
+## Component Diagram
+
+![alt text](/assets/ComponentDiagram.png)
+
 ## Code Diagram
 
-![]()
+![alt text](/assets/CodeDiagram.png)
 
 ## Profiling
 
