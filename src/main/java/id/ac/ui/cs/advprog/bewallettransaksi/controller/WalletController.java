@@ -303,9 +303,7 @@ public class WalletController {
 
     private void validateCallbackSignature(PaymentCallbackRequest payload, String signatureKey) {
         if (!isValidCallbackSignature(payload, signatureKey)) {
-            String orderId = payload == null ? null : payload.getOrderId();
-            String statusCode = payload == null ? null : payload.getStatusCode();
-            log.warn("wallet.callback.invalid_signature orderId={} statusCode={}", orderId, statusCode);
+            log.warn("wallet.callback.invalid_signature");
             throw new UnauthorizedException(INVALID_CALLBACK_SIGNATURE_MESSAGE);
         }
     }

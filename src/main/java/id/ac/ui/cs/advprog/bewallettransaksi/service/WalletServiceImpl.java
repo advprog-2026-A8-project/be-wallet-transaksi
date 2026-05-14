@@ -138,10 +138,8 @@ public class WalletServiceImpl implements WalletService {
         String orderId = generateTopUpOrderId();
         persistPendingTopUpTransaction(wallet.getWalletId(), request.getAmount(), orderId);
         log.info(
-                "wallet.topup.initiate request accepted userId={} orderId={} amount={}",
-                request.getUserId(),
-                orderId,
-                request.getAmount()
+                "wallet.topup.initiate request accepted orderId={}",
+                orderId
         );
         return buildInitiateTopUpResponse(request, orderId);
     }
@@ -159,8 +157,7 @@ public class WalletServiceImpl implements WalletService {
         try {
             return paymentGatewayClient.createTopUpInstruction(request.getUserId(), request.getAmount(), orderId);
         } catch (RuntimeException ex) {
-            log.error("wallet.payment.gateway.failed orderId={} error={}", orderId, ex.toString());
-            throw ex;
+            throw new IllegalStateException("Failed to create top-up payment instruction for orderId=" + orderId, ex);
         }
     }
 

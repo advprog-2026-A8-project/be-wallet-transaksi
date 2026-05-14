@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class UsernameToUserIdResolverConfig {
+    static final String DEFAULT_USER_LOOKUP_PATH = "/api/profile/lookup";
 
     @Bean
     @ConditionalOnProperty(
@@ -19,11 +20,13 @@ public class UsernameToUserIdResolverConfig {
     )
     UsernameToUserIdResolver authServiceUsernameToUserIdResolver(
             @Value("${auth.service.base-url:http://localhost:8080}") String baseUrl,
+            @Value("${auth.service.user-lookup-path:" + DEFAULT_USER_LOOKUP_PATH + "}") String userLookupPath,
             @Value("${auth.service.timeout-ms:1000}") long timeoutMs
     ) {
         long safeTimeoutMs = timeoutMs > 0 ? timeoutMs : 1000;
         return new AuthServiceUsernameToUserIdResolver(
                 baseUrl,
+                userLookupPath,
                 java.net.http.HttpClient.newHttpClient(),
                 Duration.ofMillis(safeTimeoutMs)
         );
