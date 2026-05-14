@@ -137,7 +137,12 @@ public class WalletServiceImpl implements WalletService {
         walletMetricsRecorder.incrementTopupInitiated();
         String orderId = generateTopUpOrderId();
         persistPendingTopUpTransaction(wallet.getWalletId(), request.getAmount(), orderId);
-        log.info("wallet.topup.initiate request accepted");
+        log.info(
+                "wallet.topup.initiate request accepted userId={} orderId={} amount={}",
+                request.getUserId(),
+                orderId,
+                request.getAmount()
+        );
         return buildInitiateTopUpResponse(request, orderId);
     }
 
@@ -151,7 +156,12 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private Map<String, String> buildInitiateTopUpResponse(TopUpRequest request, String orderId) {
-        return paymentGatewayClient.createTopUpInstruction(request.getUserId(), request.getAmount(), orderId);
+        try {
+            return paymentGatewayClient.createTopUpInstruction(request.getUserId(), request.getAmount(), orderId);
+        } catch (RuntimeException ex) {
+            log.error("wallet.payment.gateway.failed orderId={} error={}", orderId, ex.toString());
+            throw ex;
+        }
     }
 
     @Override
@@ -544,6 +554,7 @@ public class WalletServiceImpl implements WalletService {
             action.run();
         } catch (RuntimeException ex) {
             // Keep wallet transaction state authoritative even if downstream publication fails.
+            log.error("wallet.order.publisher.failed error={}", ex.toString());
         }
     }
 

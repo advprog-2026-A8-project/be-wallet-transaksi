@@ -9,6 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +38,7 @@ import jakarta.validation.Valid;
 @RequestMapping("/wallet")
 @Tag(name = "Wallet API", description = "Wallet operations, mutations, history, and payment callbacks")
 public class WalletController {
+    private static final Logger log = LoggerFactory.getLogger(WalletController.class);
     private static final String UNAUTHORIZED_MESSAGE = "Autentikasi diperlukan!";
     private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
@@ -300,6 +303,9 @@ public class WalletController {
 
     private void validateCallbackSignature(PaymentCallbackRequest payload, String signatureKey) {
         if (!isValidCallbackSignature(payload, signatureKey)) {
+            String orderId = payload == null ? null : payload.getOrderId();
+            String statusCode = payload == null ? null : payload.getStatusCode();
+            log.warn("wallet.callback.invalid_signature orderId={} statusCode={}", orderId, statusCode);
             throw new UnauthorizedException(INVALID_CALLBACK_SIGNATURE_MESSAGE);
         }
     }
