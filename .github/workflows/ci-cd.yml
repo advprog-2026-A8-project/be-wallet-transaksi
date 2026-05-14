@@ -87,6 +87,9 @@ jobs:
             echo "DB_PORT=6001" >> $GITHUB_ENV
             echo "DB_VOLUME=postgres_data_prod" >> $GITHUB_ENV
             echo "AUTH_SERVICE_BASE_URL=http://${{ secrets.SSH_HOST }}:3000" >> $GITHUB_ENV
+            echo "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,prometheus" >> $GITHUB_ENV
+            echo "MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=unrestricted" >> $GITHUB_ENV
+            echo "MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true" >> $GITHUB_ENV
           else
             echo "APP_PORT=6002" >> $GITHUB_ENV
             echo "CONTAINER_NAME=wallet_server_staging" >> $GITHUB_ENV
@@ -96,6 +99,9 @@ jobs:
             echo "DB_PORT=6003" >> $GITHUB_ENV
             echo "DB_VOLUME=postgres_data_staging" >> $GITHUB_ENV
             echo "AUTH_SERVICE_BASE_URL=http://${{ secrets.SSH_HOST }}:3002" >> $GITHUB_ENV
+            echo "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info" >> $GITHUB_ENV
+            echo "MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=none" >> $GITHUB_ENV
+            echo "MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=false" >> $GITHUB_ENV
           fi
 
       - name: Check out code
@@ -172,6 +178,9 @@ jobs:
               -e MIDTRANS_MERCHANT_ID=${{ secrets.MIDTRANS_MERCHANT_ID }} \
               -e GRPC_SERVER_INTERNAL_TOKEN=${{ secrets.GRPC_SERVER_INTERNAL_TOKEN }} \
               -e AUTH_SERVICE_BASE_URL=${{ env.AUTH_SERVICE_BASE_URL }} \
+              -e MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=${{ env.MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE }} \
+              -e MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=${{ env.MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS }} \
+              -e MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=${{ env.MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED }} \
               -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
               --restart always \
               ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
