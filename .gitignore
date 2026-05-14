@@ -40,3 +40,4 @@ out/
 performance/jmeter/results/*.jtl
 performance/jmeter/results/report-*/
 jmeter.log
+*.log

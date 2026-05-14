@@ -139,3 +139,31 @@ Jalankan profile `main`:
 ```powershell
 docker compose --profile main up --build
 ```
+
+## Monitoring (Prod-only setup)
+
+Observability stack ini ditujukan untuk environment `main` (production-like), bukan `dev`.
+
+1. Jalankan aplikasi utama profile `main`:
+
+```powershell
+docker compose --profile main up -d --build
+```
+
+2. Jalankan Prometheus + Grafana:
+
+```powershell
+docker compose -f docker-compose.monitoring.yml up -d
+```
+
+3. Verifikasi endpoint:
+- Wallet metrics: `http://localhost:6060/actuator/prometheus`
+- Prometheus UI: `http://localhost:9090`
+- Grafana UI: `http://localhost:3001`
+
+4. Login Grafana:
+- Username: `admin` (default)
+- Password: `admin` (default)
+
+5. Tambah data source Prometheus di Grafana:
+- URL: `http://prometheus:9090`
