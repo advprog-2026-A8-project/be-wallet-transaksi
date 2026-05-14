@@ -546,6 +546,115 @@
       ],
       "title": "Endpoint Latency p95 (Wallet Only)",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 45
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "rate(wallet_topup_initiated_total[5m])",
+          "legendFormat": "Topup Initiated",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(wallet_topup_success_total[5m])",
+          "legendFormat": "Topup Success",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(wallet_topup_failed_total[5m])",
+          "legendFormat": "Topup Failed",
+          "refId": "C"
+        }
+      ],
+      "title": "Topup Business Metrics",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 45
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "rate(wallet_payment_deduct_success_total[5m])",
+          "legendFormat": "Payment Deduct Success",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(wallet_payment_deduct_failed_total[5m])",
+          "legendFormat": "Payment Deduct Failed",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(wallet_refund_success_total[5m])",
+          "legendFormat": "Refund Success",
+          "refId": "C"
+        },
+        {
+          "expr": "rate(wallet_refund_failed_total[5m])",
+          "legendFormat": "Refund Failed",
+          "refId": "D"
+        },
+        {
+          "expr": "rate(wallet_callback_idempotent_total[5m])",
+          "legendFormat": "Callback Idempotent",
+          "refId": "E"
+        },
+        {
+          "expr": "rate(wallet_callback_out_of_order_noop_total[5m])",
+          "legendFormat": "Callback Out-Of-Order Noop",
+          "refId": "F"
+        }
+      ],
+      "title": "Mutation and Callback Metrics",
+      "type": "timeseries"
     }
   ],
   "refresh": "5s",

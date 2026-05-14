@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import id.ac.ui.cs.advprog.bewallettransaksi.config.WalletMetricsRecorder;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
@@ -67,13 +68,15 @@ public class WalletServiceImpl implements WalletService {
     private final WalletMutationStrategyResolver strategyResolver;
     private final OrderPaymentStatusPublisher orderPaymentStatusPublisher;
     private final PaymentGatewayClient paymentGatewayClient;
+    private final WalletMetricsRecorder walletMetricsRecorder;
     private final Map<String, Object> callbackOrderLocks = new ConcurrentHashMap<>();
 
     public WalletServiceImpl(WalletRepository walletRepository,
                              TransactionRepository transactionRepository,
                              WalletMutationStrategyResolver strategyResolver,
                              OrderPaymentStatusPublisher orderPaymentStatusPublisher,
-                             PaymentGatewayClient paymentGatewayClient) {
+                             PaymentGatewayClient paymentGatewayClient,
+                             WalletMetricsRecorder walletMetricsRecorder) {
         this.walletRepository = requireNonNullDependency(walletRepository, "WalletRepository");
         this.transactionRepository = requireNonNullDependency(transactionRepository, "TransactionRepository");
         this.strategyResolver = requireNonNullDependency(strategyResolver, "WalletMutationStrategyResolver");
@@ -82,6 +85,7 @@ public class WalletServiceImpl implements WalletService {
                 "OrderPaymentStatusPublisher"
         );
         this.paymentGatewayClient = requireNonNullDependency(paymentGatewayClient, "PaymentGatewayClient");
+        this.walletMetricsRecorder = requireNonNullDependency(walletMetricsRecorder, "WalletMetricsRecorder");
     }
 
     private <T> T requireNonNullDependency(T dependency, String dependencyName) {
@@ -113,6 +117,7 @@ public class WalletServiceImpl implements WalletService {
         validateUserId(request.getUserId());
         validateAmount(request.getAmount());
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(request.getUserId());
+        walletMetricsRecorder.incrementTopupInitiated();
         processMutation(
                 wallet,
                 request.getAmount(),
@@ -129,6 +134,7 @@ public class WalletServiceImpl implements WalletService {
         validateUserId(request.getUserId());
         validateAmount(request.getAmount());
         Wallet wallet = findWalletByUserIdForUpdateOrThrow(request.getUserId());
+        walletMetricsRecorder.incrementTopupInitiated();
         String orderId = generateTopUpOrderId();
         persistPendingTopUpTransaction(wallet.getWalletId(), request.getAmount(), orderId);
         log.info("wallet.topup.initiate request accepted");
@@ -385,6 +391,7 @@ public class WalletServiceImpl implements WalletService {
                 .orElseThrow(() -> new IllegalStateException(buildCallbackNotFoundMessage(normalizedOrderId)));
 
         if (callbackTransaction.getStatus() == targetStatus) {
+            walletMetricsRecorder.incrementCallbackIdempotent();
             log.info(
                     "wallet.callback.transition.idempotent orderId={} currentStatus={}",
                     normalizedOrderId,
@@ -393,6 +400,7 @@ public class WalletServiceImpl implements WalletService {
             return;
         }
         if (isOutOfOrderTerminalNoOp(callbackTransaction, targetStatus)) {
+            walletMetricsRecorder.incrementCallbackOutOfOrderNoop();
             log.info(
                     "wallet.callback.transition.noop_out_of_order orderId={} currentStatus={} targetStatus={}",
                     normalizedOrderId,
@@ -513,7 +521,12 @@ public class WalletServiceImpl implements WalletService {
                     .orElseThrow(() -> new IllegalStateException(WALLET_NOT_FOUND_FOR_TOPUP_CALLBACK_MESSAGE));
             wallet.setBalance(wallet.getBalance().add(topUpTransaction.getAmount()));
             walletRepository.save(wallet);
+            walletMetricsRecorder.incrementCallbackSettlement();
+            walletMetricsRecorder.incrementTopupSuccess();
+            return;
         }
+        walletMetricsRecorder.incrementCallbackFailure();
+        walletMetricsRecorder.incrementTopupFailed();
     }
 
     private void publishOrderPaymentStatusUpdate(String orderId, TransactionStatus targetStatus) {
@@ -639,6 +652,7 @@ public class WalletServiceImpl implements WalletService {
     ) {
         if (wallet.getBalance().compareTo(amount) < 0) {
             recordFailedTransaction(wallet.getWalletId(), amount, type, description);
+            incrementFailureCounterByType(type);
             throw new IllegalStateException("Insufficient balance");
         }
     }
@@ -687,6 +701,27 @@ public class WalletServiceImpl implements WalletService {
     private void finalizeTransaction(Transaction transaction) {
         transaction.setStatus(TransactionStatus.SUCCESS);
         transactionRepository.save(transaction);
+        incrementSuccessCounterByType(transaction.getType());
+    }
+
+    private void incrementSuccessCounterByType(TransactionType type) {
+        if (type == TransactionType.TOPUP) {
+            walletMetricsRecorder.incrementTopupSuccess();
+        } else if (type == TransactionType.PAYMENT) {
+            walletMetricsRecorder.incrementPaymentDeductSuccess();
+        } else if (type == TransactionType.REFUND) {
+            walletMetricsRecorder.incrementRefundSuccess();
+        }
+    }
+
+    private void incrementFailureCounterByType(TransactionType type) {
+        if (type == TransactionType.TOPUP) {
+            walletMetricsRecorder.incrementTopupFailed();
+        } else if (type == TransactionType.PAYMENT) {
+            walletMetricsRecorder.incrementPaymentDeductFailed();
+        } else if (type == TransactionType.REFUND) {
+            walletMetricsRecorder.incrementRefundFailed();
+        }
     }
 
     private BigDecimal normalizeBalance(BigDecimal balance) {
