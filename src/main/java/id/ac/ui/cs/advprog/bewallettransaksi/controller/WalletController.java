@@ -8,9 +8,14 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import id.ac.ui.cs.advprog.bewallettransaksi.config.WalletMetricsRecorder;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,6 +41,7 @@ import jakarta.validation.Valid;
 @RequestMapping("/wallet")
 @Tag(name = "Wallet API", description = "Wallet operations, mutations, history, and payment callbacks")
 public class WalletController {
+    private static final Logger log = LoggerFactory.getLogger(WalletController.class);
     private static final String UNAUTHORIZED_MESSAGE = "Autentikasi diperlukan!";
     private static final String FORBIDDEN_MESSAGE = "Akses ditolak!";
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
@@ -60,6 +66,7 @@ public class WalletController {
     private final IdempotencyKeyGuard idempotencyKeyGuard;
     private final MidtransCallbackSignatureVerifier callbackSignatureVerifier;
     private final PaymentCallbackProcessor paymentCallbackProcessor;
+    private final WalletMetricsRecorder walletMetricsRecorder;
     private final Map<String, Map<String, String>> cachedTopUpInitiateResponses = new ConcurrentHashMap<>();
 
     private record NormalizedCallbackFields(
@@ -70,18 +77,21 @@ public class WalletController {
     ) {
     }
 
+    @Autowired
     public WalletController(
             WalletService walletService,
             WalletRequestAccessPolicy walletRequestAccessPolicy,
             IdempotencyKeyGuard idempotencyKeyGuard,
             MidtransCallbackSignatureVerifier callbackSignatureVerifier,
-            PaymentCallbackProcessor paymentCallbackProcessor
+            PaymentCallbackProcessor paymentCallbackProcessor,
+            @Nullable WalletMetricsRecorder walletMetricsRecorder
     ) {
         this.walletService = walletService;
         this.walletRequestAccessPolicy = walletRequestAccessPolicy;
         this.idempotencyKeyGuard = idempotencyKeyGuard;
         this.callbackSignatureVerifier = callbackSignatureVerifier;
         this.paymentCallbackProcessor = paymentCallbackProcessor;
+        this.walletMetricsRecorder = walletMetricsRecorder;
     }
 
     @GetMapping("/{userId}")
@@ -137,6 +147,9 @@ public class WalletController {
 
     private Map<String, String> cacheTopUpInitiateResponse(String idempotencyKey, Map<String, String> response) {
         cachedTopUpInitiateResponses.putIfAbsent(idempotencyKey, response);
+        if (walletMetricsRecorder != null) {
+            walletMetricsRecorder.updateTopupInitiateCacheSize(cachedTopUpInitiateResponses.size());
+        }
         return cachedTopUpInitiateResponses.get(idempotencyKey);
     }
 
@@ -263,6 +276,9 @@ public class WalletController {
 
     private void registerIdempotencyKeyOrThrow(String idempotencyKey) {
         if (!idempotencyKeyGuard.register(idempotencyKey)) {
+            if (walletMetricsRecorder != null) {
+                walletMetricsRecorder.incrementIdempotencyConflict();
+            }
             throw new ConflictException(DUPLICATE_IDEMPOTENCY_MESSAGE);
         }
     }
@@ -300,6 +316,7 @@ public class WalletController {
 
     private void validateCallbackSignature(PaymentCallbackRequest payload, String signatureKey) {
         if (!isValidCallbackSignature(payload, signatureKey)) {
+            log.warn("wallet.callback.invalid_signature");
             throw new UnauthorizedException(INVALID_CALLBACK_SIGNATURE_MESSAGE);
         }
     }

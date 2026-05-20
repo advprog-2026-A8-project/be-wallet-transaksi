@@ -1,0 +1,233 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Docker image tag to rollback to (example: latest, staging, v20260514-abc1234)"
+        required: true
+        type: string
+      environment:
+        description: "Target environment"
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+          - staging
+      confirm_rollback:
+        description: 'Type "CONFIRM" to proceed'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate-inputs:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.validate.outputs.version }}
+      environment: ${{ steps.validate.outputs.environment }}
+    steps:
+      - name: Validate confirmation and inputs
+        id: validate
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event.inputs.confirm_rollback }}" != "CONFIRM" ]; then
+            echo "Rollback confirmation failed. Type CONFIRM to continue."
+            exit 1
+          fi
+
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            echo "Version must not be empty."
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "environment=${{ github.event.inputs.environment }}" >> "$GITHUB_OUTPUT"
+
+  check-image-exists:
+    name: Verify Docker Image Exists
+    needs: validate-inputs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docker Hub login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Check image manifest
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          IMAGE="${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${VERSION}"
+
+          echo "Checking image: $IMAGE"
+          docker manifest inspect "$IMAGE" > /dev/null
+
+  rollback:
+    name: Execute Rollback
+    needs: [validate-inputs, check-image-exists]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rollback on remote host
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            VERSION="${{ needs.validate-inputs.outputs.version }}"
+            TARGET_ENV="${{ needs.validate-inputs.outputs.environment }}"
+            IMAGE="${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${VERSION}"
+
+            if [ "$TARGET_ENV" = "production" ]; then
+              LIVE_CONTAINER="wallet_server_prod"
+              PREVIOUS_CONTAINER="wallet_server_prod_previous"
+              CANDIDATE_CONTAINER="wallet_server_prod_candidate"
+              LIVE_PORT="6000"
+              CANDIDATE_PORT="6100"
+              DB_CONTAINER_NAME="postgres_db_prod"
+              DB_NAME="walletdb_prod"
+              DB_PORT="6001"
+              DB_VOLUME="postgres_data_prod"
+              AUTH_SERVICE_BASE_URL="http://${{ secrets.SSH_HOST }}:3000"
+            else
+              LIVE_CONTAINER="wallet_server_staging"
+              PREVIOUS_CONTAINER="wallet_server_staging_previous"
+              CANDIDATE_CONTAINER="wallet_server_staging_candidate"
+              LIVE_PORT="6002"
+              CANDIDATE_PORT="6102"
+              DB_CONTAINER_NAME="postgres_db_staging"
+              DB_NAME="walletdb_staging"
+              DB_PORT="6003"
+              DB_VOLUME="postgres_data_staging"
+              AUTH_SERVICE_BASE_URL="http://${{ secrets.SSH_HOST }}:3002"
+            fi
+
+            HEALTHCHECK_PATH="/v3/api-docs"
+            HEALTHCHECK_RETRIES=30
+            HEALTHCHECK_SLEEP_SECONDS=2
+
+            wait_for_health() {
+              local port=$1
+              local path=$2
+              local retries=$3
+              local sleep_seconds=$4
+              local url="http://localhost:${port}${path}"
+
+              for i in $(seq 1 "$retries"); do
+                if curl -fsS "$url" > /dev/null; then
+                  echo "Health check passed: $url"
+                  return 0
+                fi
+                echo "Waiting health check ($i/$retries): $url"
+                sleep "$sleep_seconds"
+              done
+
+              echo "Health check failed: $url"
+              return 1
+            }
+
+            run_wallet_container() {
+              local name=$1
+              local port=$2
+              docker run -d \
+                --name="$name" \
+                --network=app_network \
+                -p "$port":8080 \
+                -e POSTGRES_HOST="$DB_CONTAINER_NAME" \
+                -e POSTGRES_PORT=5432 \
+                -e POSTGRES_DB="$DB_NAME" \
+                -e POSTGRES_USER="${{ secrets.POSTGRES_USER }}" \
+                -e POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
+                -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                -e JWT_EXPIRATION="${{ secrets.JWT_EXPIRATION }}" \
+                -e MIDTRANS_SERVER_KEY="${{ secrets.MIDTRANS_SERVER_KEY }}" \
+                -e MIDTRANS_CLIENT_KEY="${{ secrets.MIDTRANS_CLIENT_KEY }}" \
+                -e MIDTRANS_MERCHANT_ID="${{ secrets.MIDTRANS_MERCHANT_ID }}" \
+                -e GRPC_SERVER_INTERNAL_TOKEN="${{ secrets.GRPC_SERVER_INTERNAL_TOKEN }}" \
+                -e AUTH_SERVICE_BASE_URL="$AUTH_SERVICE_BASE_URL" \
+                -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
+                --restart always \
+                "$IMAGE"
+            }
+
+            echo "Rolling back $TARGET_ENV to image tag: $VERSION"
+
+            echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+            docker pull "$IMAGE"
+
+            docker network create app_network || true
+
+            # Ensure DB container exists/runs
+            if [ "$(docker ps -aq -f name=^${DB_CONTAINER_NAME}$)" ]; then
+              if [ ! "$(docker ps -q -f name=^${DB_CONTAINER_NAME}$)" ]; then
+                docker start "$DB_CONTAINER_NAME"
+              fi
+            else
+              docker run -d \
+                --name="$DB_CONTAINER_NAME" \
+                --network=app_network \
+                -p "$DB_PORT":5432 \
+                -v "$DB_VOLUME":/var/lib/postgresql/data \
+                -e POSTGRES_DB="$DB_NAME" \
+                -e POSTGRES_USER="${{ secrets.POSTGRES_USER }}" \
+                -e POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
+                --restart always \
+                postgres:15-alpine
+            fi
+
+            docker rm -f "$CANDIDATE_CONTAINER" || true
+            docker rm -f "$PREVIOUS_CONTAINER" || true
+
+            run_wallet_container "$CANDIDATE_CONTAINER" "$CANDIDATE_PORT"
+            if ! wait_for_health "$CANDIDATE_PORT" "$HEALTHCHECK_PATH" "$HEALTHCHECK_RETRIES" "$HEALTHCHECK_SLEEP_SECONDS"; then
+              docker logs --tail 200 "$CANDIDATE_CONTAINER" || true
+              docker rm -f "$CANDIDATE_CONTAINER" || true
+              exit 1
+            fi
+
+            HAS_PREVIOUS=0
+            if [ "$(docker ps -aq -f name=^${LIVE_CONTAINER}$)" ]; then
+              HAS_PREVIOUS=1
+              docker stop "$LIVE_CONTAINER"
+              docker rename "$LIVE_CONTAINER" "$PREVIOUS_CONTAINER"
+            fi
+
+            run_wallet_container "$LIVE_CONTAINER" "$LIVE_PORT"
+            if ! wait_for_health "$LIVE_PORT" "$HEALTHCHECK_PATH" "$HEALTHCHECK_RETRIES" "$HEALTHCHECK_SLEEP_SECONDS"; then
+              docker logs --tail 200 "$LIVE_CONTAINER" || true
+              docker rm -f "$LIVE_CONTAINER" || true
+
+              if [ "$HAS_PREVIOUS" -eq 1 ] && [ "$(docker ps -aq -f name=^${PREVIOUS_CONTAINER}$)" ]; then
+                docker rename "$PREVIOUS_CONTAINER" "$LIVE_CONTAINER"
+                docker start "$LIVE_CONTAINER"
+                echo "Rollback self-recovery completed: previous live container restored."
+              fi
+
+              docker rm -f "$CANDIDATE_CONTAINER" || true
+              exit 1
+            fi
+
+            docker rm -f "$CANDIDATE_CONTAINER" || true
+            docker rm -f "$PREVIOUS_CONTAINER" || true
+
+            echo "Rollback deployment completed."
+            docker ps
+
+      - name: Rollback summary
+        if: always()
+        run: |
+          echo "## Rollback Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Environment: ${{ needs.validate-inputs.outputs.environment }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Target Image Tag: ${{ needs.validate-inputs.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Triggered by: ${{ github.actor }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Workflow result: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"

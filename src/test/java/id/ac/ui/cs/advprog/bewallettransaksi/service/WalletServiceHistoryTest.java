@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
+import id.ac.ui.cs.advprog.bewallettransaksi.config.WalletMetricsRecorder;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TransactionResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
@@ -44,6 +45,9 @@ class WalletServiceHistoryTest {
 
     @Mock
     private PaymentGatewayClient paymentGatewayClient;
+
+    @Mock
+    private WalletMetricsRecorder walletMetricsRecorder;
 
     @Spy
     private WalletMutationStrategyResolver strategyResolver = new WalletMutationStrategyResolver();

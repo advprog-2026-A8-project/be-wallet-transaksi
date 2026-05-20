@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
+import id.ac.ui.cs.advprog.bewallettransaksi.config.WalletMetricsRecorder;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
@@ -50,6 +51,9 @@ class WalletServiceCoreTest {
 
     @Mock
     private PaymentGatewayClient paymentGatewayClient;
+
+    @Mock
+    private WalletMetricsRecorder walletMetricsRecorder;
 
     @Spy
     private WalletMutationStrategyResolver strategyResolver = new WalletMutationStrategyResolver();
@@ -252,7 +256,29 @@ class WalletServiceCoreTest {
     void constructor_NullOrderPaymentStatusPublisher_ShouldThrowNullPointerException() {
         assertThrows(
             NullPointerException.class,
-                () -> new WalletServiceImpl(walletRepository, transactionRepository, strategyResolver, null, paymentGatewayClient)
+                () -> new WalletServiceImpl(
+                        walletRepository,
+                        transactionRepository,
+                        strategyResolver,
+                        null,
+                        paymentGatewayClient,
+                        walletMetricsRecorder
+                )
+        );
+    }
+
+    @Test
+    void constructor_NullWalletMetricsRecorder_ShouldThrowNullPointerException() {
+        assertThrows(
+                NullPointerException.class,
+                () -> new WalletServiceImpl(
+                        walletRepository,
+                        transactionRepository,
+                        strategyResolver,
+                        orderPaymentStatusPublisher,
+                        paymentGatewayClient,
+                        null
+                )
         );
     }
 
@@ -265,7 +291,8 @@ class WalletServiceCoreTest {
                         transactionRepository,
                         strategyResolver,
                         orderPaymentStatusPublisher,
-                        paymentGatewayClient
+                        paymentGatewayClient,
+                        walletMetricsRecorder
                 )
         );
     }
@@ -274,7 +301,14 @@ class WalletServiceCoreTest {
     void constructor_NullTransactionRepository_ShouldThrowNullPointerException() {
         assertThrows(
             NullPointerException.class,
-                () -> new WalletServiceImpl(walletRepository, null, strategyResolver, orderPaymentStatusPublisher, paymentGatewayClient)
+                () -> new WalletServiceImpl(
+                        walletRepository,
+                        null,
+                        strategyResolver,
+                        orderPaymentStatusPublisher,
+                        paymentGatewayClient,
+                        walletMetricsRecorder
+                )
         );
     }
 
@@ -282,7 +316,14 @@ class WalletServiceCoreTest {
     void constructor_NullPaymentGatewayClient_ShouldThrowNullPointerException() {
         assertThrows(
                 NullPointerException.class,
-                () -> new WalletServiceImpl(walletRepository, transactionRepository, strategyResolver, orderPaymentStatusPublisher, null)
+                () -> new WalletServiceImpl(
+                        walletRepository,
+                        transactionRepository,
+                        strategyResolver,
+                        orderPaymentStatusPublisher,
+                        null,
+                        walletMetricsRecorder
+                )
         );
     }
 }

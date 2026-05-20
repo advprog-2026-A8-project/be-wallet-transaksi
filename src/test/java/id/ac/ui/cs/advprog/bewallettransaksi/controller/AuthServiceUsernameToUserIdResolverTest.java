@@ -48,12 +48,50 @@ class AuthServiceUsernameToUserIdResolverTest {
     }
 
     @Test
+    void resolve_ShouldExtractUuidFromApiResponseDataId() throws Exception {
+        UUID expectedUserId = UUID.fromString("21212121-2121-2121-2121-212121212121");
+        String body = "{\"message\":\"ok\",\"data\":{\"id\":\"" + expectedUserId + "\"}}";
+        HttpServer server = createServerWithResponse(body);
+        server.start();
+        try {
+            String baseUrl = "http://localhost:" + server.getAddress().getPort();
+            AuthServiceUsernameToUserIdResolver resolver =
+                    new AuthServiceUsernameToUserIdResolver(baseUrl);
+
+            Optional<UUID> resolved = resolver.resolve("api_user");
+
+            assertTrue(resolved.isPresent());
+            assertEquals(expectedUserId, resolved.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void resolve_WhenApiResponseDataIdIsLong_ShouldReturnEmpty() throws Exception {
+        String body = "{\"message\":\"ok\",\"data\":{\"id\":123}}";
+        HttpServer server = createServerWithResponse(body);
+        server.start();
+        try {
+            String baseUrl = "http://localhost:" + server.getAddress().getPort();
+            AuthServiceUsernameToUserIdResolver resolver =
+                    new AuthServiceUsernameToUserIdResolver(baseUrl);
+
+            Optional<UUID> resolved = resolver.resolve("api_user");
+
+            assertTrue(resolved.isEmpty());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void resolve_ShouldEncodeSpaceInUsernameAsPercent20() throws Exception {
         UUID expectedUserId = UUID.fromString("33333333-3333-3333-3333-333333333333");
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
+        server.createContext("/api/profile/lookup", exchange -> {
             String query = exchange.getRequestURI().getRawQuery();
-            String response = query != null && query.contains("username=owner%20name")
+            String response = query != null && query.contains("email=owner%20name")
                     ? "{\"userId\":\"" + expectedUserId + "\"}"
                     : "{}";
             exchange.getResponseHeaders().add("Content-Type", "application/json");
@@ -108,7 +146,7 @@ class AuthServiceUsernameToUserIdResolverTest {
     void resolve_WhenAuthServiceIsSlow_ShouldFailFastAndReturnEmpty() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         CountDownLatch slowResponseGate = new CountDownLatch(1);
-        server.createContext("/internal/users/by-username", exchange -> {
+        server.createContext("/api/profile/lookup", exchange -> {
             try {
                 slowResponseGate.await(3, TimeUnit.SECONDS);
             } catch (InterruptedException ex) {
@@ -224,7 +262,7 @@ class AuthServiceUsernameToUserIdResolverTest {
 
     private HttpServer createServerWithResponse(String response) throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/internal/users/by-username", exchange -> {
+        server.createContext("/api/profile/lookup", exchange -> {
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, response.getBytes().length);
             try (OutputStream os = exchange.getResponseBody()) {

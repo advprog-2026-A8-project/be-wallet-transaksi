@@ -2,6 +2,8 @@ package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.PaymentCallbackRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.service.WalletService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -11,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
+    private static final Logger log = LoggerFactory.getLogger(NoOpPaymentCallbackProcessor.class);
     private static final String EVENT_KEY_DELIMITER = "|";
 
     private final WalletService walletService;
@@ -37,17 +40,21 @@ public class NoOpPaymentCallbackProcessor implements PaymentCallbackProcessor {
         String orderId = normalizedOrderId.get();
         String status = normalizedStatus.get();
         if (shouldIgnoreTerminalEvent(orderId, status)) {
+            log.info("wallet.callback.processor.ignore_terminal orderId={} status={}", orderId, status);
             return;
         }
         String eventKey = buildEventKey(orderId, status);
         if (!processedCallbackEvents.add(eventKey)) {
+            log.info("wallet.callback.processor.duplicate_event orderId={} status={}", orderId, status);
             return;
         }
         if (MidtransTransactionStatus.isSettlement(status)) {
+            log.info("wallet.callback.processor.dispatch_settlement orderId={}", orderId);
             walletService.handlePaymentSettlement(orderId);
             return;
         }
         if (MidtransTransactionStatus.isFailure(status)) {
+            log.info("wallet.callback.processor.dispatch_failure orderId={}", orderId);
             walletService.handlePaymentFailure(orderId);
         }
     }

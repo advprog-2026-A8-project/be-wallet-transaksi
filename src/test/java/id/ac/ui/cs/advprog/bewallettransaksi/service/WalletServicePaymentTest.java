@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
+import id.ac.ui.cs.advprog.bewallettransaksi.config.WalletMetricsRecorder;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.WalletResponse;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionStatus;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
@@ -49,6 +50,9 @@ class WalletServicePaymentTest {
 
     @Mock
     private PaymentGatewayClient paymentGatewayClient;
+
+    @Mock
+    private WalletMetricsRecorder walletMetricsRecorder;
 
     @Spy
     private WalletMutationStrategyResolver strategyResolver = new WalletMutationStrategyResolver();
@@ -225,14 +229,16 @@ class WalletServicePaymentTest {
         pendingPayment.setStatus(TransactionStatus.PENDING);
         pendingPayment.setDescription("ORDER-1");
 
-        when(transactionRepository.findAll()).thenReturn(List.of(pendingPayment));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-1"
+        )).thenReturn(List.of(pendingPayment));
 
         walletService.handlePaymentSettlement("ORDER-1");
 
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(TransactionStatus.SUCCESS, transactionCaptor.getValue().getStatus());
-        verify(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-1");
+        verify(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.settled("ORDER-1"));
     }
 
     @Test
@@ -245,19 +251,23 @@ class WalletServicePaymentTest {
         pendingPayment.setStatus(TransactionStatus.PENDING);
         pendingPayment.setDescription("ORDER-2");
 
-        when(transactionRepository.findAll()).thenReturn(List.of(pendingPayment));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-2"
+        )).thenReturn(List.of(pendingPayment));
 
         walletService.handlePaymentFailure("ORDER-2");
 
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(TransactionStatus.FAILED, transactionCaptor.getValue().getStatus());
-        verify(orderPaymentStatusPublisher).publishPaymentFailed("ORDER-2");
+        verify(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.failed("ORDER-2"));
     }
 
     @Test
     void handlePaymentFailure_OrderIdNotFound_ShouldThrowIllegalStateException() {
-        when(transactionRepository.findAll()).thenReturn(List.of());
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-NOT-FOUND"
+        )).thenReturn(List.of());
 
         assertThrows(IllegalStateException.class, () -> walletService.handlePaymentFailure("ORDER-NOT-FOUND"));
         verify(transactionRepository, never()).save(any(Transaction.class));
@@ -273,7 +283,9 @@ class WalletServicePaymentTest {
         failedPayment.setStatus(TransactionStatus.FAILED);
         failedPayment.setDescription("ORDER-3");
 
-        when(transactionRepository.findAll()).thenReturn(List.of(failedPayment));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-3"
+        )).thenReturn(List.of(failedPayment));
 
         assertDoesNotThrow(() -> walletService.handlePaymentFailure("ORDER-3"));
         verify(transactionRepository, never()).save(any(Transaction.class));
@@ -289,7 +301,9 @@ class WalletServicePaymentTest {
         successPayment.setStatus(TransactionStatus.SUCCESS);
         successPayment.setDescription("ORDER-4");
 
-        when(transactionRepository.findAll()).thenReturn(List.of(successPayment));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-4"
+        )).thenReturn(List.of(successPayment));
 
         assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-4"));
         verify(transactionRepository, never()).save(any(Transaction.class));
@@ -306,7 +320,9 @@ class WalletServicePaymentTest {
         failedPayment.setStatus(TransactionStatus.FAILED);
         failedPayment.setDescription("ORDER-5");
 
-        when(transactionRepository.findAll()).thenReturn(List.of(failedPayment));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-5"
+        )).thenReturn(List.of(failedPayment));
 
         assertThrows(IllegalStateException.class, () -> walletService.handlePaymentSettlement("ORDER-5"));
         verify(transactionRepository, never()).save(any(Transaction.class));
@@ -322,7 +338,9 @@ class WalletServicePaymentTest {
         successPayment.setStatus(TransactionStatus.SUCCESS);
         successPayment.setDescription("ORDER-6");
 
-        when(transactionRepository.findAll()).thenReturn(List.of(successPayment));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-6"
+        )).thenReturn(List.of(successPayment));
 
         assertThrows(IllegalStateException.class, () -> walletService.handlePaymentFailure("ORDER-6"));
         verify(transactionRepository, never()).save(any(Transaction.class));
@@ -338,13 +356,15 @@ class WalletServicePaymentTest {
         pendingPayment.setStatus(TransactionStatus.PENDING);
         pendingPayment.setDescription("ORDER-PUB-FAIL-1");
 
-        when(transactionRepository.findAll()).thenReturn(List.of(pendingPayment));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-PUB-FAIL-1"
+        )).thenReturn(List.of(pendingPayment));
         doThrow(new RuntimeException("publisher down"))
-                .when(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-PUB-FAIL-1");
+                .when(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.settled("ORDER-PUB-FAIL-1"));
 
         assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-PUB-FAIL-1"));
         verify(transactionRepository).save(any(Transaction.class));
-        verify(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-PUB-FAIL-1");
+        verify(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.settled("ORDER-PUB-FAIL-1"));
     }
 
     @Test
@@ -367,7 +387,9 @@ class WalletServicePaymentTest {
         pendingPayment.setDescription("ORDER-DUP-1");
         pendingPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 11, 0));
 
-        when(transactionRepository.findAll()).thenReturn(List.of(successPayment, pendingPayment));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-DUP-1"
+        )).thenReturn(List.of(successPayment, pendingPayment));
 
         assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-DUP-1"));
 
@@ -375,7 +397,7 @@ class WalletServicePaymentTest {
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(pendingPayment.getTransactionId(), transactionCaptor.getValue().getTransactionId());
         assertEquals(TransactionStatus.SUCCESS, transactionCaptor.getValue().getStatus());
-        verify(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-DUP-1");
+        verify(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.settled("ORDER-DUP-1"));
     }
 
     @Test
@@ -398,7 +420,9 @@ class WalletServicePaymentTest {
         pendingPayment.setDescription("ORDER-DUP-2");
         pendingPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 11, 0));
 
-        when(transactionRepository.findAll()).thenReturn(List.of(failedPayment, pendingPayment));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-DUP-2"
+        )).thenReturn(List.of(failedPayment, pendingPayment));
 
         assertDoesNotThrow(() -> walletService.handlePaymentFailure("ORDER-DUP-2"));
 
@@ -406,7 +430,7 @@ class WalletServicePaymentTest {
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(pendingPayment.getTransactionId(), transactionCaptor.getValue().getTransactionId());
         assertEquals(TransactionStatus.FAILED, transactionCaptor.getValue().getStatus());
-        verify(orderPaymentStatusPublisher).publishPaymentFailed("ORDER-DUP-2");
+        verify(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.failed("ORDER-DUP-2"));
     }
 
     @Test
@@ -429,7 +453,9 @@ class WalletServicePaymentTest {
         newerPendingPayment.setDescription("ORDER-DUP-3");
         newerPendingPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 11, 0));
 
-        when(transactionRepository.findAll()).thenReturn(List.of(olderPendingPayment, newerPendingPayment));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-DUP-3"
+        )).thenReturn(List.of(olderPendingPayment, newerPendingPayment));
 
         assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-DUP-3"));
 
@@ -459,7 +485,9 @@ class WalletServicePaymentTest {
         timestampedPending.setDescription("ORDER-DUP-4");
         timestampedPending.setCreatedAt(LocalDateTime.of(2026, 4, 1, 11, 0));
 
-        when(transactionRepository.findAll()).thenReturn(List.of(pendingWithNullCreatedAt, timestampedPending));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-DUP-4"
+        )).thenReturn(List.of(pendingWithNullCreatedAt, timestampedPending));
 
         assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-DUP-4"));
 
@@ -488,7 +516,9 @@ class WalletServicePaymentTest {
         successPayment.setDescription("ORDER-DUP-5");
         successPayment.setCreatedAt(LocalDateTime.of(2026, 4, 1, 11, 0));
 
-        when(transactionRepository.findAll()).thenReturn(List.of(failedPayment, successPayment));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-DUP-5"
+        )).thenReturn(List.of(failedPayment, successPayment));
 
         assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-DUP-5"));
         verify(transactionRepository, never()).save(any(Transaction.class));
@@ -517,7 +547,9 @@ class WalletServicePaymentTest {
         higherIdPending.setDescription("ORDER-DUP-6");
         higherIdPending.setCreatedAt(sameCreatedAt);
 
-        when(transactionRepository.findAll()).thenReturn(List.of(lowerIdPending, higherIdPending));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-DUP-6"
+        )).thenReturn(List.of(lowerIdPending, higherIdPending));
 
         assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-DUP-6"));
 
@@ -546,7 +578,9 @@ class WalletServicePaymentTest {
         latestSuccess.setDescription("ORDER-DUP-7");
         latestSuccess.setCreatedAt(LocalDateTime.of(2026, 4, 1, 12, 0));
 
-        when(transactionRepository.findAll()).thenReturn(List.of(olderPending, latestSuccess));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-DUP-7"
+        )).thenReturn(List.of(olderPending, latestSuccess));
 
         assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-DUP-7"));
         verify(transactionRepository, never()).save(any(Transaction.class));
@@ -573,7 +607,9 @@ class WalletServicePaymentTest {
         latestFailed.setDescription("ORDER-DUP-8");
         latestFailed.setCreatedAt(LocalDateTime.of(2026, 4, 1, 12, 0));
 
-        when(transactionRepository.findAll()).thenReturn(List.of(olderPending, latestFailed));
+        when(transactionRepository.findByTypeAndDescriptionOrderByCreatedAtDesc(
+                TransactionType.PAYMENT, "ORDER-DUP-8"
+        )).thenReturn(List.of(olderPending, latestFailed));
 
         assertDoesNotThrow(() -> walletService.handlePaymentFailure("ORDER-DUP-8"));
         verify(transactionRepository, never()).save(any(Transaction.class));

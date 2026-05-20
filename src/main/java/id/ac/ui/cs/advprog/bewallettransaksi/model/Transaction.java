@@ -14,6 +14,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -23,7 +24,14 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "transactions")
+@Table(
+        name = "transactions",
+        indexes = {
+                @Index(name = "idx_tx_wallet_created", columnList = "wallet_id, created_at"),
+                @Index(name = "idx_tx_wallet_status_created", columnList = "wallet_id, status, created_at"),
+                @Index(name = "idx_tx_type_desc_created", columnList = "type, description, created_at")
+        }
+)
 public class Transaction {
     private static final String STATUS_REQUIRED_MESSAGE = "Transaction status must not be null";
 

@@ -14,46 +14,61 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import id.ac.ui.cs.advprog.bewallettransaksi.config.WalletMetricsRecorder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdResolver {
-    private static final String DEFAULT_USER_LOOKUP_PATH = "/internal/users/by-username";
+    private static final Logger log = LoggerFactory.getLogger(AuthServiceUsernameToUserIdResolver.class);
     private static final Duration DEFAULT_HTTP_TIMEOUT = Duration.ofMillis(1000);
     private static final Pattern USER_ID_CAMEL_PATTERN =
             uuidFieldPattern("userId", false);
+    private static final Pattern ID_CAMEL_PATTERN =
+            uuidFieldPattern("id", false);
     private static final List<Pattern> USER_ID_PATTERNS = List.of(
-            USER_ID_CAMEL_PATTERN
+            USER_ID_CAMEL_PATTERN,
+            ID_CAMEL_PATTERN
     );
 
     private final String authServiceBaseUrl;
+    private final String userLookupPath;
     private final HttpClient httpClient;
     private final Duration httpTimeout;
-    private final String userLookupPath;
+    private final WalletMetricsRecorder walletMetricsRecorder;
 
     public AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl) {
-        this(authServiceBaseUrl, DEFAULT_HTTP_TIMEOUT);
-    }
-
-    AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, Duration httpTimeout) {
-        this(authServiceBaseUrl, createHttpClient(httpTimeout), httpTimeout, DEFAULT_USER_LOOKUP_PATH);
-    }
-
-    AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient) {
-        this(authServiceBaseUrl, httpClient, DEFAULT_HTTP_TIMEOUT, DEFAULT_USER_LOOKUP_PATH);
-    }
-
-    AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient, Duration httpTimeout) {
-        this(authServiceBaseUrl, httpClient, httpTimeout, DEFAULT_USER_LOOKUP_PATH);
+        this(authServiceBaseUrl, UsernameToUserIdResolverConfig.DEFAULT_USER_LOOKUP_PATH, DEFAULT_HTTP_TIMEOUT, null);
     }
 
     AuthServiceUsernameToUserIdResolver(
             String authServiceBaseUrl,
+            String userLookupPath,
+            Duration httpTimeout,
+            WalletMetricsRecorder walletMetricsRecorder
+    ) {
+        this(authServiceBaseUrl, userLookupPath, createHttpClient(httpTimeout), httpTimeout, walletMetricsRecorder);
+    }
+
+    AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient) {
+        this(authServiceBaseUrl, UsernameToUserIdResolverConfig.DEFAULT_USER_LOOKUP_PATH, httpClient, DEFAULT_HTTP_TIMEOUT, null);
+    }
+
+    AuthServiceUsernameToUserIdResolver(String authServiceBaseUrl, HttpClient httpClient, Duration httpTimeout) {
+        this(authServiceBaseUrl, UsernameToUserIdResolverConfig.DEFAULT_USER_LOOKUP_PATH, httpClient, httpTimeout, null);
+    }
+
+    AuthServiceUsernameToUserIdResolver(
+            String authServiceBaseUrl,
+            String userLookupPath,
             HttpClient httpClient,
             Duration httpTimeout,
-            String userLookupPath
+            WalletMetricsRecorder walletMetricsRecorder
     ) {
         this.authServiceBaseUrl = normalizeBaseUrl(authServiceBaseUrl);
+        this.userLookupPath = normalizeLookupPath(userLookupPath);
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient must not be null");
         this.httpTimeout = normalizeTimeout(httpTimeout);
-        this.userLookupPath = normalizeLookupPath(userLookupPath);
+        this.walletMetricsRecorder = walletMetricsRecorder;
     }
 
     private static HttpClient createHttpClient(Duration httpTimeout) {
@@ -99,15 +114,25 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
             return extractUserId(response.body());
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
+            log.warn("auth.username.lookup.interrupted");
+            incrementAuthLookupFailure();
             return Optional.empty();
         } catch (Exception ex) {
+            log.warn("auth.username.lookup.failed error={}", ex.toString());
+            incrementAuthLookupFailure();
             return Optional.empty();
+        }
+    }
+
+    private void incrementAuthLookupFailure() {
+        if (walletMetricsRecorder != null) {
+            walletMetricsRecorder.incrementAuthLookupFailure();
         }
     }
 
     private URI buildUserLookupUri(String username) {
         String encoded = encodeQueryParam(username);
-        return URI.create(authServiceBaseUrl + userLookupPath + "?username=" + encoded);
+        return URI.create(authServiceBaseUrl + userLookupPath + "?email=" + encoded);
     }
 
     private static String normalizeBaseUrl(String baseUrl) {
@@ -130,10 +155,16 @@ public class AuthServiceUsernameToUserIdResolver implements UsernameToUserIdReso
 
     private static String normalizeLookupPath(String lookupPath) {
         if (lookupPath == null || lookupPath.isBlank()) {
-            return DEFAULT_USER_LOOKUP_PATH;
+            return UsernameToUserIdResolverConfig.DEFAULT_USER_LOOKUP_PATH;
         }
         String normalized = lookupPath.trim();
-        return normalized.startsWith("/") ? normalized : "/" + normalized;
+        if (!normalized.startsWith("/")) {
+            normalized = "/" + normalized;
+        }
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     private static boolean isPositive(Duration timeout) {
