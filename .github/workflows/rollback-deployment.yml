@@ -112,7 +112,7 @@ jobs:
               AUTH_SERVICE_BASE_URL="http://${{ secrets.SSH_HOST }}:3002"
             fi
 
-            HEALTHCHECK_PATH="/v3/api-docs"
+            HEALTHCHECK_PATH="/actuator/health"
             HEALTHCHECK_RETRIES=30
             HEALTHCHECK_SLEEP_SECONDS=2
 

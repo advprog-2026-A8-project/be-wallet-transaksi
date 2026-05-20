@@ -80,7 +80,10 @@ jobs:
         run: |
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             echo "APP_PORT=6000" >> $GITHUB_ENV
+            echo "APP_PORT_CANDIDATE=6100" >> $GITHUB_ENV
             echo "CONTAINER_NAME=wallet_server_prod" >> $GITHUB_ENV
+            echo "CANDIDATE_CONTAINER_NAME=wallet_server_prod_candidate" >> $GITHUB_ENV
+            echo "PREVIOUS_CONTAINER_NAME=wallet_server_prod_previous" >> $GITHUB_ENV
             echo "IMAGE_TAG=latest" >> $GITHUB_ENV
             echo "DB_CONTAINER_NAME=postgres_db_prod" >> $GITHUB_ENV
             echo "DB_NAME=walletdb_prod" >> $GITHUB_ENV
@@ -90,9 +93,13 @@ jobs:
             echo "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,prometheus" >> $GITHUB_ENV
             echo "MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=unrestricted" >> $GITHUB_ENV
             echo "MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true" >> $GITHUB_ENV
+            echo "MONITORING_STACK_ENABLED=true" >> $GITHUB_ENV
           else
             echo "APP_PORT=6002" >> $GITHUB_ENV
+            echo "APP_PORT_CANDIDATE=6102" >> $GITHUB_ENV
             echo "CONTAINER_NAME=wallet_server_staging" >> $GITHUB_ENV
+            echo "CANDIDATE_CONTAINER_NAME=wallet_server_staging_candidate" >> $GITHUB_ENV
+            echo "PREVIOUS_CONTAINER_NAME=wallet_server_staging_previous" >> $GITHUB_ENV
             echo "IMAGE_TAG=staging" >> $GITHUB_ENV
             echo "DB_CONTAINER_NAME=postgres_db_staging" >> $GITHUB_ENV
             echo "DB_NAME=walletdb_staging" >> $GITHUB_ENV
@@ -102,6 +109,7 @@ jobs:
             echo "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info" >> $GITHUB_ENV
             echo "MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=none" >> $GITHUB_ENV
             echo "MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=false" >> $GITHUB_ENV
+            echo "MONITORING_STACK_ENABLED=false" >> $GITHUB_ENV
           fi
 
       - name: Check out code
@@ -119,6 +127,17 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
 
+      - name: Upload monitoring config to remote host
+        if: env.MONITORING_STACK_ENABLED == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "docker-compose.monitoring.yml,monitoring"
+          target: "~/wallet-monitoring"
+          overwrite: true
+
       - name: Releasing New Version
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -126,13 +145,64 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            set -euo pipefail
+
+            HEALTHCHECK_PATH="/actuator/health"
+            HEALTHCHECK_RETRIES=30
+            HEALTHCHECK_SLEEP_SECONDS=2
+            HAS_PREVIOUS=0
+
+            wait_for_health() {
+              local port=$1
+              local path=$2
+              local retries=$3
+              local sleep_seconds=$4
+              local url="http://localhost:${port}${path}"
+
+              for i in $(seq 1 "$retries"); do
+                if curl -fsS "$url" > /dev/null; then
+                  echo "Health check passed: $url"
+                  return 0
+                fi
+                echo "Waiting health check ($i/$retries): $url"
+                sleep "$sleep_seconds"
+              done
+
+              echo "Health check failed: $url"
+              return 1
+            }
+
+            wait_for_container_up() {
+              local container_name=$1
+              local retries=${2:-30}
+              local sleep_seconds=${3:-2}
+
+              for i in $(seq 1 "$retries"); do
+                if [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null || echo false)" = "true" ]; then
+                  echo "Container running: $container_name"
+                  return 0
+                fi
+                echo "Waiting container ($i/$retries): $container_name"
+                sleep "$sleep_seconds"
+              done
+
+              echo "Container failed to run: $container_name"
+              return 1
+            }
+
+            if [ "${{ env.MONITORING_STACK_ENABLED }}" = "true" ]; then
+              mkdir -p ~/wallet-monitoring
+              cd ~/wallet-monitoring
+              docker compose -f docker-compose.monitoring.yml up -d --remove-orphans
+              wait_for_container_up prometheus 30 2
+              wait_for_container_up grafana 30 2
+              wait_for_container_up loki 30 2
+              cd - >/dev/null
+            fi
+
             # Cleanup old container names (one-time migration)
             docker stop wallet_server || true
             docker rm wallet_server || true
-            
-            # Stop and remove current env container
-            docker stop ${{ env.CONTAINER_NAME }} || true
-            docker rm ${{ env.CONTAINER_NAME }} || true
             
             echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
             docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
@@ -161,7 +231,52 @@ jobs:
                 --restart always \
                 postgres:15-alpine
             fi
+
+            until docker exec ${{ env.DB_CONTAINER_NAME }} pg_isready -U "${{ secrets.POSTGRES_USER }}" -d "${{ env.DB_NAME }}"; do
+              echo "Waiting for database readiness..."
+              sleep 2
+            done
+
+            docker rm -f ${{ env.CANDIDATE_CONTAINER_NAME }} || true
+            docker rm -f ${{ env.PREVIOUS_CONTAINER_NAME }} || true
             
+            # 1) Deploy candidate first (inactive port)
+            docker run -d \
+              --name=${{ env.CANDIDATE_CONTAINER_NAME }} \
+              --network=app_network \
+              -p ${{ env.APP_PORT_CANDIDATE }}:8080 \
+              -e POSTGRES_HOST=${{ env.DB_CONTAINER_NAME }} \
+              -e POSTGRES_PORT=5432 \
+              -e POSTGRES_DB=${{ env.DB_NAME }} \
+              -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
+              -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -e JWT_EXPIRATION=${{ secrets.JWT_EXPIRATION }} \
+              -e MIDTRANS_SERVER_KEY=${{ secrets.MIDTRANS_SERVER_KEY }} \
+              -e MIDTRANS_CLIENT_KEY=${{ secrets.MIDTRANS_CLIENT_KEY }} \
+              -e MIDTRANS_MERCHANT_ID=${{ secrets.MIDTRANS_MERCHANT_ID }} \
+              -e GRPC_SERVER_INTERNAL_TOKEN=${{ secrets.GRPC_SERVER_INTERNAL_TOKEN }} \
+              -e AUTH_SERVICE_BASE_URL=${{ env.AUTH_SERVICE_BASE_URL }} \
+              -e MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=${{ env.MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE }} \
+              -e MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=${{ env.MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS }} \
+              -e MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=${{ env.MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED }} \
+              -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
+              --restart always \
+              ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
+
+            if ! wait_for_health "${{ env.APP_PORT_CANDIDATE }}" "$HEALTHCHECK_PATH" "$HEALTHCHECK_RETRIES" "$HEALTHCHECK_SLEEP_SECONDS"; then
+              docker logs --tail 200 ${{ env.CANDIDATE_CONTAINER_NAME }} || true
+              docker rm -f ${{ env.CANDIDATE_CONTAINER_NAME }} || true
+              exit 1
+            fi
+
+            # 2) Replace live container after candidate is healthy
+            if [ "$(docker ps -aq -f name=^${{ env.CONTAINER_NAME }}$)" ]; then
+              HAS_PREVIOUS=1
+              docker stop ${{ env.CONTAINER_NAME }}
+              docker rename ${{ env.CONTAINER_NAME }} ${{ env.PREVIOUS_CONTAINER_NAME }}
+            fi
+
             docker run -d \
               --name=${{ env.CONTAINER_NAME }} \
               --network=app_network \
@@ -184,5 +299,38 @@ jobs:
               -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
               --restart always \
               ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
+
+            if ! wait_for_health "${{ env.APP_PORT }}" "$HEALTHCHECK_PATH" "$HEALTHCHECK_RETRIES" "$HEALTHCHECK_SLEEP_SECONDS"; then
+              docker logs --tail 200 ${{ env.CONTAINER_NAME }} || true
+              docker rm -f ${{ env.CONTAINER_NAME }} || true
+
+              if [ "$HAS_PREVIOUS" -eq 1 ] && [ "$(docker ps -aq -f name=^${{ env.PREVIOUS_CONTAINER_NAME }}$)" ]; then
+                docker rename ${{ env.PREVIOUS_CONTAINER_NAME }} ${{ env.CONTAINER_NAME }}
+                docker start ${{ env.CONTAINER_NAME }}
+                echo "Live deployment failed. Previous container restored."
+              fi
+
+              docker rm -f ${{ env.CANDIDATE_CONTAINER_NAME }} || true
+              exit 1
+            fi
+
+            # 3) Cleanup old containers after successful cutover
+            docker rm -f ${{ env.CANDIDATE_CONTAINER_NAME }} || true
+            docker rm -f ${{ env.PREVIOUS_CONTAINER_NAME }} || true
+
+            if [ "${{ env.MONITORING_STACK_ENABLED }}" = "true" ]; then
+              if ! curl -fsS "http://localhost:9090/-/ready" > /dev/null; then
+                echo "Prometheus readiness check failed"
+                exit 1
+              fi
+              if ! curl -fsS "http://localhost:3000/api/health" > /dev/null; then
+                echo "Grafana health check failed"
+                exit 1
+              fi
+              if ! curl -fsS "http://localhost:3100/ready" > /dev/null; then
+                echo "Loki readiness check failed"
+                exit 1
+              fi
+            fi
             
             docker ps
