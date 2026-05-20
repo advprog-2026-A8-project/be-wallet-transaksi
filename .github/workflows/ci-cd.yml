@@ -84,6 +84,7 @@ jobs:
           echo "CANDIDATE_CONTAINER_NAME=wallet_server_prod_candidate" >> $GITHUB_ENV
           echo "PREVIOUS_CONTAINER_NAME=wallet_server_prod_previous" >> $GITHUB_ENV
           echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+          echo "VERSION_TAG=v$(date +%Y%m%d)-${GITHUB_SHA::7}" >> $GITHUB_ENV
           echo "DB_CONTAINER_NAME=postgres_db_prod" >> $GITHUB_ENV
           echo "DB_NAME=walletdb_prod" >> $GITHUB_ENV
           echo "DB_PORT=6001" >> $GITHUB_ENV
@@ -107,7 +108,9 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
+          tags: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.VERSION_TAG }}
 
       - name: Upload monitoring config to remote host
         if: env.MONITORING_STACK_ENABLED == 'true'
