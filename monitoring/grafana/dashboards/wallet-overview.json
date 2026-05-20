@@ -77,7 +77,7 @@
       },
       "targets": [
         {
-          "expr": "up{job=\"wallet-app-main\"}",
+          "expr": "up{job=\"wallet-app-main\",instance=\"host.docker.internal:6060\"}",
           "refId": "A"
         }
       ],
