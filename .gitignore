@@ -37,3 +37,7 @@ out/
 .vscode/
 
 .env
+performance/jmeter/results/*.jtl
+performance/jmeter/results/report-*/
+jmeter.log
+*.log

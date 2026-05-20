@@ -21,7 +21,8 @@ public class OrderPaymentStatusPublisherConfig {
             @Value("${order.service.base-url}") String baseUrl,
             @Value("${order.service.timeout-ms:1000}") long timeoutMs,
             @Value("${order.service.payment-settled-path:/internal/orders/payment/settled}") String settledPath,
-            @Value("${order.service.payment-failed-path:/internal/orders/payment/failed}") String failedPath
+            @Value("${order.service.payment-failed-path:/internal/orders/payment/failed}") String failedPath,
+            @Value("${order.service.internal-authorization:}") String internalAuthorization
     ) {
         long safeTimeoutMs = timeoutMs > 0 ? timeoutMs : 1000;
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
@@ -33,7 +34,8 @@ public class OrderPaymentStatusPublisherConfig {
                         .build(),
                 baseUrl,
                 settledPath,
-                failedPath
+                failedPath,
+                internalAuthorization
         );
     }
 

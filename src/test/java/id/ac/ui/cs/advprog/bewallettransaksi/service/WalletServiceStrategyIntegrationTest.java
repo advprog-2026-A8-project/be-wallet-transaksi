@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
+import id.ac.ui.cs.advprog.bewallettransaksi.config.WalletMetricsRecorder;
 import id.ac.ui.cs.advprog.bewallettransaksi.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.bewallettransaksi.enums.TransactionType;
 import id.ac.ui.cs.advprog.bewallettransaksi.model.Wallet;
@@ -41,6 +42,9 @@ class WalletServiceStrategyIntegrationTest {
 
     @Mock
     private PaymentGatewayClient paymentGatewayClient;
+
+    @Mock
+    private WalletMetricsRecorder walletMetricsRecorder;
 
     @InjectMocks
     private WalletServiceImpl walletService;

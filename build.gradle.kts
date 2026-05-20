@@ -37,9 +37,11 @@ repositories {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
+    implementation("net.logstash.logback:logstash-logback-encoder:8.0")
     implementation("io.grpc:grpc-netty-shaded:$grpcVersion")
     implementation("io.grpc:grpc-protobuf:$grpcVersion")
     implementation("io.grpc:grpc-stub:$grpcVersion")
@@ -55,6 +57,7 @@ dependencies {
 
     runtimeOnly("io.jsonwebtoken:jjwt-impl:$jjwtVersion")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jjwtVersion")
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("io.grpc:grpc-testing:$grpcVersion")
@@ -101,6 +104,23 @@ tasks.withType<Test> {
 
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
+    classDirectories.setFrom(
+        files(
+            classDirectories.files.map {
+                fileTree(it) {
+                    exclude(
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/CheckBalanceRequest*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/CheckBalanceResponse*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/DeductBalanceRequest*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/RefundBalanceRequest*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/WalletMutationResponse*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/WalletContractProto*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/WalletContractServiceGrpc*.class"
+                    )
+                }
+            }
+        )
+    )
     reports {
         xml.required.set(true)
         html.required.set(true)
