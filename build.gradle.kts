@@ -108,7 +108,15 @@ tasks.jacocoTestReport {
         files(
             classDirectories.files.map {
                 fileTree(it) {
-                    exclude("id/ac/ui/cs/advprog/bewallettransaksi/grpc/**")
+                    exclude(
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/CheckBalanceRequest*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/CheckBalanceResponse*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/DeductBalanceRequest*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/RefundBalanceRequest*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/WalletMutationResponse*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/WalletContractProto*.class",
+                        "id/ac/ui/cs/advprog/bewallettransaksi/grpc/WalletContractServiceGrpc*.class"
+                    )
                 }
             }
         )
