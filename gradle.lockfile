@@ -74,6 +74,7 @@ jakarta.xml.bind:jakarta.xml.bind-api:4.0.4=compileClasspath,compileProtoPath,pr
 junit:junit:4.13.2=testCompileClasspath,testCompileProtoPath,testRuntimeClasspath
 net.bytebuddy:byte-buddy-agent:1.17.8=testCompileClasspath,testCompileProtoPath,testRuntimeClasspath
 net.bytebuddy:byte-buddy:1.17.8=compileProtoPath,productionRuntimeClasspath,runtimeClasspath,testCompileClasspath,testCompileProtoPath,testRuntimeClasspath
+net.logstash.logback:logstash-logback-encoder:8.0=compileClasspath,compileProtoPath,productionRuntimeClasspath,runtimeClasspath,testCompileClasspath,testCompileProtoPath,testRuntimeClasspath
 net.minidev:accessors-smart:2.5.2=testCompileClasspath,testCompileProtoPath,testRuntimeClasspath
 net.minidev:json-smart:2.5.2=testCompileClasspath,testCompileProtoPath,testRuntimeClasspath
 net.sf.saxon:Saxon-HE:12.5=checkstyle

@@ -2,9 +2,12 @@ package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestTemplate;
 
 public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublisher {
+    private static final Logger log = LoggerFactory.getLogger(HttpOrderPaymentStatusPublisher.class);
 
     private static final String SUCCESS_STATUS = "SUCCESS";
     private static final String FAILED_STATUS = "FAILED";
@@ -41,14 +44,23 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
     }
 
     private void postStatus(String path, String orderId, String status) {
-        restTemplate.postForEntity(
-                baseUrl + path,
-                Map.of(
-                        "orderId", normalizeOrderId(orderId),
-                        "status", status
-                ),
-                Void.class
-        );
+        String normalizedOrderId = normalizeOrderId(orderId);
+        String targetUrl = baseUrl + path;
+        try {
+            restTemplate.postForEntity(
+                    targetUrl,
+                    Map.of(
+                            "orderId", normalizedOrderId,
+                            "status", status
+                    ),
+                    Void.class
+            );
+            log.info("wallet.order.publisher.success orderId={} status={} target={}", normalizedOrderId, status, path);
+        } catch (RuntimeException ex) {
+            log.error("wallet.order.publisher.failed orderId={} status={} target={} error={}",
+                    normalizedOrderId, status, path, ex.toString());
+            throw ex;
+        }
     }
 
     private String normalizeOrderId(String rawOrderId) {

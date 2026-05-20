@@ -455,12 +455,12 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/wallet/topup|/wallet/topup/initiate|/wallet/topup/callback\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/wallet/topup|/wallet/topup/initiate|/wallet/payments/callback\"}[5m]))",
           "legendFormat": "Topup Flow",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/contracts/wallet/check-balance|/api/contracts/wallet/deduct-balance|/api/contracts/wallet/refund-balance\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/contracts/wallet/check-balance|/api/contracts/wallet/deduct|/api/contracts/wallet/refund\"}[5m]))",
           "legendFormat": "Contract Flow",
           "refId": "B"
         }
@@ -675,3 +675,4 @@
   "version": 3,
   "weekStart": ""
 }
+
