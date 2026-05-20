@@ -73,44 +73,26 @@ jobs:
     name: Build and Deploy
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - name: Set environment variables
         run: |
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "APP_PORT=6000" >> $GITHUB_ENV
-            echo "APP_PORT_CANDIDATE=6100" >> $GITHUB_ENV
-            echo "CONTAINER_NAME=wallet_server_prod" >> $GITHUB_ENV
-            echo "CANDIDATE_CONTAINER_NAME=wallet_server_prod_candidate" >> $GITHUB_ENV
-            echo "PREVIOUS_CONTAINER_NAME=wallet_server_prod_previous" >> $GITHUB_ENV
-            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
-            echo "DB_CONTAINER_NAME=postgres_db_prod" >> $GITHUB_ENV
-            echo "DB_NAME=walletdb_prod" >> $GITHUB_ENV
-            echo "DB_PORT=6001" >> $GITHUB_ENV
-            echo "DB_VOLUME=postgres_data_prod" >> $GITHUB_ENV
-            echo "AUTH_SERVICE_BASE_URL=http://${{ secrets.SSH_HOST }}:3000" >> $GITHUB_ENV
-            echo "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,prometheus" >> $GITHUB_ENV
-            echo "MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=unrestricted" >> $GITHUB_ENV
-            echo "MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true" >> $GITHUB_ENV
-            echo "MONITORING_STACK_ENABLED=true" >> $GITHUB_ENV
-          else
-            echo "APP_PORT=6002" >> $GITHUB_ENV
-            echo "APP_PORT_CANDIDATE=6102" >> $GITHUB_ENV
-            echo "CONTAINER_NAME=wallet_server_staging" >> $GITHUB_ENV
-            echo "CANDIDATE_CONTAINER_NAME=wallet_server_staging_candidate" >> $GITHUB_ENV
-            echo "PREVIOUS_CONTAINER_NAME=wallet_server_staging_previous" >> $GITHUB_ENV
-            echo "IMAGE_TAG=staging" >> $GITHUB_ENV
-            echo "DB_CONTAINER_NAME=postgres_db_staging" >> $GITHUB_ENV
-            echo "DB_NAME=walletdb_staging" >> $GITHUB_ENV
-            echo "DB_PORT=6003" >> $GITHUB_ENV
-            echo "DB_VOLUME=postgres_data_staging" >> $GITHUB_ENV
-            echo "AUTH_SERVICE_BASE_URL=http://${{ secrets.SSH_HOST }}:3002" >> $GITHUB_ENV
-            echo "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info" >> $GITHUB_ENV
-            echo "MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=none" >> $GITHUB_ENV
-            echo "MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=false" >> $GITHUB_ENV
-            echo "MONITORING_STACK_ENABLED=false" >> $GITHUB_ENV
-          fi
+          echo "APP_PORT=6000" >> $GITHUB_ENV
+          echo "APP_PORT_CANDIDATE=6100" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=wallet_server_prod" >> $GITHUB_ENV
+          echo "CANDIDATE_CONTAINER_NAME=wallet_server_prod_candidate" >> $GITHUB_ENV
+          echo "PREVIOUS_CONTAINER_NAME=wallet_server_prod_previous" >> $GITHUB_ENV
+          echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+          echo "DB_CONTAINER_NAME=postgres_db_prod" >> $GITHUB_ENV
+          echo "DB_NAME=walletdb_prod" >> $GITHUB_ENV
+          echo "DB_PORT=6001" >> $GITHUB_ENV
+          echo "DB_VOLUME=postgres_data_prod" >> $GITHUB_ENV
+          echo "AUTH_SERVICE_BASE_URL=http://${{ secrets.SSH_HOST }}:3000" >> $GITHUB_ENV
+          echo "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,prometheus" >> $GITHUB_ENV
+          echo "MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=unrestricted" >> $GITHUB_ENV
+          echo "MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true" >> $GITHUB_ENV
+          echo "MONITORING_STACK_ENABLED=true" >> $GITHUB_ENV
 
       - name: Check out code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
