@@ -297,4 +297,3 @@ jobs:
             curl -fsS "http://localhost:3100/ready" > /dev/null || echo "WARNING: Loki not ready yet"
             
             docker ps
-REMOTE_SCRIPT

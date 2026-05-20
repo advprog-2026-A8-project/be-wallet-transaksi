@@ -225,7 +225,6 @@ jobs:
 
             echo "Rollback deployment completed."
             docker ps
-REMOTE_SCRIPT
 
       - name: Rollback summary
         if: always()
