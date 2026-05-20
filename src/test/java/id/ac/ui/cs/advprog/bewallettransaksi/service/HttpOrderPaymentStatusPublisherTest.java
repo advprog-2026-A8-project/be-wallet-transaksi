@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -18,6 +19,7 @@ class HttpOrderPaymentStatusPublisherTest {
     private static final String BASE_URL = "http://order-service";
     private static final String SETTLED_PATH = "/internal/orders/payment/settled";
     private static final String FAILED_PATH = "/internal/orders/payment/failed";
+    private static final String INTERNAL_AUTHORIZATION = "Bearer wallet-service-token";
     private static final int MAX_ORDER_ID_LENGTH = 128;
 
     private RestTemplate restTemplate;
@@ -28,7 +30,7 @@ class HttpOrderPaymentStatusPublisherTest {
     void setUp() {
         restTemplate = new RestTemplate();
         mockServer = MockRestServiceServer.bindTo(restTemplate).build();
-        publisher = new HttpOrderPaymentStatusPublisher(restTemplate, BASE_URL, SETTLED_PATH, FAILED_PATH);
+        publisher = new HttpOrderPaymentStatusPublisher(restTemplate, BASE_URL, SETTLED_PATH, FAILED_PATH, "");
     }
 
     @Test
@@ -66,7 +68,8 @@ class HttpOrderPaymentStatusPublisherTest {
                         restTemplate,
                         "  " + BASE_URL + "  ",
                         SETTLED_PATH,
-                        FAILED_PATH
+                        FAILED_PATH,
+                        ""
                 );
         expectPostSuccess(SETTLED_PATH, "{\"orderId\":\"ORDER-999\",\"status\":\"SUCCESS\"}");
 
@@ -79,6 +82,41 @@ class HttpOrderPaymentStatusPublisherTest {
     void publishPaymentSettled_OrderIdTooLong_ShouldThrowIllegalArgumentException() {
         String tooLongOrderId = "O".repeat(MAX_ORDER_ID_LENGTH + 1);
         assertThrows(IllegalArgumentException.class, () -> publisher.publishPaymentSettled(tooLongOrderId));
+    }
+
+    @Test
+    void publishPaymentSettled_WithInternalAuthorization_ShouldSendAuthorizationHeader() {
+        HttpOrderPaymentStatusPublisher authorizedPublisher =
+                new HttpOrderPaymentStatusPublisher(
+                        restTemplate,
+                        BASE_URL,
+                        SETTLED_PATH,
+                        FAILED_PATH,
+                        INTERNAL_AUTHORIZATION
+                );
+        mockServer.expect(requestTo(BASE_URL + SETTLED_PATH))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("Authorization", INTERNAL_AUTHORIZATION))
+                .andExpect(content().json("{\"orderId\":\"ORDER-777\",\"status\":\"SUCCESS\"}"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        authorizedPublisher.publishPaymentSettled("ORDER-777");
+
+        mockServer.verify();
+    }
+
+    @Test
+    void constructor_InvalidInternalAuthorization_ShouldThrowIllegalArgumentException() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new HttpOrderPaymentStatusPublisher(
+                        restTemplate,
+                        BASE_URL,
+                        SETTLED_PATH,
+                        FAILED_PATH,
+                        "invalid-token"
+                )
+        );
     }
 
     private void expectPostSuccess(String path, String expectedJsonBody) {

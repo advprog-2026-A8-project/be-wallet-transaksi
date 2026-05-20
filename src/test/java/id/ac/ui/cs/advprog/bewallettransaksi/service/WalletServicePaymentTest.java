@@ -238,7 +238,7 @@ class WalletServicePaymentTest {
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(TransactionStatus.SUCCESS, transactionCaptor.getValue().getStatus());
-        verify(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-1");
+        verify(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.settled("ORDER-1"));
     }
 
     @Test
@@ -260,7 +260,7 @@ class WalletServicePaymentTest {
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(TransactionStatus.FAILED, transactionCaptor.getValue().getStatus());
-        verify(orderPaymentStatusPublisher).publishPaymentFailed("ORDER-2");
+        verify(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.failed("ORDER-2"));
     }
 
     @Test
@@ -360,11 +360,11 @@ class WalletServicePaymentTest {
                 TransactionType.PAYMENT, "ORDER-PUB-FAIL-1"
         )).thenReturn(List.of(pendingPayment));
         doThrow(new RuntimeException("publisher down"))
-                .when(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-PUB-FAIL-1");
+                .when(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.settled("ORDER-PUB-FAIL-1"));
 
         assertDoesNotThrow(() -> walletService.handlePaymentSettlement("ORDER-PUB-FAIL-1"));
         verify(transactionRepository).save(any(Transaction.class));
-        verify(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-PUB-FAIL-1");
+        verify(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.settled("ORDER-PUB-FAIL-1"));
     }
 
     @Test
@@ -397,7 +397,7 @@ class WalletServicePaymentTest {
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(pendingPayment.getTransactionId(), transactionCaptor.getValue().getTransactionId());
         assertEquals(TransactionStatus.SUCCESS, transactionCaptor.getValue().getStatus());
-        verify(orderPaymentStatusPublisher).publishPaymentSettled("ORDER-DUP-1");
+        verify(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.settled("ORDER-DUP-1"));
     }
 
     @Test
@@ -430,7 +430,7 @@ class WalletServicePaymentTest {
         verify(transactionRepository).save(transactionCaptor.capture());
         assertEquals(pendingPayment.getTransactionId(), transactionCaptor.getValue().getTransactionId());
         assertEquals(TransactionStatus.FAILED, transactionCaptor.getValue().getStatus());
-        verify(orderPaymentStatusPublisher).publishPaymentFailed("ORDER-DUP-2");
+        verify(orderPaymentStatusPublisher).publish(OrderPaymentStatusEvent.failed("ORDER-DUP-2"));
     }
 
     @Test

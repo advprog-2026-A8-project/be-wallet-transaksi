@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WalletMetricsRecorderTest {
 
@@ -119,7 +120,7 @@ class WalletMetricsRecorderTest {
     private void assertTimerCount(String meterName, long expectedCount) {
         Timer timer = meterRegistry.get(meterName).timer();
         assertEquals(expectedCount, timer.count());
-        assertNotNull(timer.totalTime(TimeUnitForTest.NANOSECONDS.toMicrometerUnit()));
+        assertTrue(timer.totalTime(TimeUnitForTest.NANOSECONDS.toMicrometerUnit()) >= 0.0);
     }
 
     private enum TimeUnitForTest {
