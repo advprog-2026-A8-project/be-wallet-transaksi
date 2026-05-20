@@ -58,13 +58,7 @@ jobs:
 
       - name: SonarCloud Scan (PR)
         if: github.event_name == 'pull_request'
-        run: |
-          ./gradlew sonar \
-            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
-            -Dsonar.pullrequest.branch=${{ github.head_ref }} \
-            -Dsonar.pullrequest.base=${{ github.base_ref }} \
-            -Dsonar.pullrequest.provider=GitHub \
-            -Dsonar.pullrequest.github.repository=${{ github.repository }}
+        run: ./gradlew sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -98,38 +92,33 @@ jobs:
       - name: Check out code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
-            ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.VERSION_TAG }}
+        run: |
+          set -euo pipefail
+          IMAGE_BASE="${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}"
+          echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+          docker build -t "${IMAGE_BASE}:${{ env.IMAGE_TAG }}" -t "${IMAGE_BASE}:${{ env.VERSION_TAG }}" .
+          docker push "${IMAGE_BASE}:${{ env.IMAGE_TAG }}"
+          docker push "${IMAGE_BASE}:${{ env.VERSION_TAG }}"
+
+      - name: Prepare SSH key
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Upload monitoring config to remote host
         if: env.MONITORING_STACK_ENABLED == 'true'
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "docker-compose.monitoring.yml,monitoring"
-          target: "~/wallet-monitoring"
-          overwrite: true
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" "mkdir -p ~/wallet-monitoring"
+          scp -r docker-compose.monitoring.yml monitoring "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:~/wallet-monitoring/"
 
       - name: Releasing New Version
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
+        run: |
+          ssh "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" <<'REMOTE_SCRIPT'
             set -euo pipefail
 
             HEALTHCHECK_PATH="/actuator/health"
@@ -308,3 +297,4 @@ jobs:
             curl -fsS "http://localhost:3100/ready" > /dev/null || echo "WARNING: Loki not ready yet"
             
             docker ps
+REMOTE_SCRIPT
