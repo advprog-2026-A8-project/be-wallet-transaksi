@@ -56,10 +56,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Docker Hub login
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
 
       - name: Check image manifest
         run: |
@@ -75,13 +74,17 @@ jobs:
     needs: [validate-inputs, check-image-exists]
     runs-on: ubuntu-latest
     steps:
+      - name: Prepare SSH key
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
       - name: Rollback on remote host
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
+        run: |
+          ssh "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" <<'REMOTE_SCRIPT'
             set -euo pipefail
 
             VERSION="${{ needs.validate-inputs.outputs.version }}"
