@@ -12,7 +12,7 @@ group = "id.ac.ui.cs.advprog"
 version = "0.0.1-SNAPSHOT"
 description = "be-wallet-transaksi"
 
-val grpcVersion = "1.68.1"
+val grpcVersion = "1.81.0"
 val jjwtVersion = "0.12.6"
 val springdocVersion = "2.8.8"
 val protobufVersion = "3.25.5"
