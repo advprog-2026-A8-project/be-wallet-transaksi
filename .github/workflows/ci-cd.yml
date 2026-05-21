@@ -83,7 +83,7 @@ jobs:
           echo "DB_NAME=walletdb_prod" >> $GITHUB_ENV
           echo "DB_PORT=6001" >> $GITHUB_ENV
           echo "DB_VOLUME=postgres_data_prod" >> $GITHUB_ENV
-          echo "AUTH_SERVICE_BASE_URL=http://${{ secrets.SSH_HOST }}:3000" >> $GITHUB_ENV
+          echo "AUTH_SERVICE_BASE_URL=${{ secrets.AUTH_SERVICE_BASE_URL }}" >> $GITHUB_ENV
           echo "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,prometheus" >> $GITHUB_ENV
           echo "MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=unrestricted" >> $GITHUB_ENV
           echo "MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true" >> $GITHUB_ENV

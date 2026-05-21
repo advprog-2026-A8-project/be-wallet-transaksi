@@ -101,7 +101,7 @@ jobs:
               DB_NAME="walletdb_prod"
               DB_PORT="6001"
               DB_VOLUME="postgres_data_prod"
-              AUTH_SERVICE_BASE_URL="http://${{ secrets.SSH_HOST }}:3000"
+              AUTH_SERVICE_BASE_URL="${{ secrets.AUTH_SERVICE_BASE_URL }}"
             else
               LIVE_CONTAINER="wallet_server_staging"
               PREVIOUS_CONTAINER="wallet_server_staging_previous"
@@ -112,7 +112,7 @@ jobs:
               DB_NAME="walletdb_staging"
               DB_PORT="6003"
               DB_VOLUME="postgres_data_staging"
-              AUTH_SERVICE_BASE_URL="http://${{ secrets.SSH_HOST }}:3002"
+              AUTH_SERVICE_BASE_URL="${{ secrets.AUTH_SERVICE_BASE_URL }}"
             fi
 
             HEALTHCHECK_PATH="/actuator/health"
