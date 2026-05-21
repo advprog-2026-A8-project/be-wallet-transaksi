@@ -1,4 +1,4 @@
-FROM docker.io/library/eclipse-temurin:21-jdk-jammy AS builder
+FROM docker.io/library/eclipse-temurin:25-jdk-jammy AS builder
 
 WORKDIR /app
 
@@ -6,7 +6,7 @@ COPY . .
 RUN chmod +x gradlew
 RUN ./gradlew clean bootJar
 
-FROM docker.io/library/eclipse-temurin:21-jre-jammy AS runner
+FROM docker.io/library/eclipse-temurin:25-jre-jammy AS runner
 
 ARG USER_NAME=tk-adpro
 ARG USER_UID=1000
