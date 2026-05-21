@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 public class GrpcServerProperties {
 
     private boolean enabled;
-    private int port = 9090;
+    private int port = 9091;
     private String internalToken = "";
 
     public boolean isEnabled() {

@@ -74,16 +74,24 @@ jobs:
         run: |
           echo "APP_PORT=6060" >> $GITHUB_ENV
           echo "APP_PORT_CANDIDATE=6100" >> $GITHUB_ENV
+
+          echo "GRPC_PORT=9091" >> $GITHUB_ENV
+          echo "GRPC_PORT_CANDIDATE=9092" >> $GITHUB_ENV
+
           echo "CONTAINER_NAME=wallet_server_prod" >> $GITHUB_ENV
           echo "CANDIDATE_CONTAINER_NAME=wallet_server_prod_candidate" >> $GITHUB_ENV
           echo "PREVIOUS_CONTAINER_NAME=wallet_server_prod_previous" >> $GITHUB_ENV
+
           echo "IMAGE_TAG=latest" >> $GITHUB_ENV
           echo "VERSION_TAG=v$(date +%Y%m%d)-${GITHUB_SHA::7}" >> $GITHUB_ENV
+
           echo "DB_CONTAINER_NAME=postgres_db_prod" >> $GITHUB_ENV
           echo "DB_NAME=walletdb_prod" >> $GITHUB_ENV
           echo "DB_PORT=6001" >> $GITHUB_ENV
           echo "DB_VOLUME=postgres_data_prod" >> $GITHUB_ENV
+
           echo "AUTH_SERVICE_BASE_URL=${{ secrets.AUTH_SERVICE_BASE_URL }}" >> $GITHUB_ENV
+
           echo "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,prometheus" >> $GITHUB_ENV
           echo "MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=unrestricted" >> $GITHUB_ENV
           echo "MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true" >> $GITHUB_ENV
@@ -174,22 +182,21 @@ jobs:
               cd - >/dev/null
             fi
 
-            # Cleanup old container names (one-time migration)
+            # Cleanup old container names
             docker stop wallet_server || true
             docker rm wallet_server || true
             
-            echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+            echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
             docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
             
             docker network create app_network || true
             
-            # Cleanup old shared postgres_db container (one-time migration)
+            # Cleanup old shared postgres_db container
             docker stop postgres_db || true
             docker rm postgres_db || true
             
             # Create/start env-specific DB
             if [ "$(docker ps -aq -f name=^${{ env.DB_CONTAINER_NAME }}$)" ]; then
-              # Container exists; ensure it is running
               if [ ! "$(docker ps -q -f name=^${{ env.DB_CONTAINER_NAME }}$)" ]; then
                 docker start ${{ env.DB_CONTAINER_NAME }}
               fi
@@ -200,8 +207,8 @@ jobs:
                 -p ${{ env.DB_PORT }}:5432 \
                 -v ${{ env.DB_VOLUME }}:/var/lib/postgresql/data \
                 -e POSTGRES_DB=${{ env.DB_NAME }} \
-                -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
-                -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+                -e POSTGRES_USER="${{ secrets.POSTGRES_USER }}" \
+                -e POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
                 --restart always \
                 postgres:15-alpine
             fi
@@ -214,27 +221,31 @@ jobs:
             docker rm -f ${{ env.CANDIDATE_CONTAINER_NAME }} || true
             docker rm -f ${{ env.PREVIOUS_CONTAINER_NAME }} || true
             
-            # 1) Deploy candidate first (inactive port)
+            # 1) Deploy candidate first
             docker run -d \
               --name=${{ env.CANDIDATE_CONTAINER_NAME }} \
               --network=app_network \
               -p ${{ env.APP_PORT_CANDIDATE }}:8080 \
+              -p ${{ env.GRPC_PORT_CANDIDATE }}:${{ env.GRPC_PORT }} \
+              -e SERVER_PORT=8080 \
               -e POSTGRES_HOST=${{ env.DB_CONTAINER_NAME }} \
               -e POSTGRES_PORT=5432 \
               -e POSTGRES_DB=${{ env.DB_NAME }} \
-              -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
-              -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-              -e JWT_EXPIRATION=${{ secrets.JWT_EXPIRATION }} \
-              -e MIDTRANS_SERVER_KEY=${{ secrets.MIDTRANS_SERVER_KEY }} \
-              -e MIDTRANS_CLIENT_KEY=${{ secrets.MIDTRANS_CLIENT_KEY }} \
-              -e MIDTRANS_MERCHANT_ID=${{ secrets.MIDTRANS_MERCHANT_ID }} \
-              -e MIDTRANS_SNAP_API_BASE_URL=${{ secrets.MIDTRANS_SNAP_API_BASE_URL }} \
-              -e GRPC_SERVER_INTERNAL_TOKEN=${{ secrets.GRPC_SERVER_INTERNAL_TOKEN }} \
-              -e AUTH_SERVICE_BASE_URL=${{ env.AUTH_SERVICE_BASE_URL }} \
-              -e MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=${{ env.MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE }} \
-              -e MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=${{ env.MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS }} \
-              -e MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=${{ env.MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED }} \
+              -e POSTGRES_USER="${{ secrets.POSTGRES_USER }}" \
+              -e POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              -e JWT_EXPIRATION="${{ secrets.JWT_EXPIRATION }}" \
+              -e MIDTRANS_SERVER_KEY="${{ secrets.MIDTRANS_SERVER_KEY }}" \
+              -e MIDTRANS_CLIENT_KEY="${{ secrets.MIDTRANS_CLIENT_KEY }}" \
+              -e MIDTRANS_MERCHANT_ID="${{ secrets.MIDTRANS_MERCHANT_ID }}" \
+              -e MIDTRANS_SNAP_API_BASE_URL="${{ secrets.MIDTRANS_SNAP_API_BASE_URL }}" \
+              -e GRPC_SERVER_ENABLED=true \
+              -e GRPC_SERVER_PORT=${{ env.GRPC_PORT }} \
+              -e GRPC_SERVER_INTERNAL_TOKEN="${{ secrets.GRPC_SERVER_INTERNAL_TOKEN }}" \
+              -e AUTH_SERVICE_BASE_URL="${{ env.AUTH_SERVICE_BASE_URL }}" \
+              -e MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE="${{ env.MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE }}" \
+              -e MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS="${{ env.MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS }}" \
+              -e MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED="${{ env.MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED }}" \
               -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
               --restart always \
               ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
@@ -256,22 +267,26 @@ jobs:
               --name=${{ env.CONTAINER_NAME }} \
               --network=app_network \
               -p ${{ env.APP_PORT }}:8080 \
+              -p ${{ env.GRPC_PORT }}:${{ env.GRPC_PORT }} \
+              -e SERVER_PORT=8080 \
               -e POSTGRES_HOST=${{ env.DB_CONTAINER_NAME }} \
               -e POSTGRES_PORT=5432 \
               -e POSTGRES_DB=${{ env.DB_NAME }} \
-              -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
-              -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-              -e JWT_EXPIRATION=${{ secrets.JWT_EXPIRATION }} \
-              -e MIDTRANS_SERVER_KEY=${{ secrets.MIDTRANS_SERVER_KEY }} \
-              -e MIDTRANS_CLIENT_KEY=${{ secrets.MIDTRANS_CLIENT_KEY }} \
-              -e MIDTRANS_MERCHANT_ID=${{ secrets.MIDTRANS_MERCHANT_ID }} \
-              -e MIDTRANS_SNAP_API_BASE_URL=${{ secrets.MIDTRANS_SNAP_API_BASE_URL }} \
-              -e GRPC_SERVER_INTERNAL_TOKEN=${{ secrets.GRPC_SERVER_INTERNAL_TOKEN }} \
-              -e AUTH_SERVICE_BASE_URL=${{ env.AUTH_SERVICE_BASE_URL }} \
-              -e MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=${{ env.MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE }} \
-              -e MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS=${{ env.MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS }} \
-              -e MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=${{ env.MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED }} \
+              -e POSTGRES_USER="${{ secrets.POSTGRES_USER }}" \
+              -e POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              -e JWT_EXPIRATION="${{ secrets.JWT_EXPIRATION }}" \
+              -e MIDTRANS_SERVER_KEY="${{ secrets.MIDTRANS_SERVER_KEY }}" \
+              -e MIDTRANS_CLIENT_KEY="${{ secrets.MIDTRANS_CLIENT_KEY }}" \
+              -e MIDTRANS_MERCHANT_ID="${{ secrets.MIDTRANS_MERCHANT_ID }}" \
+              -e MIDTRANS_SNAP_API_BASE_URL="${{ secrets.MIDTRANS_SNAP_API_BASE_URL }}" \
+              -e GRPC_SERVER_ENABLED=true \
+              -e GRPC_SERVER_PORT=${{ env.GRPC_PORT }} \
+              -e GRPC_SERVER_INTERNAL_TOKEN="${{ secrets.GRPC_SERVER_INTERNAL_TOKEN }}" \
+              -e AUTH_SERVICE_BASE_URL="${{ env.AUTH_SERVICE_BASE_URL }}" \
+              -e MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE="${{ env.MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE }}" \
+              -e MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS="${{ env.MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS }}" \
+              -e MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED="${{ env.MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED }}" \
               -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
               --restart always \
               ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}:${{ env.IMAGE_TAG }}
