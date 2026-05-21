@@ -156,6 +156,7 @@ jobs:
                 -e MIDTRANS_SERVER_KEY="${{ secrets.MIDTRANS_SERVER_KEY }}" \
                 -e MIDTRANS_CLIENT_KEY="${{ secrets.MIDTRANS_CLIENT_KEY }}" \
                 -e MIDTRANS_MERCHANT_ID="${{ secrets.MIDTRANS_MERCHANT_ID }}" \
+                -e MIDTRANS_SNAP_API_BASE_URL="${{ secrets.MIDTRANS_SNAP_API_BASE_URL }}" \
                 -e GRPC_SERVER_INTERNAL_TOKEN="${{ secrets.GRPC_SERVER_INTERNAL_TOKEN }}" \
                 -e AUTH_SERVICE_BASE_URL="$AUTH_SERVICE_BASE_URL" \
                 -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \

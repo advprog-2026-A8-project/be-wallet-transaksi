@@ -11,7 +11,9 @@ import id.ac.ui.cs.advprog.bewallettransaksi.model.Wallet;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.TransactionRepository;
 import id.ac.ui.cs.advprog.bewallettransaksi.repository.WalletRepository;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
@@ -19,6 +21,7 @@ import org.springframework.test.context.TestPropertySource;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -27,6 +30,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -51,6 +57,19 @@ class WalletServiceIntegrationFlowTest {
 
     @Autowired
     private TransactionRepository transactionRepository;
+
+    @MockitoBean
+    private PaymentGatewayClient paymentGatewayClient;
+
+    @BeforeEach
+    void setUp() {
+        when(paymentGatewayClient.createTopUpInstruction(any(UUID.class), any(BigDecimal.class), anyString()))
+                .thenAnswer(invocation -> Map.of(
+                        "paymentToken", "test-snap-token",
+                        "redirectUrl", "https://app.sandbox.midtrans.com/snap/v2/vtweb/test-redirect",
+                        "orderId", invocation.getArgument(2, String.class)
+                ));
+    }
 
     @AfterEach
     void tearDown() {
