@@ -13,7 +13,7 @@ version = "0.0.1-SNAPSHOT"
 description = "be-wallet-transaksi"
 
 val grpcVersion = "1.68.1"
-val jjwtVersion = "0.12.6"
+val jjwtVersion = "0.13.0"
 val springdocVersion = "2.8.8"
 val protobufVersion = "3.25.5"
 val grpcPluginVersion = "1.68.1"
