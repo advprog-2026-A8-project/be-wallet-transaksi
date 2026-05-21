@@ -187,9 +187,9 @@ public class WalletController {
             @RequestHeader(value = SIGNATURE_HEADER, required = false) String signatureKey,
             @RequestBody(required = false) PaymentCallbackRequest payload
     ) {
-        requireHeader(signatureKey, SIGNATURE_HEADER);
         requireCallbackPayload(payload);
-        validateCallbackSignature(payload, signatureKey);
+        String resolvedSignatureKey = resolveCallbackSignatureKey(signatureKey, payload);
+        validateCallbackSignature(payload, resolvedSignatureKey);
         NormalizedCallbackFields normalizedFields = normalizeRequiredCallbackFields(payload);
         validateCallbackStatus(normalizedFields.transactionStatus());
         applyNormalizedCallbackFields(payload, normalizedFields);
@@ -308,6 +308,14 @@ public class WalletController {
         if (payload == null) {
             throw new IllegalArgumentException("Callback payload must not be empty");
         }
+    }
+
+    private String resolveCallbackSignatureKey(String headerSignatureKey, PaymentCallbackRequest payload) {
+        if (payload != null && !isMissingHeader(payload.getSignatureKey())) {
+            return payload.getSignatureKey();
+        }
+        requireHeader(headerSignatureKey, SIGNATURE_HEADER);
+        return headerSignatureKey;
     }
 
     private Map<String, String> callbackAcceptedResponse() {

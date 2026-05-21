@@ -1084,6 +1084,22 @@ class WalletControllerTest {
     }
 
     @Test
+    void paymentCallback_SignatureKeyInBody_ShouldDelegateToProcessor() throws Exception {
+        String payload =
+                "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
+                        + "\"transaction_status\":\"settlement\","
+                        + "\"signature_key\":\"valid-signature\"}";
+
+        mockMvc.perform(post("/wallet/payments/callback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Callback accepted"));
+
+        verify(paymentCallbackProcessor, times(1)).process(any());
+    }
+
+    @Test
     void paymentCallback_TransactionStatusWithWhitespace_ShouldBeAccepted() throws Exception {
         String payload =
                 "{\"order_id\":\"ORDER-1\",\"status_code\":\"200\",\"gross_amount\":\"10000.00\","
