@@ -18,4 +18,7 @@ public class PaymentCallbackRequest {
 
     @JsonProperty("transaction_status")
     private String transactionStatus;
+
+    @JsonProperty("signature_key")
+    private String signatureKey;
 }
