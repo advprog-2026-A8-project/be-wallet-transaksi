@@ -78,10 +78,13 @@ class MidtransPaymentGatewayClientTest {
     void createTopUpInstruction_WithDecimalAmount_ShouldThrowIllegalArgumentException() {
         MidtransPaymentGatewayClient client =
                 new MidtransPaymentGatewayClient(restTemplate, SANDBOX_SERVER_KEY, SANDBOX_API_BASE_URL);
+        UUID userId = UUID.randomUUID();
+        BigDecimal invalidAmount = new BigDecimal("10000.50");
+        String orderId = "TOPUP-123";
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> client.createTopUpInstruction(UUID.randomUUID(), new BigDecimal("10000.50"), "TOPUP-123")
+                () -> client.createTopUpInstruction(userId, invalidAmount, orderId)
         );
     }
 
@@ -98,9 +101,37 @@ class MidtransPaymentGatewayClientTest {
                         }
                         """, MediaType.APPLICATION_JSON));
 
+        UUID userId = UUID.randomUUID();
+        BigDecimal amount = new BigDecimal("10000");
+        String orderId = "TOPUP-123";
+
         assertThrows(
                 IllegalStateException.class,
-                () -> client.createTopUpInstruction(UUID.randomUUID(), new BigDecimal("10000"), "TOPUP-123")
+                () -> client.createTopUpInstruction(userId, amount, orderId)
         );
+    }
+
+    @Test
+    void createTopUpInstruction_WithCustomTransactionPath_ShouldCallConfiguredPath() {
+        UUID userId = UUID.randomUUID();
+        String orderId = "TOPUP-123";
+        String customPath = "/custom/snap/transactions";
+        MidtransPaymentGatewayClient client =
+                new MidtransPaymentGatewayClient(restTemplate, SANDBOX_SERVER_KEY, SANDBOX_API_BASE_URL, customPath);
+
+        mockServer.expect(requestTo(SANDBOX_API_BASE_URL + customPath))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("""
+                        {
+                          "token": "snap-token-123",
+                          "redirect_url": "https://app.sandbox.midtrans.com/snap/v2/vtweb/test"
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        Map<String, String> instruction =
+                client.createTopUpInstruction(userId, new BigDecimal("10000"), orderId);
+
+        assertEquals("snap-token-123", instruction.get("paymentToken"));
+        mockServer.verify();
     }
 }
