@@ -48,6 +48,28 @@ class WalletContractApiIntegrationTest {
     }
 
     @Test
+    void checkBalance_WithMalformedJwt_ShouldReturnUnauthorized() throws Exception {
+        when(walletRequestAccessPolicy.isJwtBearerToken("Bearer malformed")).thenReturn(false);
+
+        mockMvc.perform(post("/api/contracts/wallet/check-balance")
+                        .header("Authorization", "Bearer malformed")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"00000000-0000-0000-0000-000000000001\",\"amount\":10000.00}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void checkBalance_WithDisallowedRole_ShouldReturnForbidden() throws Exception {
+        when(walletRequestAccessPolicy.isAllowedWalletMutationRole("Bearer valid-order-jwt")).thenReturn(false);
+
+        mockMvc.perform(post("/api/contracts/wallet/check-balance")
+                        .header("Authorization", "Bearer valid-order-jwt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"00000000-0000-0000-0000-000000000001\",\"amount\":10000.00}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void checkBalance_WithValidJwt_ShouldReturnResult() throws Exception {
         when(orderWalletContractService.checkBalance(any()))
                 .thenReturn(new CheckBalanceResult(true, new BigDecimal("120000.00")));

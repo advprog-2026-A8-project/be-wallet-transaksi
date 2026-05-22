@@ -43,6 +43,9 @@ public class MidtransCallbackSignatureVerifier {
     }
 
     private String normalizeSignature(String signature) {
+        if (signature == null) {
+            return null;
+        }
         return signature.trim().toLowerCase(Locale.ROOT);
     }
 

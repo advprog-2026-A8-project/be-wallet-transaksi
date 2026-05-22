@@ -11,10 +11,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.net.http.HttpResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class AuthServiceUsernameToUserIdResolverTest {
 
@@ -244,6 +248,56 @@ class AuthServiceUsernameToUserIdResolverTest {
 
             assertTrue(resolved.isPresent());
             assertEquals(expectedUserId, resolved.get());
+        }
+    }
+
+    @Test
+    void resolve_WhenAuthServiceStatusNot200_ShouldReturnEmpty() throws Exception {
+        HttpClient httpClient = mock(HttpClient.class);
+        @SuppressWarnings("unchecked")
+        HttpResponse<String> response = (HttpResponse<String>) mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(404);
+        when(response.body()).thenReturn("{\"userId\":\"11111111-1111-1111-1111-111111111111\"}");
+        when(httpClient.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(response);
+
+        AuthServiceUsernameToUserIdResolver resolver =
+                new AuthServiceUsernameToUserIdResolver("http://auth-service", httpClient, Duration.ofMillis(500));
+
+        Optional<UUID> resolved = resolver.resolve("user@example.com");
+
+        assertTrue(resolved.isEmpty());
+    }
+
+    @Test
+    void resolve_WhenBodyNull_ShouldReturnEmpty() throws Exception {
+        HttpClient httpClient = mock(HttpClient.class);
+        @SuppressWarnings("unchecked")
+        HttpResponse<String> response = (HttpResponse<String>) mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn(null);
+        when(httpClient.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(response);
+
+        AuthServiceUsernameToUserIdResolver resolver =
+                new AuthServiceUsernameToUserIdResolver("http://auth-service", httpClient, Duration.ofMillis(500));
+
+        assertTrue(resolver.resolve("user@example.com").isEmpty());
+    }
+
+    @Test
+    void resolve_WhenInterrupted_ShouldReturnEmptyAndPreserveInterruptFlag() throws Exception {
+        HttpClient httpClient = mock(HttpClient.class);
+        when(httpClient.send(any(), any(HttpResponse.BodyHandler.class)))
+                .thenThrow(new InterruptedException("interrupted"));
+
+        AuthServiceUsernameToUserIdResolver resolver =
+                new AuthServiceUsernameToUserIdResolver("http://auth-service", httpClient, Duration.ofMillis(500));
+
+        try {
+            Optional<UUID> resolved = resolver.resolve("user@example.com");
+            assertTrue(resolved.isEmpty());
+            assertTrue(Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
         }
     }
 
