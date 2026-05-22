@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.controller;
 
 import java.util.UUID;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -74,6 +75,46 @@ class WalletRequestAccessPolicyTest {
         String jwt = generateJwtToken("not-a-uuid", "ADMIN");
 
         assertFalse(policy.isOwnerMismatchJwt("Bearer " + jwt, UUID.randomUUID()));
+    }
+
+    @Test
+    void isOwnerMismatchJwt_ShouldResolveUsernameSubjectViaResolver() {
+        UUID ownerId = UUID.randomUUID();
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(
+                JWT_SECRET,
+                username -> "owner@example.com".equals(username) ? Optional.of(ownerId) : Optional.empty()
+        );
+        String jwt = generateJwtToken("owner@example.com", "TITIPER");
+
+        assertFalse(policy.isOwnerMismatchJwt("Bearer " + jwt, ownerId));
+    }
+
+    @Test
+    void isAllowedPayRole_ShouldReturnTrueForTitiperAndAdmin() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> Optional.empty());
+        String titiperJwt = "Bearer " + generateJwtToken("user-1", "TITIPER");
+        String adminJwt = "Bearer " + generateJwtToken("user-2", "ADMIN");
+
+        assertTrue(policy.isAllowedPayRole(titiperJwt));
+        assertTrue(policy.isAllowedPayRole(adminJwt));
+    }
+
+    @Test
+    void isAllowedWalletMutationRole_ShouldReturnFalseForUnsupportedRole() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> Optional.empty());
+        String jwt = "Bearer " + generateJwtToken("user-3", "VIEWER");
+
+        assertFalse(policy.isAllowedWalletMutationRole(jwt));
+    }
+
+    @Test
+    void isJwtBearerToken_ShouldValidateJwtShapeOnly() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> Optional.empty());
+        String validShape = "Bearer aaa.bbb.ccc";
+        String invalidShape = "Bearer no-dot-token";
+
+        assertTrue(policy.isJwtBearerToken(validShape));
+        assertFalse(policy.isJwtBearerToken(invalidShape));
     }
 
     private String generateJwtToken(String subject, String role) {
