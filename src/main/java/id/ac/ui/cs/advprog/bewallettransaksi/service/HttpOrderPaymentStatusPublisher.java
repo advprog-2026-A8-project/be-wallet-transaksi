@@ -88,7 +88,15 @@ public class HttpOrderPaymentStatusPublisher implements OrderPaymentStatusPublis
                     path,
                     ex.toString()
             );
-            throw ex;
+            throw new IllegalStateException(
+                    "Failed to publish order payment status: orderId="
+                            + normalizedOrderId
+                            + ", status="
+                            + event.status()
+                            + ", target="
+                            + path,
+                    ex
+            );
         }
     }
 

@@ -18,6 +18,7 @@ val springdocVersion = "2.8.8"
 val protobufVersion = "3.25.5"
 val grpcPluginVersion = "1.68.1"
 val tomcatAnnotationsVersion = "6.0.53"
+val logstashLogbackEncoderVersion = "8.0"
 
 java {
     toolchain {
@@ -41,7 +42,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
-    implementation("net.logstash.logback:logstash-logback-encoder:8.0")
+    implementation("net.logstash.logback:logstash-logback-encoder:$logstashLogbackEncoderVersion")
     implementation("io.grpc:grpc-netty-shaded:$grpcVersion")
     implementation("io.grpc:grpc-protobuf:$grpcVersion")
     implementation("io.grpc:grpc-stub:$grpcVersion")
