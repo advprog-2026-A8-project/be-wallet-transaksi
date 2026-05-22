@@ -1,10 +1,12 @@
 package id.ac.ui.cs.advprog.bewallettransaksi.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -117,6 +119,21 @@ class HttpOrderPaymentStatusPublisherTest {
                         "invalid-token"
                 )
         );
+    }
+
+    @Test
+    void publishPaymentSettled_WhenOrderServiceFails_ShouldWrapWithContext() {
+        mockServer.expect(requestTo(BASE_URL + SETTLED_PATH))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withServerError());
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> publisher.publishPaymentSettled("ORDER-500")
+        );
+
+        assertTrue(exception.getMessage().contains("ORDER-500"));
+        assertTrue(exception.getMessage().contains("SUCCESS"));
     }
 
     private void expectPostSuccess(String path, String expectedJsonBody) {
