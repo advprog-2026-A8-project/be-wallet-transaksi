@@ -1,4 +1,4 @@
-# C4 Model of the Current Architecture
+﻿# C4 Model of the Current Architecture
 
 ## Context Diagram
 
@@ -37,21 +37,65 @@ Risk Storming juga bermanfaat karena menghubungkan diskusi arsitektur dengan kep
 
 ## Profiling
 
-![]()
+### Before Profiling
+![alt text](/assets/Jmeter.png)
 
-![]()
+![alt text](/assets/Jprofiler.png)
+
+![alt text](/assets/Jprofiler1.png)
+
+![alt text](/assets/Profiling.png)
+
+![alt text](/assets/Profiling1.png)
+
+![alt text](/assets/Profiling2.png)
+
+![alt text](/assets/Profiling3.png)
+
+Kita dapat mengidentifikasi adanya performa yang kurang optimal pada path deductBalanceForOrder dan refundBalanceForOrder. 
+
+### After Profiling
+![alt text](/assets/AfterProfiling.png)
+
+![alt text](/assets/AfterProfiling2.png)
+
+Profiling pada proyek ini menggunakan pendekatan **workload-driven profiling** dengan **JMeter sebagai sumber utama pengukuran**.  
+Artinya, keputusan optimasi dilakukan berdasarkan metrik performa saat skenario beban dijalankan, bukan hanya inspeksi kode statis.
+
+Justifikasi metode profiling:
+1. JMeter merepresentasikan trafik nyata (read + mutation + contract flow) sehingga bottleneck terlihat pada kondisi concurrent request.
+2. Hasil numerik JMeter (latency, throughput, error rate, percentile) dipakai sebagai baseline sebelum optimasi dan pembanding setelah optimasi.
+3. Monitoring (Prometheus/Grafana/Loki) digunakan sebagai pendukung observasi runtime untuk memvalidasi perilaku sistem saat test berjalan.
+
+Dengan pendekatan ini, perubahan performa dapat dijustifikasi secara kuantitatif berdasarkan benchmark yang konsisten.
+
+Langkah profiling yang dilakukan:
+1. Refactor findTransactionByTypeAndOrderId(...), memakai query terfilter dan exists check
+2. Refactor hasSuccessfulPaymentForOrder(), mengubah dari load list + scan ke boolean existence query langsung.
+3. Refactor hasPendingPaymentDuplicate()
+4. Menambahkan composite index di tabel transactions agar query yang paling sering dipakai saat load test tidak perlu scan/sort besar di database.
 
 ## Monitoring
 
-![]()
+![alt text](/assets/Prometheus.png)
 
-![]()
+![alt text](/assets/Grafana.png)
+
+![alt text](/assets/Loki.png)
+
+Stack monitoring dirancang agar mampu memantau kondisi sistem dari sisi infrastruktur dan alur bisnis transaksi secara bersamaan. Mekanisme monitoring yang digunakan:
+1. **Metrics-based observability** dengan Spring Actuator + Micrometer (`/actuator/prometheus`) untuk mengekspos metrik aplikasi, JVM, HTTP, dan business flow dalam format standar Prometheus.
+2. **Dashboard operasional Grafana** untuk memantau service health, request throughput, error rate, serta latency p95/p99 per endpoint secara real-time.
+3. **Business metrics khusus domain wallet** (topup/pay/refund/callback/idempotency/grpc/publisher) agar analisis insiden bisa dilakukan sampai level transaksi bisnis.
+4. **Log aggregation via Loki + Promtail** untuk mengkorelasikan anomali metrik dengan event log aplikasi secara terpusat.
 
 # BE-Wallet-Transaksi Service
 
 # Deployment
 
-Link: []()
+Link Service: `http://ec2-54-243-234-62.compute-1.amazonaws.com:6060`  
+Link Grafana: `http://ec2-54-243-234-62.compute-1.amazonaws.com:3000`  
+Link Prometheus: `http://ec2-54-243-234-62.compute-1.amazonaws.com:9090`
 
 ## Overview
 - User dapat membuat wallet berdasarkan `userId`.
@@ -110,15 +154,15 @@ Komponen wallet bertanggung jawab untuk menjaga konsistensi saldo, histori trans
 
 ### Config & Infra
 - `application.properties`, `application-prod.properties`: Konfigurasi environment.
-- `docker-compose.yml`, `Dockerfile`: Local/dev runtime.
+- `docker-compose.yml`, `Dockerfile`: Local runtime.
 - `.github/workflows/ci-cd.yml`: Pipeline test, scan, build, deploy.
 
 ## API Documentation
 
 Saat aplikasi running:
 
-- Swagger UI: `http://localhost:6002/swagger-ui/index.html` (dev profile compose)
-- OpenAPI JSON: `http://localhost:6002/v3/api-docs`
+- Swagger UI: `http://localhost:6060/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:6060/v3/api-docs`
 
 Format `Authorize`:
 
@@ -128,21 +172,15 @@ Bearer <JWT_TOKEN>
 
 ## Run (Local)
 
-Jalankan profile `dev`:
-
-```powershell
-docker compose --profile dev up --build
-```
-
-Jalankan profile `main`:
+Local run menggunakan profile `main`:
 
 ```powershell
 docker compose --profile main up --build
 ```
 
-## Monitoring (Prod-only setup)
+## Monitoring
 
-Observability stack ini ditujukan untuk environment `main` (production-like), bukan `dev`.
+Observability stack ditujukan untuk environment `main` (production-like).
 
 1. Jalankan aplikasi utama profile `main`:
 
@@ -159,7 +197,7 @@ docker compose -f docker-compose.monitoring.yml up -d
 3. Verifikasi endpoint:
 - Wallet metrics: `http://localhost:6060/actuator/prometheus`
 - Prometheus UI: `http://localhost:9090`
-- Grafana UI: `http://localhost:3001`
+- Grafana UI: `http://localhost:3000`
 
 4. Login Grafana:
 - Username: `admin` (default)
