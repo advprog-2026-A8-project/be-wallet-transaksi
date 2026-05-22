@@ -97,4 +97,67 @@ class DefaultOrderWalletContractServiceTest {
         assertFalse(insufficient.sufficient());
         assertEquals(new BigDecimal("100.00"), sufficient.currentBalance());
     }
+
+    @Test
+    void deductBalance_Success_ShouldReturnUpdatedBalance() {
+        UUID userId = UUID.randomUUID();
+        when(walletService.deductBalanceForOrder(userId, "ORDER-4", BigDecimal.TEN, "idem-4"))
+                .thenReturn(
+                        WalletResponse.builder()
+                                .walletId(UUID.randomUUID())
+                                .userId(userId)
+                                .balance(new BigDecimal("90.00"))
+                                .build()
+                );
+
+        WalletMutationResult result = contractService.deductBalance(
+                new DeductBalanceRequest(userId, "ORDER-4", BigDecimal.TEN, "idem-4")
+        );
+
+        assertTrue(result.success());
+        assertEquals(new BigDecimal("90.00"), result.updatedBalance());
+        assertEquals(WalletContractErrorCode.NONE.name(), result.errorCode());
+    }
+
+    @Test
+    void deductBalance_InsufficientBalance_ShouldMapErrorCode() {
+        UUID userId = UUID.randomUUID();
+        when(walletService.deductBalanceForOrder(userId, "ORDER-5", BigDecimal.TEN, "idem-5"))
+                .thenThrow(new IllegalStateException("Insufficient balance for payment"));
+
+        WalletMutationResult result = contractService.deductBalance(
+                new DeductBalanceRequest(userId, "ORDER-5", BigDecimal.TEN, "idem-5")
+        );
+
+        assertFalse(result.success());
+        assertEquals(WalletContractErrorCode.INSUFFICIENT_BALANCE.name(), result.errorCode());
+    }
+
+    @Test
+    void deductBalance_IllegalStateWithoutMessage_ShouldMapInvalidRequest() {
+        UUID userId = UUID.randomUUID();
+        when(walletService.deductBalanceForOrder(userId, "ORDER-6", BigDecimal.TEN, "idem-6"))
+                .thenThrow(new IllegalStateException((String) null));
+
+        WalletMutationResult result = contractService.deductBalance(
+                new DeductBalanceRequest(userId, "ORDER-6", BigDecimal.TEN, "idem-6")
+        );
+
+        assertFalse(result.success());
+        assertEquals(WalletContractErrorCode.INVALID_REQUEST.name(), result.errorCode());
+    }
+
+    @Test
+    void refundBalance_IllegalArgument_ShouldReturnInvalidRequest() {
+        UUID userId = UUID.randomUUID();
+        when(walletService.refundBalanceForOrder(userId, "ORDER-7", BigDecimal.TEN, "idem-7"))
+                .thenThrow(new IllegalArgumentException("invalid request"));
+
+        WalletMutationResult result = contractService.refundBalance(
+                new RefundBalanceRequest(userId, "ORDER-7", BigDecimal.TEN, "idem-7")
+        );
+
+        assertFalse(result.success());
+        assertEquals(WalletContractErrorCode.INVALID_REQUEST.name(), result.errorCode());
+    }
 }

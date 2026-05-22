@@ -117,6 +117,30 @@ class WalletRequestAccessPolicyTest {
         assertFalse(policy.isJwtBearerToken(invalidShape));
     }
 
+    @Test
+    void isDisallowedRoleForPay_ShouldReturnTrueForJastiper() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> Optional.empty());
+        String jastiperJwt = "Bearer " + generateJwtToken("user-4", "JASTIPER");
+
+        assertTrue(policy.isDisallowedRoleForPay(jastiperJwt));
+    }
+
+    @Test
+    void isOwnerMismatchJwt_ShouldReturnFalseWhenAuthorizationNotJwtOrTargetNull() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> Optional.empty());
+
+        assertFalse(policy.isOwnerMismatchJwt("Bearer not-jwt", UUID.randomUUID()));
+        assertFalse(policy.isOwnerMismatchJwt("Bearer " + generateJwtToken("user-5", "TITIPER"), null));
+    }
+
+    @Test
+    void isOwnerMismatchJwt_ShouldReturnTrueWhenSubjectBlank() {
+        WalletRequestAccessPolicy policy = new WalletRequestAccessPolicy(JWT_SECRET, username -> Optional.empty());
+        String jwt = generateJwtToken("   ", "TITIPER");
+
+        assertTrue(policy.isOwnerMismatchJwt("Bearer " + jwt, UUID.randomUUID()));
+    }
+
     private String generateJwtToken(String subject, String role) {
         return TestJwtTokenFactory.generateHmac256Token(JWT_SECRET, subject, role);
     }
