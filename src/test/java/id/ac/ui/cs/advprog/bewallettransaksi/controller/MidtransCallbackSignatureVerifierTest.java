@@ -46,6 +46,17 @@ class MidtransCallbackSignatureVerifierTest {
     }
 
     @Test
+    void isValid_NullSignature_ShouldReturnFalse() {
+        MidtransCallbackSignatureVerifier verifier = new MidtransCallbackSignatureVerifier("server-key");
+        PaymentCallbackRequest payload = new PaymentCallbackRequest();
+        payload.setOrderId("ORDER-NULL-SIG");
+        payload.setStatusCode("200");
+        payload.setGrossAmount("10000.00");
+
+        assertFalse(verifier.isValid(payload, null));
+    }
+
+    @Test
     void isValid_BlankServerKey_ShouldReturnFalse() {
         String blankServerKey = "   ";
         MidtransCallbackSignatureVerifier verifier = new MidtransCallbackSignatureVerifier(blankServerKey);
@@ -58,6 +69,16 @@ class MidtransCallbackSignatureVerifierTest {
         );
 
         assertFalse(verifier.isValid(payload, forgedSignature));
+    }
+
+    @Test
+    void isValid_MissingOrderId_ShouldReturnFalse() {
+        MidtransCallbackSignatureVerifier verifier = new MidtransCallbackSignatureVerifier("server-key");
+        PaymentCallbackRequest payload = new PaymentCallbackRequest();
+        payload.setStatusCode("200");
+        payload.setGrossAmount("10000.00");
+
+        assertFalse(verifier.isValid(payload, "abcdef"));
     }
 
     private String sha512Hex(String value) {
