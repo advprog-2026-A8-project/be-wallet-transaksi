@@ -15,6 +15,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClientException;
@@ -28,7 +29,7 @@ public class MidtransPaymentGatewayClient implements PaymentGatewayClient {
     private static final String ORDER_ID_KEY = "orderId";
     private static final String MIDTRANS_TOKEN_KEY = "token";
     private static final String MIDTRANS_REDIRECT_URL_KEY = "redirect_url";
-    private static final String SNAP_TRANSACTION_PATH = "/snap/v1/transactions";
+    private static final String DEFAULT_SNAP_TRANSACTION_PATH = "/snap/v1/transactions";
     private static final String DEFAULT_SANDBOX_API_BASE = "https://app.sandbox.midtrans.com";
     private static final String DEFAULT_PRODUCTION_API_BASE = "https://app.midtrans.com";
     private static final String SERVER_KEY_REQUIRED_MESSAGE = "Midtrans server key must not be blank";
@@ -38,20 +39,23 @@ public class MidtransPaymentGatewayClient implements PaymentGatewayClient {
     private final RestTemplate restTemplate;
     private final String serverKey;
     private final String configuredApiBaseUrl;
+    private final String snapTransactionPath;
 
     @Autowired
     public MidtransPaymentGatewayClient(
             RestTemplateBuilder restTemplateBuilder,
             @Value("${midtrans.server-key:}") String serverKey,
-            @Value("${midtrans.snap.api-base-url:}") String configuredApiBaseUrl
+            @Value("${midtrans.snap.api-base-url:}") String configuredApiBaseUrl,
+            @Value("${midtrans.snap.transaction-path:" + DEFAULT_SNAP_TRANSACTION_PATH + "}") String snapTransactionPath
     ) {
         this(
                 restTemplateBuilder
-                        .setConnectTimeout(Duration.ofSeconds(5))
-                        .setReadTimeout(Duration.ofSeconds(10))
+                        .connectTimeout(Duration.ofSeconds(5))
+                        .readTimeout(Duration.ofSeconds(10))
                         .build(),
                 serverKey,
-                configuredApiBaseUrl
+                configuredApiBaseUrl,
+                snapTransactionPath
         );
     }
 
@@ -60,9 +64,19 @@ public class MidtransPaymentGatewayClient implements PaymentGatewayClient {
             String serverKey,
             String configuredApiBaseUrl
     ) {
+        this(restTemplate, serverKey, configuredApiBaseUrl, DEFAULT_SNAP_TRANSACTION_PATH);
+    }
+
+    MidtransPaymentGatewayClient(
+            RestTemplate restTemplate,
+            String serverKey,
+            String configuredApiBaseUrl,
+            String snapTransactionPath
+    ) {
         this.restTemplate = restTemplate;
         this.serverKey = serverKey == null ? "" : serverKey.trim();
         this.configuredApiBaseUrl = configuredApiBaseUrl == null ? "" : configuredApiBaseUrl.trim();
+        this.snapTransactionPath = normalizeSnapTransactionPath(snapTransactionPath);
     }
 
     @Override
@@ -76,11 +90,11 @@ public class MidtransPaymentGatewayClient implements PaymentGatewayClient {
         );
 
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    apiBaseUrl + SNAP_TRANSACTION_PATH,
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    apiBaseUrl + snapTransactionPath,
                     HttpMethod.POST,
                     requestEntity,
-                    Map.class
+                    new ParameterizedTypeReference<>() { }
             );
             return mapSnapResponse(response.getBody(), orderId);
         } catch (RestClientException ex) {
@@ -109,6 +123,14 @@ public class MidtransPaymentGatewayClient implements PaymentGatewayClient {
 
     private String trimTrailingSlash(String baseUrl) {
         return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    }
+
+    private String normalizeSnapTransactionPath(String configuredPath) {
+        if (!StringUtils.hasText(configuredPath)) {
+            return DEFAULT_SNAP_TRANSACTION_PATH;
+        }
+        String normalizedPath = configuredPath.trim();
+        return normalizedPath.startsWith("/") ? normalizedPath : "/" + normalizedPath;
     }
 
     private long toWholeNumberAmount(BigDecimal amount) {
